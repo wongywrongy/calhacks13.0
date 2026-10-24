@@ -35,6 +35,7 @@ import {
 
 // Import all reducer arg schemas
 import AcquireBackendReducer from "./acquire_backend_reducer";
+import ActivateChatFleetReducer from "./activate_chat_fleet_reducer";
 import CreateChatOperationReducer from "./create_chat_operation_reducer";
 import EnableFleetChatReducer from "./enable_fleet_chat_reducer";
 import EnqueueBackendRunReducer from "./enqueue_backend_run_reducer";
@@ -125,6 +126,7 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("acquire_backend", AcquireBackendReducer),
+  __reducerSchema("activate_chat_fleet", ActivateChatFleetReducer),
   __reducerSchema("create_chat_operation", CreateChatOperationReducer),
   __reducerSchema("enable_fleet_chat", EnableFleetChatReducer),
   __reducerSchema("enqueue_backend_run", EnqueueBackendRunReducer),

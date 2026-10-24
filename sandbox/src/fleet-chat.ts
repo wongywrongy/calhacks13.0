@@ -289,12 +289,24 @@ export class FleetChat {
           409,
           "Role operation already active; stop it before a new objective",
         );
-      const [fleet] = await this.store.query(
+      await this.validateTarget(role, target);
+      let [fleet] = await this.store.query(
         "SELECT * FROM fleet_session WHERE id=0",
       );
-      if (!fleet?.active || Number(fleet.deadline) / 1000 <= Date.now())
-        return reject(409, "Start a live fleet first");
-      await this.validateTarget(role, target);
+      if (!fleet?.active || Number(fleet.deadline) !== 0) {
+        if (role !== "attacker")
+          return reject(
+            409,
+            "Waiting for the first attacker objective to start the shared sandbox",
+          );
+        await this.store.call("activate_chat_fleet", [
+          this.store.session,
+          role,
+        ]);
+        [fleet] = await this.store.query(
+          "SELECT * FROM fleet_session WHERE id=0",
+        );
+      }
       const agents = (
         await this.store.query("SELECT * FROM fleet_agent")
       ).filter((a: any) => a.role === role && a.epoch === fleet.epoch);
@@ -310,10 +322,7 @@ export class FleetChat {
         execution: "fleet-reducers",
         ...CHAT_LIMITS,
         createdAt: Date.now(),
-        deadline: Math.min(
-          Date.now() + CHAT_LIMITS.durationMs,
-          Math.floor(Number(fleet.deadline) / 1000),
-        ),
+        deadline: Date.now() + CHAT_LIMITS.durationMs,
       };
       await this.store.call("create_chat_operation", [
         this.store.session,

@@ -5,6 +5,9 @@ use std::time::Duration;
 pub struct Principal { #[primary_key] identity:Identity, role:String }
 #[table(accessor=fleet_session)]
 pub struct Session { #[primary_key] id:u32, epoch:u64, active:bool, hardened:bool, drones:u32, deadline:i64 }
+// Separate clock keeps existing timed fixture sessions and their schema compatible.
+#[table(accessor=fleet_chat_clock)]
+pub struct ChatClock { #[primary_key] id:u32, epoch:u64, started:i64 }
 #[table(accessor=fleet_drone)]
 #[derive(Clone)]
 pub struct Drone { #[primary_key] id:u32, #[index(btree)] epoch:u64, x:f32,y:f32,z:f32, battery:f32, tick:u32, controller:String, isolated:bool, policy_version:u32, commands:u32, rejected:u32 }
@@ -31,8 +34,9 @@ use crate::formation;
 /// Fixture defenders only respond to a takeover held this long, so a hijack visibly pulls the
 /// drone out of formation before recovery. Detection latency is a fixture decision, not measured.
 const DETECT_AFTER_US:i64=4_000_000;
-/// Match start in micros; sessions run 60 s, so it is derived from the deadline.
-fn match_start(ctx:&ReducerContext)->i64{ctx.db.fleet_session().id().find(0).map(|s|s.deadline-60_000_000).unwrap_or(0)}
+fn match_start(ctx:&ReducerContext)->i64{
+ ctx.db.fleet_chat_clock().id().find(0).map(|c|c.started).unwrap_or_else(||ctx.db.fleet_session().id().find(0).map(|s|s.deadline-60_000_000).unwrap_or(0))
+}
 fn emit(ctx:&ReducerContext,epoch:u64,actor:u32,d:&Drone,kind:&str,status:u32){ctx.db.fleet_evidence().insert(Evidence{id:0,epoch,at:ctx.timestamp.to_micros_since_unix_epoch(),actor,drone:d.id,kind:kind.into(),status,policy_version:d.policy_version});}
 #[reducer]
 pub fn grant_fleet_view(ctx:&ReducerContext,identity:String,role:String)->Result<(),String>{owner(ctx)?;let identity=Identity::from_hex(identity).map_err(|_|"Invalid identity")?;if !["attacker","defender","observer"].contains(&role.as_str()){return Err("Invalid role".into())} if ctx.db.fleet_principal().identity().find(identity).is_some(){ctx.db.fleet_principal().identity().update(Principal{identity,role});}else{ctx.db.fleet_principal().insert(Principal{identity,role});} Ok(())}
@@ -40,6 +44,7 @@ pub fn grant_fleet_view(ctx:&ReducerContext,identity:String,role:String)->Result
 pub fn start_fleet(ctx:&ReducerContext,drones:u32,attackers:u32,defenders:u32,hardened:bool)->Result<(),String>{
  owner(ctx)?;if !(1..=256).contains(&drones)||!(1..=32).contains(&attackers)||!(1..=32).contains(&defenders){return Err("Fleet/agent limits exceeded".into())}
  let epoch=ctx.db.fleet_session().id().find(0).map(|s|s.epoch+1).unwrap_or(1);
+ ctx.db.fleet_chat_clock().id().delete(0);
  for d in ctx.db.drone_schedule().iter(){ctx.db.drone_schedule().id().delete(d.id);} for a in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(a.id);}
  for d in ctx.db.fleet_drone().iter(){ctx.db.fleet_drone().id().delete(d.id);}for a in ctx.db.fleet_agent().iter(){ctx.db.fleet_agent().id().delete(a.id);}for d in ctx.db.fleet_discovery().iter(){ctx.db.fleet_discovery().drone().delete(d.drone);}for h in ctx.db.fleet_hold().iter(){ctx.db.fleet_hold().drone().delete(h.drone);}
  ctx.db.fleet_session().id().delete(0);ctx.db.fleet_session().insert(Session{id:0,epoch,active:true,hardened,drones,deadline:ctx.timestamp.to_micros_since_unix_epoch()+60_000_000});
@@ -48,7 +53,7 @@ pub fn start_fleet(ctx:&ReducerContext,drones:u32,attackers:u32,defenders:u32,ha
 }
 #[reducer]
 pub fn stop_fleet(ctx:&ReducerContext)->Result<(),String>{owner(ctx)?;if let Some(mut s)=ctx.db.fleet_session().id().find(0){s.active=false;ctx.db.fleet_session().id().update(s);} for t in ctx.db.drone_schedule().iter(){ctx.db.drone_schedule().id().delete(t.id);}for t in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(t.id);}Ok(())}
-fn live(ctx:&ReducerContext,epoch:u64)->bool{ctx.db.fleet_session().id().find(0).map(|s|s.active&&s.epoch==epoch&&ctx.timestamp.to_micros_since_unix_epoch()<s.deadline).unwrap_or(false)}
+fn live(ctx:&ReducerContext,epoch:u64)->bool{ctx.db.fleet_session().id().find(0).map(|s|s.active&&s.epoch==epoch&&(s.deadline==0||ctx.timestamp.to_micros_since_unix_epoch()<s.deadline)).unwrap_or(false)}
 #[reducer]
 pub fn drone_tick(ctx:&ReducerContext,timer:DroneSchedule){if ctx.sender()!=ctx.database_identity(){panic!("Scheduler only")}if !live(ctx,timer.epoch){ctx.db.drone_schedule().id().delete(timer.id);return}if let Some(mut d)=ctx.db.fleet_drone().id().find(timer.id as u32){d.tick+=1;d.battery=(d.battery-0.003).max(0.);
  // Healthy drones follow the shared match clock; a held drone follows the attacker's pull instead.
@@ -125,4 +130,20 @@ pub fn visible_fleet_access(ctx:&ViewContext)->Vec<FleetAccess>{
 pub(crate) fn validate_chat_target(ctx:&ReducerContext,role:&str,target:u32)->Result<(),String>{
  let d=ctx.db.fleet_drone().id().find(target).ok_or("Selected drone is not visible")?;
  if role=="attacker" && ctx.db.fleet_discovery().drone().find(target).map(|r|r.epoch)!=Some(d.epoch){return Err("Selected drone is not visible".into())}Ok(())
+}
+
+// Called only by the leased backend after authenticating the first attacker objective.
+pub(crate) fn activate_chat_fleet(ctx:&ReducerContext,role:&str)->Result<(),String>{
+ owner(ctx)?;
+ if let Some(s)=ctx.db.fleet_session().id().find(0){if s.active&&s.deadline==0{return Ok(())}}
+ if role!="attacker"{return Err("Waiting for the first attacker objective".into())}
+ if ctx.db.fleet_session().id().find(0).is_none(){start_fleet(ctx,48,2,2,false)?;}
+ let mut s=ctx.db.fleet_session().id().find(0).unwrap();
+ if ctx.db.fleet_chat_clock().id().find(0).is_none(){ctx.db.fleet_chat_clock().insert(ChatClock{id:0,epoch:s.epoch,started:if s.deadline>0{s.deadline-60_000_000}else{ctx.timestamp.to_micros_since_unix_epoch()}});}
+ s.deadline=0;s.active=true;
+ for d in ctx.db.fleet_drone().epoch().filter(s.epoch){
+  if ctx.db.drone_schedule().id().find(d.id as u64).is_none(){ctx.db.drone_schedule().insert(DroneSchedule{id:d.id as u64,epoch:s.epoch,scheduled_at:Duration::from_millis(180+(d.id%7) as u64*20).into()});}
+ }
+ ctx.db.fleet_session().id().update(s);
+ enable_fleet_chat(ctx)
 }

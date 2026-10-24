@@ -92,22 +92,11 @@ const report: any = {
 const output = mocked ? "output/fleet-ui-mocked" : "output/fleet-ui-smoke";
 await mkdir(output, { recursive: true });
 try {
-  const started = await original(service.url + "/v1/fleet/start", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${operator}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      drones: 4,
-      attackers: 2,
-      defenders: 2,
-      hardened: false,
-    }),
-  });
-  assert.equal(started.status, 200);
-  const [fleet] = await service.store.query("SELECT * FROM fleet_session");
-  report.epoch = fleet.epoch;
+  let fleet: any;
+  assert.equal(
+    (await service.store.query("SELECT * FROM fleet_session")).length,
+    0,
+  );
   assert.equal(
     (await service.store.query("SELECT * FROM agent_schedule")).length,
     0,
@@ -150,6 +139,24 @@ try {
       role === "attacker" ? "Crimson" : "Sentinel",
     );
   }
+  await pages.defender.locator("#say").fill("Protect the swarm");
+  const earlyDefense = pages.defender.waitForResponse((r: any) =>
+    r.url().endsWith("/api/chat/messages"),
+  );
+  await pages.defender.locator("#say").press("Enter");
+  assert.equal((await earlyDefense).status(), 409);
+  await pages.defender.waitForFunction(() =>
+    document
+      .querySelector("#chat-sub")
+      ?.textContent?.includes("first attacker objective"),
+  );
+  assert.equal(
+    (await service.store.query("SELECT * FROM fleet_session")).length,
+    0,
+  );
+  assert.ok(
+    !(await pages.attacker.locator("#clock").textContent()).includes("1:00"),
+  );
   const objectives = {
     attacker: "Let's take over the drone swarm. Look for vulnerabilities.",
     defender:
@@ -168,6 +175,9 @@ try {
     const conversation = await start.json();
     let op = conversation.operations?.at(-1);
     assert.equal(start.status(), 202, conversation.error);
+    fleet ??= (await service.store.query("SELECT * FROM fleet_session"))[0];
+    report.epoch = fleet.epoch;
+    assert.equal(fleet.deadline, 0);
     assert.equal(op.epoch, fleet.epoch);
     for (
       let i = 0;

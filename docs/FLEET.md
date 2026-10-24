@@ -38,7 +38,7 @@ An unauthorized fixture command exploits a planted missing authorization check a
 - Role privacy, private table denial, grant escalation denial, independent cadences, stop behavior, and clean reset.
 - Actual SDK WebSocket subscriptions for attacker, defender, observer, and unassigned identities.
 
-These are bounded integration checks, not a latency/throughput benchmark or evidence of thousand-agent scale. Supported input caps are 256 drones and 32 agents per team. Runs stop scheduling after 60 seconds.
+These are bounded integration checks, not a latency/throughput benchmark or evidence of thousand-agent scale. Supported input caps are 256 drones and 32 agents per team. Fixture runs stop scheduling after 60 seconds. Authenticated chat mode activates on the first attacker objective and keeps the shared sandbox running without a global timer; individual model operations remain bounded. See `FLEET_CHAT_API.md`.
 
 ## Motion
 

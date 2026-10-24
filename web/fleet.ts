@@ -321,7 +321,13 @@ function header(d: Derived) {
       : role === "defender"
         ? `${total} drones · blue credential`
         : `${total} drones · ${frame.agents.length} agents · full state`;
-  $("clock").firstChild!.textContent = clock(d.elapsed);
+  $("clock").firstChild!.textContent = modelDriven
+    ? "Sandbox"
+    : clock(d.elapsed);
+  $("clock").querySelector("span")!.textContent = modelDriven ? "" : " / 1:00";
+  $("progress").parentElement!.style.visibility = modelDriven
+    ? "hidden"
+    : "visible";
   $("progress").style.width = `${Math.min(100, (d.elapsed / 60) * 100)}%`;
 }
 

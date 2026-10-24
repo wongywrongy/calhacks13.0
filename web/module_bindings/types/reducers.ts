@@ -7,6 +7,7 @@ import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
 import AcquireBackendReducer from "../acquire_backend_reducer";
+import ActivateChatFleetReducer from "../activate_chat_fleet_reducer";
 import CreateChatOperationReducer from "../create_chat_operation_reducer";
 import EnableFleetChatReducer from "../enable_fleet_chat_reducer";
 import EnqueueBackendRunReducer from "../enqueue_backend_run_reducer";
@@ -25,6 +26,7 @@ import TransitionBackendRunReducer from "../transition_backend_run_reducer";
 import UpdateChatOperationReducer from "../update_chat_operation_reducer";
 
 export type AcquireBackendParams = __Infer<typeof AcquireBackendReducer>;
+export type ActivateChatFleetParams = __Infer<typeof ActivateChatFleetReducer>;
 export type CreateChatOperationParams = __Infer<typeof CreateChatOperationReducer>;
 export type EnableFleetChatParams = __Infer<typeof EnableFleetChatReducer>;
 export type EnqueueBackendRunParams = __Infer<typeof EnqueueBackendRunReducer>;

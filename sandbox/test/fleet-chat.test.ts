@@ -273,6 +273,21 @@ test(
         ).status,
         403,
       );
+      const waiting = await browser(
+        "/api/chat/messages",
+        "defender",
+        { message: "Protect the swarm", sandbox: db.env.SPACETIME_DATABASE },
+        "before-attack",
+      );
+      assert.equal(waiting.status, 409);
+      assert.match(waiting.body.error, /first attacker objective/);
+      assert.equal(calls, 0);
+      await assert.rejects(
+        service.store.call("activate_chat_fleet", [
+          service.store.session,
+          "defender",
+        ]),
+      );
       const message =
         "Let's take over the drone swarm. Look for vulnerabilities.";
       const [op, duplicate] = await Promise.all([
@@ -338,9 +353,22 @@ test(
         afterAttack.filter((d: any) => d.controller === "attacker").length,
         2,
       );
-      // Exercise the deadline clamped to the fleet's microsecond timestamp, not just now + 45s.
-      await delay(
-        Math.max(0, Number(fleet.deadline) / 1000 - Date.now() - 44000),
+      // The shared sandbox must remain active after the former 60-second fleet deadline.
+      const beforeIdle = (
+        await service.store.query("SELECT * FROM fleet_drone WHERE id=1")
+      )[0].tick;
+      const idleCalls = calls;
+      await delay(61000);
+      assert.equal(calls, idleCalls);
+      const openFleet = (
+        await service.store.query("SELECT * FROM fleet_session")
+      )[0];
+      assert.equal(openFleet.active, true);
+      assert.equal(openFleet.deadline, 0);
+      assert.equal(openFleet.epoch, fleet.epoch);
+      assert.ok(
+        (await service.store.query("SELECT * FROM fleet_drone WHERE id=1"))[0]
+          .tick > beforeIdle,
       );
       const defenseMessage =
         "Protect the swarm. Investigate suspicious commands and stop unauthorized control without disrupting the mission.";
@@ -365,7 +393,8 @@ test(
       assert.equal(blue.status, 202);
       assert.ok(Number.isSafeInteger(blue.body.deadline));
       assert.ok(
-        blue.body.deadline <= Math.floor(Number(fleet.deadline) / 1000),
+        blue.body.deadline <= Date.now() + 45000 &&
+          blue.body.deadline > Date.now(),
       );
       const recovered = await poll(
         blue.body.id,
@@ -621,6 +650,7 @@ test(
         "backend_chat_message",
         "backend_chat_transition",
         "fleet_chat_action",
+        "fleet_chat_clock",
       ]) {
         const privateRows = await original(
           db.env.SPACETIME_URI +

@@ -45,8 +45,12 @@ Total latest-UI paid attempts: **24 requests, 26,197 reported tokens**, plus unk
 | Optional coordinator upgrade | Explicit `zai-org/GLM-5.3`; not automatically used or tested here |
 | Shared inference concurrency | 4 by default, across existing runtimes |
 | Per operation | 1 coordinator; 2–4 specialists; up to 8 decisions each; 33 calls total |
-| Time | 45 seconds including planning, capped by the existing 60-second fleet deadline |
+| Time | 45 seconds per operation including planning; reactive sandbox has no global expiry |
 | Per request | Coordinator: 3,072 output tokens / 20 seconds; specialist: 2,048 / 15 seconds |
 | Retries/fallback | No automatic provider retries, upgrades, or fixture security decisions |
 
 Remaining: a passing credentialed full scenario on the final code; reliable model adherence to the objective; arbitrary conversational replanning; HTTP-practice-to-fleet linkage; production deployment/isolation and retention policy. Fleet actions are simulation reducers, not real network penetration tests. See [FLEET_CHAT_API.md](FLEET_CHAT_API.md) for setup and contracts.
+
+## Reactive sandbox update
+
+The first attacker objective now activates a persistent shared fleet. Defender-first objectives are rejected without creating or resetting a fleet. The existing browser mechanism test starts from an empty database and exercises this flow. A real-database test waits 61 seconds after attacker execution, checks that movement continues with no new inference calls, then performs opposing operations in the same epoch. Timed fixture playback remains unchanged. This lifecycle change was verified with mocked inference; no additional paid model requests were made.

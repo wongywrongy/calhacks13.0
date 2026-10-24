@@ -425,3 +425,10 @@ fn chat_summary(state:&str,result:&str)->String {
     let errors:Vec<&str>=rows.iter().filter_map(|r|r["error"].as_str()).collect();
     format!("Operation {}. {} accepted unauthorized commands, {} blocked commands, {} verified recoveries.{}",state,count("unauthorized_command_accepted"),count("unauthorized_command_blocked"),count("recovery_verified"),if errors.is_empty(){String::new()}else{format!(" Recorded failures: {}. No fixture fallback was used.",errors.join(", "))})
 }
+
+#[reducer]
+pub fn activate_chat_fleet(ctx:&ReducerContext,session:String,role:String)->Result<(),String>{
+ lease(ctx,&session)?;
+ if !["attacker","defender"].contains(&role.as_str()){return Err("Invalid role".into())}
+ crate::fleet::activate_chat_fleet(ctx,&role)
+}

@@ -47,6 +47,13 @@ export const ChatAction = __t.object("ChatAction", {
 });
 export type ChatAction = __Infer<typeof ChatAction>;
 
+export const ChatClock = __t.object("ChatClock", {
+  id: __t.u32(),
+  epoch: __t.u64(),
+  started: __t.i64(),
+});
+export type ChatClock = __Infer<typeof ChatClock>;
+
 export const ChatMessage = __t.object("ChatMessage", {
   id: __t.u64(),
   key: __t.string(),

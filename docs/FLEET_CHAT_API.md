@@ -6,7 +6,11 @@ The implemented Claude chat/log UI (`feat/chat-log-rework` through local commit 
 
 Use Node 24. Install with `npm ci`, build the module with `npm run spacetime:build`, and publish the updated `arena-live` module to the intended database using its publisher identity. Both binding directories are generated from that module. Run `npm run build:fleet`, configure the server-side `.env` (see `.env.example`), then `npm run backend`. This serves the existing fleet UI and API at `http://127.0.0.1:4180`.
 
-The configured `SPACETIME_URI`/`SPACETIME_DATABASE` selects one owned sandbox. The operator starts it with the existing `POST /v1/fleet/start` route. Provision at least two attackers and two defenders. With Bitdeer configured, this service immediately disables scheduled security fixtures; drone movement continues. Chat admission also disables fixtures transactionally, before planning. The existing fleet lifespan is 60 seconds; an operator must explicitly start a fresh fleet after it expires. Starting either side's chat never starts or resets a fleet.
+The configured `SPACETIME_URI`/`SPACETIME_DATABASE` selects one owned sandbox. The **first authenticated attacker objective** activates it through the leased backend: a new sandbox gets 48 drones and two agents per side; an existing fleet is activated in place, preserving its epoch, controls, policies and evidence. Defender objectives before activation return an explicit waiting response. `Status` and `Stop` do not activate it.
+
+Model-driven fleets have no global countdown. Their movement and authoritative state persist between bounded operations, with no idle model calls. Later attacker and defender objectives reuse that same fleet. The optional operator `POST /v1/fleet/stop` stops the sandbox; an attacker objective can reactivate it without resetting its state. Chat `Stop` only cancels the caller's operation. Only an explicit operator `/v1/fleet/start` resets a fleet; that older fixture route retains its 60-second fixture deadline until an attacker activates chat mode.
+
+Activation disables scheduled security fixtures atomically. A private SpacetimeDB clock preserves the formation's time origin separately from its optional fixture deadline. Reducers still enforce the individual operation deadline, role, assignment and epoch.
 
 The operator grants each existing SpacetimeDB viewer identity its role with `POST /v1/fleet/grants`. Users sign in at `/signin` with their **granted viewer token**, or an existing trusted login handoff can POST `{token}` to `/api/session`. The server verifies the credential against the database's identity-scoped `visible_fleet_access` view. Role and sandbox are derived from that authenticated grant, not a browser role selector. Owner credentials cannot sign in as viewers.
 
@@ -50,7 +54,7 @@ The activity log combines persisted operator messages, queued/failed attempts, e
 | Specialists | 2–4 distinct existing agents of the authenticated role |
 | Specialist decisions | At most 8 each; stop after a measured command result, verified recovery or chosen wait |
 | Total calls | At most 33 per operation, including coordination; no provider retries |
-| Operation deadline | 45 seconds including planning, also bounded by the current fleet deadline |
+| Operation deadline | 45 seconds including planning; expiration ends the operation, not the shared sandbox |
 | Provider request deadline | 20 seconds for coordination, 15 seconds for specialists; queued calls remain bounded by the operation deadline |
 | Output cap | 3,072 coordinator tokens; 2,048 per specialist call, including provider reasoning tokens |
 
