@@ -54,8 +54,23 @@
         scrollbar-color: #2b3645 var(--panel);
         scrollbar-width: thin;
       }
+      html,
+      body {
+        height: 100%;
+      }
+      /* One-screen app shell: only the rails, chat and log scroll, never the page. */
       body {
         margin: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      header,
+      #error,
+      .status,
+      footer {
+        flex: none;
       }
       [hidden] {
         display: none !important;
@@ -229,8 +244,8 @@
         display: flex;
         flex-direction: column;
         justify-content: center;
-        gap: 4px;
-        padding: 10px 20px;
+        gap: 3px;
+        padding: 8px 20px;
         border-right: 1px solid var(--line);
       }
       .status > div:last-child {
@@ -319,15 +334,25 @@
 
       /* 3. Main row */
       main {
+        flex: 1 1 0;
+        min-height: 0;
         display: flex;
-        flex-wrap: wrap;
         border-bottom: 1px solid var(--line);
       }
       .rail {
         flex: 1 1 260px;
         max-width: 300px;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
         background: var(--panel);
         border-right: 1px solid var(--line);
+      }
+      #blue-rail {
+        flex: 1 1 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
       }
       #rail-right {
         flex: 1 1 340px;
@@ -370,10 +395,11 @@
         color: var(--fg);
       }
       .rail ul {
+        flex: 1 1 0;
+        min-height: 0;
         list-style: none;
         margin: 0;
         padding: 0;
-        max-height: 560px;
         overflow: auto;
       }
       .rail li {
@@ -392,12 +418,15 @@
       }
       .rail li small {
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         display: block;
         font-size: 11px;
         color: var(--muted);
         margin-top: 2px;
       }
       .pill {
+        flex: none;
         font: 11px var(--mono);
         padding: 3px 7px;
         border-radius: 4px;
@@ -434,8 +463,30 @@
       }
       .map {
         flex: 999 1 560px;
+        min-height: 0;
         display: flex;
         flex-direction: column;
+      }
+      .map-head {
+        flex-wrap: nowrap !important;
+        white-space: nowrap;
+      }
+      .map-head .legend {
+        flex: none;
+        flex-wrap: nowrap;
+      }
+      .map-head > h2,
+      .map-head > button {
+        flex: none;
+      }
+      .map-head > .grow {
+        display: none;
+      }
+      #caption {
+        flex: 1 1 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-align: right;
       }
       .map-head,
       .strip {
@@ -472,6 +523,7 @@
         gap: 6px;
       }
       .legend i {
+        flex: none;
         width: 8px;
         height: 8px;
         border-radius: 50%;
@@ -481,7 +533,6 @@
       }
       .legend i.iso {
         border: 1.5px dashed #c2cad4;
-        border-radius: 0;
       }
       .grow {
         flex: 1 1 0;
@@ -489,23 +540,27 @@
       #caption {
         font: 11px var(--mono);
       }
-      #camera {
+      .map-head button {
         min-height: 40px;
         padding: 0 12px;
         font-size: 12px;
         font-weight: 600;
         color: #c2cad4;
         border-left: 1px solid var(--line);
+      }
+      #camera {
         margin-right: -16px;
+      }
+      .map-head button:hover {
+        background: var(--raised);
       }
       #viewport {
         position: relative;
-        flex: 1 1 auto;
-        min-height: 560px;
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
         background: #060f17;
-      }
-      body[data-role="attacker"] #viewport {
-        background: #07090e;
+        touch-action: none;
       }
       #viewport canvas {
         position: absolute;
@@ -513,6 +568,31 @@
         display: block;
         width: 100%;
         height: 100%;
+      }
+      .tip {
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: 1;
+        pointer-events: none;
+        padding: 2px 7px;
+        border: 1px solid var(--line2);
+        border-radius: 3px;
+        background: rgba(5, 13, 20, 0.88);
+        font: 11px var(--mono);
+        white-space: nowrap;
+      }
+      #tip-hover {
+        color: var(--muted);
+      }
+      .vp-hint {
+        position: absolute;
+        left: 12px;
+        bottom: 10px;
+        z-index: 1;
+        pointer-events: none;
+        font: 11px var(--mono);
+        color: #56636f;
       }
 
       /* Chat */
@@ -532,9 +612,12 @@
       #chat-state .dot {
         background: var(--team);
       }
+      #chat {
+        min-height: 0;
+      }
       #transcript {
-        flex: 1 1 auto;
-        height: 520px;
+        flex: 1 1 0;
+        min-height: 0;
         overflow: auto;
       }
       .msg {
@@ -647,18 +730,27 @@
         color: #fff;
       }
 
-      /* 4. Log */
+      /* 4. Log, docked under the map */
+      .log {
+        flex: none;
+        height: clamp(150px, 30%, 300px);
+        display: flex;
+        flex-direction: column;
+        border-top: 1px solid var(--line);
+        background: var(--bg);
+      }
       .log-head {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: 6px 16px;
-        padding: 10px 24px;
+        padding: 8px 16px;
         border-bottom: 1px solid var(--line);
       }
       .scroll {
-        overflow-x: auto;
-        max-height: 420px;
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: auto;
       }
       table {
         width: 100%;
@@ -677,14 +769,14 @@
       }
       th:first-child,
       td:first-child {
-        padding-left: 24px;
+        padding-left: 16px;
       }
       th:last-child,
       td:last-child {
-        padding-right: 24px;
+        padding-right: 16px;
       }
       td {
-        padding: 8px;
+        padding: 6px 8px;
         border-top: 1px solid var(--line);
         white-space: nowrap;
       }
@@ -710,12 +802,78 @@
         color: var(--grey);
       }
       footer {
-        padding: 12px 24px 22px;
-        font-size: 12px;
-        line-height: 1.6;
+        position: relative;
+        padding: 0 24px;
+        font-size: 11px;
+        line-height: 26px;
         color: var(--muted);
+        background: #040b11;
       }
-      @media (max-width: 900px) {
+      footer summary {
+        list-style: none;
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      footer summary::-webkit-details-marker {
+        display: none;
+      }
+      footer summary b {
+        font-weight: 500;
+        color: #c2cad4;
+      }
+      footer details[open] p {
+        position: absolute;
+        left: 16px;
+        bottom: calc(100% + 6px);
+        z-index: 5;
+        max-width: 720px;
+        margin: 0;
+        padding: 12px 14px;
+        line-height: 1.6;
+        border: 1px solid var(--line2);
+        border-radius: 4px;
+        background: var(--raised);
+      }
+      /* Narrow or short screens fall back to a scrolling page. */
+      @media (max-width: 900px), (max-height: 600px) {
+        body {
+          height: auto;
+          overflow: visible;
+        }
+        main {
+          flex: none;
+          flex-wrap: wrap;
+        }
+        .log {
+          height: auto;
+        }
+        .vp-hint {
+          display: none;
+        }
+        .map-head {
+          flex-wrap: wrap !important;
+          white-space: normal;
+          padding-top: 6px;
+          padding-bottom: 6px;
+        }
+        .map-head .legend {
+          flex: 1 1 100%;
+          flex-wrap: wrap;
+        }
+        .scroll {
+          max-height: 420px;
+          flex: none;
+        }
+        footer {
+          padding: 8px 16px;
+        }
+        footer summary {
+          white-space: normal;
+        }
+      }
+      @media (max-width: 900px), (max-height: 600px) {
         .rail,
         #rail-right,
         body[data-role="observer"] #rail-right {
@@ -733,8 +891,8 @@
         }
         .rail ul,
         #transcript {
+          flex: none;
           max-height: 260px;
-          height: auto;
           min-height: 160px;
         }
         .crumb,
@@ -804,10 +962,27 @@
           <span class="legend" id="legend"></span>
           <span class="grow"></span>
           <span id="caption"></span>
-          <button id="camera">Top-down</button>
+          <button id="reframe" title="Reframe the fleet (double-click the map)">Fit</button
+          ><button id="camera">Top-down</button>
         </div>
         <div class="strip" id="strip"></div>
-        <div id="viewport"></div>
+        <div id="viewport">
+          <div class="tip" id="tip-sel" hidden></div>
+          <div class="tip" id="tip-hover" hidden></div>
+          <div class="vp-hint">drag orbit · right-drag pan · scroll zoom · double-click reframe</div>
+        </div>
+        <section class="log" aria-label="Log">
+          <div class="log-head">
+            <h2 id="log-title"></h2>
+            <span id="log-note" class="mono muted" style="font-size: 12px"></span>
+          </div>
+          <div class="scroll">
+            <table>
+              <thead><tr id="log-cols"></tr></thead>
+              <tbody id="log"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
       <aside id="rail-right" class="rail" aria-label="Right column">
         <div id="blue-rail" hidden></div>
@@ -829,25 +1004,22 @@
         </div>
       </aside>
     </main>
-    <section aria-label="Log">
-      <div class="log-head">
-        <h2 id="log-title"></h2>
-        <span id="log-note" class="mono muted" style="font-size: 12px"></span>
-      </div>
-      <div class="scroll">
-        <table>
-          <thead><tr id="log-cols"></tr></thead>
-          <tbody id="log"></tbody>
-        </table>
-      </div>
-    </section>
     <footer>
-      Fixture decisions · Synthetic drone command service · SpacetimeDB scheduled
-      entities and identity-scoped views. The recorded demo permits switching between
-      exported workspaces; live credentials only access their granted workspace. Chat
-      commands are queued locally: no operator-command reducers exist yet, so no agent
-      acts on them. Movement and battery are simulation state, not physical flight
-      measurements.
+      <details>
+        <summary>
+          <b>Fixture decisions · synthetic drone command service</b> · chat commands are
+          queued, not executed · terrain is schematic scenery · more ▴
+        </summary>
+        <p>
+          Fixture decisions · Synthetic drone command service · SpacetimeDB scheduled
+          entities and identity-scoped views. The recorded demo permits switching between
+          exported workspaces; live credentials only access their granted workspace. Chat
+          commands are queued locally: no operator-command reducers exist yet, so no agent
+          acts on them. Movement and battery are simulation state, not physical flight
+          measurements. Terrain, sky and the FC-01 mast are schematic scenery, not measured
+          geography.
+        </p>
+      </details>
     </footer>
     <script type="module" src="/fleet.js"></script>
   </body>

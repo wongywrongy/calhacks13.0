@@ -42,12 +42,13 @@ These are bounded integration checks, not a latency/throughput benchmark or evid
 
 ## Layout and chat
 
-All three role views share one edge-to-edge shell (`design/role-views/*.dc.html` is the visual spec):
+All three role views share one edge-to-edge shell (`design/role-views/*.dc.html` is the visual spec). On screens at least 900 px wide and 600 px tall the whole workspace fits one viewport: the page never scrolls; the agent rails, chat transcript and log scroll inside their own panels. Narrower or shorter screens fall back to a stacked, scrolling page.
 
 1. **Header** (48 px): `SUDOKO / Attack|Defense|Observer` breadcrumb with a context line, live/recorded dot, match clock, recording play/scrub, and the role switcher as flush tabs with a 2 px team-colour underline.
 2. **Status row**: hairline-split label-over-value cells, severity badge first. Defender: compromised n/total with bar and sparkline, last breach, mean time to recover, block rate, unrecovered drone chips. Attacker: seized n of discovered, last takeover, lost back, blocked, held drone chips. Observer: control share blue vs red, first takeover, mean time to recover, block rate, takeovers recovered. Every value is computed from the evidence rows and drone rows that role's subscription returns; the attacker never sees recovery rows, so its sparkline is cumulative takeovers and "lost back" is derived from the visible controller field.
-3. **Main row**: agents rail | Three.js map | right column. The map header holds the legend, the `sim coords · tick` caption, and the camera toggle. Observer shows red rail | map | blue rail with a selected-drone strip above the map. Only compromised and blocked drones pulse; `prefers-reduced-motion` disables it.
-4. **Log**: full-width table (Threats & responses / Operation log / Evidence). The defender log prints "unknown origin" where the view redacts the actor. Clicking a row pins that event and filters the log to its drone; "show all" clears it.
+3. **Main row**: agents rail | Three.js map over the log | right column. The map header holds the legend, the `sim coords · tick` caption (truncated first when space is short), Fit, and the camera toggle. Observer shows red rail | map | blue rail with a selected-drone strip above the map. Compromised drones pulse; a drone whose most recent blocked violation is within the last 3 s of evidence time shows an amber ripple. `prefers-reduced-motion` disables both animations.
+4. **Log**: docked under the map, about 30% of the column (Threats & responses / Operation log / Evidence). The defender log prints "unknown origin" where the view redacts the actor. Clicking a row pins that event and filters the log to its drone; "show all" clears it.
+5. **Footer**: one line; the full fixture disclaimer opens from it.
 
 The attacker and defender right columns are a chat with their agent (Crimson / Sentinel). Clicking a drone on the map, a status chip, or a log row posts "Pull up DR-xxx" and inserts an asset card scoped to the role (the attacker card shows battery and policy as redacted). Agent lines come only from real evidence rows: when a new row lands for a pulled-up drone, or for any row with an own-team actor, a one-line summary is posted.
 
@@ -57,6 +58,12 @@ The attacker and defender right columns are a chat with their agent (Crimson / S
 
 Three.js renders database positions with a reusable quadrotor from Higgsfield 3D Jutsu project `0680b9e1-329c-40ad-aff1-edc52fd7d7a2`, inspected revision 1. `web/assets/swarm-blockout.glb` is a 32 KB procedural blockout, not a photorealistic reconstruction. Drone geometry is shared across clones. Motion comes from measured state, without a background generative video or per-frame generation calls.
 
-A projected Canvas map is available when WebGL cannot initialize. Selection works through the map or an accessible asset list. Playback pauses and scrubs; camera controls change projection. There is no unsolicited camera animation. Inspecting an evidence row keeps that event pinned in the asset panel across live updates, and live redraws are coalesced to one per animation frame.
+Each drone is drawn at its database position with a stem to the ground, a state-tinted ground shadow, and (defender/observer) a dashed ground ring when isolated. Drones can come within about 4 m of each other on the 6 m × 7 m grid, so every per-drone marker stays inside a 2 m radius. Hovering shows a `DR-xxx · state` label; the selected drone keeps one.
+
+The fleet sits on a flat operating pad with a 6 m survey grid. Around it, the terrain (procedural fbm with shader contour lines every 5 m), the role-tinted sky and fog, and the FC-01 mast are schematic scenery: they are not measured geography and nothing in the simulation interacts with them.
+
+The camera fits the visible fleet with the actual frustum and aspect ratio (a 48-drone strip is ~90 m × 14 m, a 256-drone block ~90 m × 105 m). The perspective view keeps the fleet in the lower part of the map so the horizon shows. Drag orbits, right-drag pans, scroll zooms; Fit or a double-click reframes. Once the user moves the camera, live updates and resizes no longer reframe it. There is no unsolicited camera animation.
+
+A projected Canvas map is available when WebGL cannot initialize. Selection works through the map, status chips or log rows; a press that turns into a drag does not select. Playback pauses and scrubs. Inspecting an evidence row keeps that event pinned in the asset panel across live updates, and live redraws are coalesced to one per animation frame.
 
 Browser checks (2026-10-24, Chromium 1243 via Playwright against `demo:fleet` and the static export): per role, no data from outside its scope (no defense internals, battery or policy for the attacker; no discovery rows or attacker IDs for the defender), chat pull-up and queued commands, status values matching the evidence rows, evidence-row pinning, recorded play/scrub, backend disconnect freezes the last state, WebGL disabled falls back to the Canvas map, and the 390 px viewport has no horizontal overflow. The camera auto-frames the visible fleet, so a 48-drone run and a 256-drone run both fill the map.
