@@ -35,6 +35,7 @@
         --team-bg: var(--blue-bg);
         --mono: "JetBrains Mono", ui-monospace, monospace;
         font: 14px/1.5 Inter, system-ui, sans-serif;
+        font-variant-numeric: tabular-nums;
         color: var(--fg);
         background: var(--bg);
       }
@@ -58,19 +59,13 @@
       body {
         height: 100%;
       }
-      /* One-screen app shell: only the rails, chat and log scroll, never the page. */
+      /* One-screen app shell on fixed grid tracks: only the inner panels scroll. */
       body {
         margin: 0;
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-rows: 56px auto minmax(0, 1fr) 26px;
         height: 100dvh;
         overflow: hidden;
-      }
-      header,
-      #error,
-      .status,
-      footer {
-        flex: none;
       }
       [hidden] {
         display: none !important;
@@ -101,6 +96,9 @@
         letter-spacing: 0.08em;
         color: var(--muted);
         text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .mono {
         font-family: var(--mono);
@@ -108,342 +106,91 @@
       .muted {
         color: var(--muted);
       }
+      .ellipsis {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       .dot {
-        width: 6px;
-        height: 6px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         background: var(--muted);
         flex: none;
       }
-      .dot.live {
-        background: var(--green);
+      .dot.working {
+        background: var(--blue-text);
         animation: blink 1.4s ease-in-out infinite;
       }
-      .dot.down {
-        background: var(--red);
+      .dot.failed {
+        background: var(--amber);
+      }
+      .dot.done {
+        background: var(--green);
+      }
+      .dot.paused {
+        background: var(--grey);
       }
       @keyframes blink {
         50% {
           opacity: 0.35;
         }
       }
-
-      /* 1. Header */
-      header {
+      /* Segmented control: a pill group used by the role switch, camera and log filter. */
+      .seg {
         display: flex;
-        flex-wrap: wrap;
-        align-items: stretch;
-        min-height: 48px;
-        border-bottom: 1px solid var(--line);
-        background: #040b11;
-      }
-      .crumb {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 0 24px;
-        flex: 1 1 auto;
-        min-height: 48px;
-      }
-      .crumb b {
-        font-size: 14px;
-        letter-spacing: 0.22em;
-      }
-      .crumb .sep {
-        color: #49535f;
-      }
-      #role-name {
-        font-size: 13px;
-        font-weight: 600;
-      }
-      #context {
-        font-size: 12px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .hcell {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 0 18px;
-        border-left: 1px solid var(--line);
-        font-size: 12px;
-        color: var(--muted);
-        min-height: 48px;
-      }
-      #clock {
-        font: 14px var(--mono);
-        color: var(--fg);
-      }
-      #clock span {
-        color: #6f7b8a;
-      }
-      #playback {
-        gap: 0;
-        padding: 0;
-      }
-      #playback button {
-        min-width: 48px;
-        min-height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #c2cad4;
-        border-right: 1px solid var(--line);
-      }
-      #timeline {
-        width: 140px;
-        margin: 0 14px;
-        accent-color: var(--team);
-      }
-      nav {
-        display: flex;
-        border-left: 1px solid var(--line);
-        margin-left: auto;
-      }
-      nav button {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        min-height: 48px;
-        padding: 0 16px;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--muted);
-        border-right: 1px solid var(--line);
-      }
-      nav button:last-child {
-        border-right: 0;
-      }
-      nav button[aria-pressed="true"] {
-        color: var(--fg);
-        background: var(--panel);
-        box-shadow: inset 0 -2px 0 var(--tab);
-      }
-      #error:empty {
-        display: none;
-      }
-      #error {
-        margin: 0;
-        padding: 8px 24px;
-        border-bottom: 1px solid var(--line);
-        color: var(--amber);
-        font-size: 13px;
-      }
-
-      /* 2. Status row */
-      .status {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: stretch;
-        background: var(--panel);
-        border-bottom: 1px solid var(--line);
-      }
-      .status > div {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap: 3px;
-        padding: 8px 20px;
-        border-right: 1px solid var(--line);
-      }
-      .status > div:last-child {
-        border-right: 0;
-        flex: 1 1 300px;
-      }
-      .status label {
-        font-size: 11px;
-        letter-spacing: 0.08em;
-        color: var(--muted);
-        text-transform: uppercase;
-      }
-      .status .v {
-        font: 15px var(--mono);
-        white-space: nowrap;
-      }
-      .status .v span {
-        color: var(--muted);
-      }
-      .status .wide {
-        flex: 1 1 340px;
-      }
-      .badge-cell {
-        padding: 10px 24px !important;
-      }
-      .badge {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-        padding: 4px 8px;
-        border-radius: 3px;
-        border: 1px solid var(--line2);
-        color: #c2cad4;
-        background: #141e28;
-      }
-      .badge.red {
-        color: var(--red-text);
-        background: var(--red-bg);
-        border-color: #6b2a35;
-      }
-      .meter {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      .bar {
-        flex: 1 1 auto;
-        display: flex;
-        height: 6px;
-        border-radius: 3px;
-        overflow: hidden;
-        background: var(--bg);
-      }
-      .bar i {
-        display: block;
-        flex-shrink: 1;
-      }
-      .bar .gap {
         flex: none;
-        width: 2px;
-        background: var(--bg);
-      }
-      .spark {
-        flex: 0 1 120px;
-        min-width: 60px;
-        height: 22px;
-      }
-      .chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-      }
-      .chips button {
-        min-height: 30px;
-        padding: 0 8px;
-        border-radius: 3px;
-        font: 500 12px var(--mono);
+        padding: 2px;
+        gap: 2px;
+        border-radius: 7px;
         background: var(--raised);
-        border: 1px solid var(--line2);
+        border: 1px solid var(--line);
       }
-      .chips button[aria-pressed="true"] {
-        background: var(--red-bg);
-        color: var(--red-text);
-        border-color: var(--red);
-      }
-
-      /* 3. Main row */
-      main {
-        flex: 1 1 0;
-        min-height: 0;
-        display: flex;
-        border-bottom: 1px solid var(--line);
-      }
-      .rail {
-        flex: 1 1 260px;
-        max-width: 300px;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-        background: var(--panel);
-        border-right: 1px solid var(--line);
-      }
-      #blue-rail {
-        flex: 1 1 0;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-      }
-      #rail-right {
-        flex: 1 1 340px;
-        max-width: 400px;
-        border-right: 0;
-        border-left: 1px solid var(--line);
-        display: flex;
-        flex-direction: column;
-      }
-      body[data-role="observer"] #rail-right {
-        max-width: 300px;
-      }
-      .rail-head {
+      .seg button {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 10px 16px;
-        border-bottom: 1px solid var(--line);
-      }
-      .rail-stats {
-        display: flex;
-        border-bottom: 1px solid var(--line);
-        font-size: 11px;
+        justify-content: center;
+        gap: 6px;
+        height: 26px;
+        padding: 0 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        font-weight: 600;
         color: var(--muted);
+        white-space: nowrap;
       }
-      .rail-stats span {
-        flex: 1 1 0;
-        padding: 8px 12px;
-        border-right: 1px solid var(--line);
-      }
-      .rail-stats span:first-child {
-        padding-left: 16px;
-      }
-      .rail-stats span:last-child {
-        border-right: 0;
-      }
-      .rail-stats b {
-        display: block;
-        font: 18px var(--mono);
+      .seg button[aria-pressed="true"] {
         color: var(--fg);
+        background: #141e28;
+        box-shadow: inset 0 0 0 1px #242e3a;
       }
-      .rail ul {
-        flex: 1 1 0;
-        min-height: 0;
-        list-style: none;
-        margin: 0;
+      .seg .count {
+        width: 28px;
         padding: 0;
-        overflow: auto;
+        border-radius: 9px;
+        font: 600 11px var(--mono);
+        color: var(--amber);
+        background: var(--amber-bg);
+        text-align: center;
       }
-      .rail li {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 9px 16px;
-        border-bottom: 1px solid var(--line);
-        font: 13px var(--mono);
+      .seg .count:empty {
+        visibility: hidden;
       }
-      .rail li > span:first-child {
-        flex: 1 1 0;
-      }
-      .rail li {
-        flex-wrap: wrap;
-      }
-      .rail li small {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: block;
-        font-size: 11px;
-        color: var(--muted);
-        margin-top: 2px;
-      }
-      .pill {
+      .tag {
         flex: none;
-        font: 11px var(--mono);
-        padding: 3px 7px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        padding: 2px 6px;
         border-radius: 4px;
-        white-space: nowrap;
         color: var(--grey);
         background: #141e28;
+        white-space: nowrap;
       }
-      .pill.red,
       .tag.red {
         color: var(--red-text);
         background: var(--red-bg);
       }
-      .pill.amber {
-        color: var(--amber);
-        background: var(--amber-bg);
-      }
-      .pill.blue,
       .tag.blue {
         color: var(--blue-text);
         background: var(--blue-bg);
@@ -452,116 +199,298 @@
         color: var(--green);
         background: var(--green-bg);
       }
-      .tag {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        padding: 3px 7px;
-        border-radius: 4px;
-        color: var(--grey);
-        background: #141e28;
+      .tag.amber {
+        color: var(--amber);
+        background: var(--amber-bg);
       }
-      .map {
-        flex: 999 1 560px;
-        min-height: 0;
+      /* 40px label bars used by every panel. */
+      .bar {
         display: flex;
-        flex-direction: column;
-      }
-      .map-head {
-        flex-wrap: nowrap !important;
-        white-space: nowrap;
-      }
-      .map-head .legend {
-        flex: none;
-        flex-wrap: nowrap;
-      }
-      .map-head > h2,
-      .map-head > button {
-        flex: none;
-      }
-      .map-head > .grow {
-        display: none;
-      }
-      #caption {
-        flex: 1 1 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        text-align: right;
-      }
-      .map-head,
-      .strip {
-        display: flex;
-        flex-wrap: wrap;
         align-items: center;
-        gap: 6px 14px;
+        gap: 10px;
+        height: 40px;
         padding: 0 16px;
-        min-height: 40px;
         border-bottom: 1px solid var(--line);
+        flex: none;
+      }
+      .bar .grow {
+        flex: 1 1 0;
+      }
+
+      /* 1. Header: 56px, three fixed-role columns. */
+      header {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 24px;
+        height: 56px;
+        padding: 0 16px 0 24px;
+        border-bottom: 1px solid var(--line);
+        background: #040b11;
+      }
+      .h-left {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+      .h-left b {
+        font-size: 14px;
+        letter-spacing: 0.22em;
+      }
+      .h-mid {
+        display: grid;
+        grid-template-rows: 20px 18px;
+        align-content: center;
+      }
+      .h-mid .match {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .h-mid .sub {
         font-size: 12px;
         color: var(--muted);
       }
-      .strip {
-        background: var(--panel);
-        font: 12px var(--mono);
+      .badge {
+        flex: none;
+        width: 92px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        padding: 2px 0;
+        border-radius: 3px;
+        border: 1px solid var(--line2);
         color: #c2cad4;
+        background: #141e28;
+        text-align: center;
       }
-      .strip b {
-        font-size: 13px;
-        color: var(--fg);
+      .badge.red {
+        color: var(--red-text);
+        background: var(--red-bg);
+        border-color: #6b2a35;
       }
-      .strip:empty {
-        display: none;
-      }
-      .legend {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px 14px;
-      }
-      .legend span {
+      .h-right {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 14px;
       }
-      .legend i {
-        flex: none;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
+      #playback {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
-      .legend i.ring {
-        border: 1.5px solid var(--amber);
+      #play {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 5px;
+        color: #c2cad4;
+        background: var(--raised);
       }
-      .legend i.ghost {
-        border: 1.5px solid #8a96a4;
-        box-shadow: 6px 0 0 -2.5px var(--amber);
+      #timeline {
+        width: 120px;
+        accent-color: var(--team);
       }
-      .legend i.iso {
-        border: 1.5px dashed #c2cad4;
-      }
-      .grow {
-        flex: 1 1 0;
-      }
-      #caption {
-        font: 11px var(--mono);
-      }
-      .map-head button {
-        min-height: 40px;
-        padding: 0 12px;
+      .pill {
+        width: 64px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
         font-size: 12px;
         font-weight: 600;
-        color: #c2cad4;
+        border: 1px solid #7ee8b0;
+        color: #7ee8b0;
+        background: var(--green-bg);
+      }
+      .pill.stale {
+        border-color: var(--amber);
+        color: var(--amber);
+        background: var(--amber-bg);
+      }
+      .pill.replay {
+        border-color: var(--line2);
+        color: var(--grey);
+        background: #141e28;
+      }
+      .clock {
+        width: 112px;
+        display: grid;
+        grid-template-rows: 20px 3px;
+        gap: 3px;
+      }
+      #clock {
+        font: 14px var(--mono);
+        text-align: right;
+        white-space: nowrap;
+      }
+      #clock span {
+        color: #6f7b8a;
+      }
+      .progress {
+        background: var(--line2);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .progress i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--team);
+      }
+      #error:empty {
+        display: none;
+      }
+      #error {
+        margin: 0;
+        padding: 6px 24px;
+        border-bottom: 1px solid var(--line);
+        color: var(--amber);
+        font-size: 13px;
+      }
+
+      /* 2. Main row: rail | map | chat on fixed tracks. */
+      main {
+        display: grid;
+        grid-template-columns: 288px minmax(0, 1fr) 360px;
+        min-height: 0;
+      }
+      .rail {
+        display: grid;
+        grid-template-rows: 40px 96px 112px 40px minmax(0, 1fr);
+        min-height: 0;
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+      }
+      #rail-right {
+        border-right: 0;
         border-left: 1px solid var(--line);
       }
-      #camera {
-        margin-right: -16px;
+      .gauge {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr);
+        gap: 14px;
+        align-items: center;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--line);
       }
-      .map-head button:hover {
+      .ring {
+        position: relative;
+        width: 64px;
+        height: 64px;
+      }
+      .ring svg {
+        display: block;
+        transform: rotate(-90deg);
+      }
+      .ring .pct {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font: 600 14px var(--mono);
+      }
+      .gauge-text {
+        display: grid;
+        grid-template-rows: 20px 18px;
+      }
+      .gauge-text b {
+        font-size: 13px;
+      }
+      .gauge-text span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .chipgrid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-auto-rows: 28px;
+        gap: 6px;
+        padding: 8px 16px;
+        overflow: auto;
+        border-bottom: 1px solid var(--line);
+        align-content: start;
+      }
+      .chipgrid .none {
+        grid-column: 1 / -1;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 28px;
+      }
+      .chip {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 2px;
+        padding: 0 5px;
+        border-radius: 4px;
+        font: 500 10px var(--mono);
+        white-space: nowrap;
         background: var(--raised);
+        border: 1px solid var(--line);
+        text-align: left;
+      }
+      .chip span {
+        color: var(--muted);
+      }
+      .chip[aria-pressed="true"] {
+        border-color: var(--team);
+        color: var(--team-text);
+      }
+      .cards {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        overflow: auto;
+        min-height: 0;
+      }
+      .agent {
+        display: grid;
+        grid-template-columns: 8px minmax(0, 1fr) auto;
+        grid-template-rows: 18px 18px;
+        column-gap: 10px;
+        align-content: center;
+        height: 56px;
+        width: 100%;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        font-size: 12px;
+      }
+      .agent:hover {
+        background: var(--raised);
+      }
+      .agent .name {
+        font: 500 13px var(--mono);
+      }
+      .agent .drone {
+        font: 12px var(--mono);
+        color: var(--muted);
+        width: 56px;
+        text-align: right;
+      }
+      .agent .doing {
+        grid-column: 2 / -1;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* 3. Map column. */
+      .map {
+        display: grid;
+        grid-template-rows: 40px minmax(0, 1fr) 300px;
+        min-height: 0;
       }
       #viewport {
         position: relative;
-        flex: 1 1 0;
-        min-height: 0;
         overflow: hidden;
         background: #060f17;
         touch-action: none;
@@ -589,206 +518,148 @@
       #tip-hover {
         color: var(--muted);
       }
-      .vp-hint {
+      /* Overlays sit on the map and never push layout. */
+      .ov {
         position: absolute;
-        left: 12px;
-        bottom: 10px;
-        z-index: 1;
-        pointer-events: none;
+        z-index: 2;
+        padding: 8px 10px;
+        border: 1px solid #242e3a;
+        border-radius: 6px;
+        background: rgba(10, 18, 26, 0.9);
         font: 11px var(--mono);
-        color: #56636f;
+        line-height: 18px;
+        pointer-events: none;
       }
-
-      /* Chat */
-      #chat {
-        display: flex;
-        flex-direction: column;
-        flex: 1 1 auto;
+      .ov.tr {
+        top: 12px;
+        right: 12px;
+        width: 260px;
+        pointer-events: auto;
       }
-      #chat-state {
+      .ov.bl {
+        left: 12px;
+        bottom: 12px;
+      }
+      .ov.br {
+        right: 12px;
+        bottom: 12px;
+      }
+      .ov .head {
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 12px;
-        color: var(--team-text);
-        margin-left: auto;
+        gap: 8px;
+        height: 22px;
       }
-      #chat-state .dot {
-        background: var(--team);
-      }
-      #chat {
-        min-height: 0;
-      }
-      #transcript {
-        flex: 1 1 0;
-        min-height: 0;
-        overflow: auto;
-      }
-      .msg {
-        display: flex;
-        gap: 12px;
-        padding: 9px 16px;
-        border-bottom: 1px solid #131d26;
+      .ov .head b {
         font-size: 13px;
-        line-height: 1.5;
       }
-      .msg .who {
-        flex: 0 0 64px;
-        font: 11px var(--mono);
-        letter-spacing: 0.06em;
-        padding-top: 2px;
+      .ov .head button {
+        margin-left: auto;
+        width: 22px;
+        height: 22px;
+        font-size: 16px;
+        color: var(--muted);
       }
-      .msg .who.agent {
-        color: var(--team-text);
+      .ov .line {
+        margin-top: 4px;
+        font: 12px Inter, system-ui, sans-serif;
+        color: #c2cad4;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
-      .msg .body {
-        flex: 1 1 0;
-        color: #d4dce5;
+      .key {
+        display: grid;
+        grid-template-columns: auto auto;
+        column-gap: 14px;
       }
-      .msg .queued {
-        font: 11px var(--mono);
-        color: var(--amber);
-        margin-left: 8px;
+      .key span:nth-child(odd) {
+        color: var(--fg);
       }
-      .card {
-        padding: 10px 16px;
-        background: var(--raised);
-        border-bottom: 1px solid var(--line);
+      .key span:nth-child(even) {
+        color: var(--muted);
       }
-      .card .head {
+      .legend span {
         display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+      }
+      .legend i {
+        flex: none;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .legend i.ring-key {
+        border: 1.5px solid var(--amber);
+      }
+      .legend i.ghost {
+        border: 1.5px solid #8a96a4;
+        box-shadow: 6px 0 0 -2.5px var(--amber);
+      }
+      .legend i.iso {
+        border: 1.5px dashed #c2cad4;
+      }
+      #cam button {
+        width: 92px;
+      }
+
+      /* 4. Activity log, fixed 300px under the map. */
+      .log {
+        display: grid;
+        grid-template-rows: 40px minmax(0, 1fr);
+        border-top: 1px solid var(--line);
+        background: var(--bg);
+      }
+      #only-sel {
+        width: 112px;
+        height: 26px;
+        border-radius: 5px;
+        font: 500 11px var(--mono);
+        color: var(--amber);
+        border: 1px solid var(--line2);
+        visibility: hidden;
+      }
+      #only-sel[aria-pressed="true"] {
+        background: var(--amber-bg);
+      }
+      .rows {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        overflow: auto;
+        min-height: 0;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr);
         align-items: center;
         gap: 10px;
-        font: 600 14px var(--mono);
-      }
-      .card .fields {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px 14px;
-        margin-top: 6px;
-        font: 12px var(--mono);
-        color: #c2cad4;
-      }
-      .card .fields span span {
-        color: var(--muted);
-      }
-      .card .fields .redacted {
-        color: #6f7b8a;
-      }
-      .card p {
-        margin: 6px 0 0;
-        font-size: 12px;
-        line-height: 1.5;
-        color: #a9b4c1;
-      }
-      .card .pinned {
-        margin-top: 6px;
-        font: 12px var(--mono);
-        color: var(--amber);
-      }
-      #actions {
-        display: flex;
-        flex-wrap: wrap;
-        border-top: 1px solid var(--line);
-      }
-      #actions button {
-        flex: 1 1 auto;
-        min-height: 44px;
-        padding: 0 12px;
-        border-right: 1px solid var(--line);
-        font-size: 12px;
-        font-weight: 600;
-        background: var(--panel);
-      }
-      #actions button:last-child {
-        border-right: 0;
-      }
-      #actions button.team {
-        background: var(--team-bg);
-        color: var(--team-text);
-      }
-      #actions button.green {
-        background: var(--green-bg);
-        color: var(--green);
-      }
-      .compose {
-        display: flex;
-        border-top: 1px solid var(--line);
-        margin: 0;
-      }
-      #say {
-        flex: 1 1 0;
-        min-height: 48px;
-        padding: 0 16px;
-        background: var(--bg);
-        border: 0;
-        font-size: 13px;
-      }
-      #send {
-        min-width: 48px;
-        min-height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--team);
-        color: #fff;
-      }
-
-      /* 4. Log, docked under the map */
-      .log {
-        flex: none;
-        height: clamp(150px, 30%, 300px);
-        display: flex;
-        flex-direction: column;
-        border-top: 1px solid var(--line);
-        background: var(--bg);
-      }
-      .log-head {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px 16px;
-        padding: 8px 16px;
-        border-bottom: 1px solid var(--line);
-      }
-      .scroll {
-        flex: 1 1 0;
-        min-height: 0;
-        overflow: auto;
-      }
-      table {
+        height: 34px;
         width: 100%;
-        min-width: 560px;
-        border-collapse: collapse;
-        font: 12px var(--mono);
-      }
-      th {
-        padding: 8px;
-        font-weight: 500;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
         text-align: left;
-        color: var(--muted);
-        background: var(--panel);
-        position: sticky;
-        top: 0;
+        cursor: pointer;
       }
-      th:first-child,
-      td:first-child {
-        padding-left: 16px;
-      }
-      th:last-child,
-      td:last-child {
-        padding-right: 16px;
-      }
-      td {
-        padding: 6px 8px;
-        border-top: 1px solid var(--line);
-        white-space: nowrap;
-      }
-      tr[aria-selected="true"] td {
+      .row:hover,
+      .row[aria-selected="true"] {
         background: var(--raised);
       }
-      tbody tr {
-        cursor: pointer;
+      .row .t {
+        font: 11px var(--mono);
+        color: var(--muted);
+      }
+      .row .s {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #c2cad4;
+      }
+      .row b {
+        font-weight: 600;
       }
       .c-red {
         color: var(--red-text);
@@ -796,15 +667,193 @@
       .c-blue {
         color: var(--blue-text);
       }
-      .c-green {
-        color: var(--green);
-      }
       .c-amber {
         color: var(--amber);
       }
       .c-grey {
         color: var(--grey);
       }
+      .c-white {
+        color: var(--fg);
+      }
+      .c-team {
+        color: var(--team-text);
+      }
+
+      /* 5. Chat: conversation only. */
+      #chat {
+        display: grid;
+        grid-template-rows: 40px minmax(0, 1fr) 40px 48px;
+        min-height: 0;
+      }
+      #chat-sub {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--team-text);
+        white-space: nowrap;
+      }
+      #transcript {
+        overflow: auto;
+        padding: 12px 12px 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 0;
+      }
+      .bubble {
+        max-width: 86%;
+        padding: 7px 10px;
+        border-radius: 10px;
+        font-size: 13px;
+        line-height: 1.45;
+        color: #d4dce5;
+        background: var(--raised);
+        align-self: flex-start;
+        border-bottom-left-radius: 3px;
+        overflow-wrap: anywhere;
+      }
+      .bubble.you {
+        align-self: flex-end;
+        background: var(--team-bg);
+        border-bottom-left-radius: 10px;
+        border-bottom-right-radius: 3px;
+      }
+      .bubble .queued {
+        display: block;
+        font: 11px var(--mono);
+        color: var(--amber);
+      }
+      .bubble.typing {
+        color: var(--muted);
+        font-style: italic;
+      }
+      .bubble.hint {
+        align-self: stretch;
+        max-width: none;
+        background: none;
+        color: var(--muted);
+        text-align: center;
+        font-size: 12px;
+      }
+      #context-slot {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 40px;
+        padding: 0 12px;
+        border-top: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      #context-slot .chip {
+        height: 26px;
+        grid-template-columns: auto auto auto;
+        gap: 8px;
+        color: var(--team-text);
+        border-color: var(--team);
+      }
+      #context-slot .chip button {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .compose {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 48px;
+        height: 48px;
+        margin: 0;
+        border-top: 1px solid var(--line);
+      }
+      #say {
+        height: 48px;
+        padding: 0 16px;
+        background: var(--bg);
+        border: 0;
+        font-size: 13px;
+      }
+      #send {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--team);
+        color: #fff;
+      }
+
+      /* Agent detail modal. */
+      #modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 6, 10, 0.7);
+      }
+      .dialog {
+        width: 440px;
+        max-width: calc(100vw - 32px);
+        border: 1px solid var(--line2);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+      }
+      .dialog .head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 48px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .dialog .head .name {
+        font: 600 14px var(--mono);
+      }
+      .dialog .head button {
+        margin-left: auto;
+        width: 28px;
+        height: 28px;
+        font-size: 18px;
+        color: var(--muted);
+      }
+      .dialog p {
+        margin: 0;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #c2cad4;
+        min-height: 44px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+      .stats div {
+        display: grid;
+        grid-template-rows: 16px 24px;
+        padding: 8px 16px;
+        border-right: 1px solid var(--line);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .stats div:last-child {
+        border-right: 0;
+      }
+      .stats b {
+        font: 18px var(--mono);
+        color: var(--fg);
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .dialog .rows {
+        height: 170px;
+        overflow: auto;
+      }
+      .dialog .row {
+        cursor: default;
+      }
+
       footer {
         position: relative;
         padding: 0 24px;
@@ -812,6 +861,7 @@
         line-height: 26px;
         color: var(--muted);
         background: #040b11;
+        border-top: 1px solid var(--line);
       }
       footer summary {
         list-style: none;
@@ -840,87 +890,50 @@
         border-radius: 4px;
         background: var(--raised);
       }
-      /* Narrow or short screens fall back to a scrolling page. */
-      @media (max-width: 900px), (max-height: 600px) {
+      /* Below 1280px the panels stack and the page scrolls. */
+      @media (max-width: 1279px) {
         body {
+          display: block;
           height: auto;
-          overflow: visible;
+          overflow: auto;
+        }
+        header {
+          grid-template-columns: auto minmax(0, 1fr);
+          grid-auto-rows: auto;
+          height: auto;
+          padding: 8px 16px;
+          gap: 8px 16px;
+        }
+        .h-right {
+          grid-column: 1 / -1;
         }
         main {
-          flex: none;
-          flex-wrap: wrap;
+          display: block;
         }
-        .log {
-          height: auto;
+        .rail,
+        #rail-right {
+          border-left: 0;
+          border-right: 0;
+          border-top: 1px solid var(--line);
         }
-        .vp-hint {
+        .rail {
+          grid-template-rows: 40px 96px 112px 40px 280px;
+        }
+        .map {
+          grid-template-rows: 40px 360px 300px;
+        }
+        #chat {
+          grid-template-rows: 40px 280px 40px 48px;
+        }
+        .ov.bl {
           display: none;
-        }
-        .map-head {
-          flex-wrap: wrap !important;
-          white-space: normal;
-          padding-top: 6px;
-          padding-bottom: 6px;
-        }
-        .map-head .legend {
-          flex: 1 1 100%;
-          flex-wrap: wrap;
-        }
-        .scroll {
-          max-height: 420px;
-          flex: none;
-        }
-        footer {
-          padding: 8px 16px;
         }
         footer summary {
           white-space: normal;
         }
       }
-      @media (max-width: 900px), (max-height: 600px) {
-        .rail,
-        #rail-right,
-        body[data-role="observer"] #rail-right {
-          max-width: none;
-          border-left: 0;
-          border-right: 0;
-          border-top: 1px solid var(--line);
-        }
-        .map {
-          order: -1;
-          flex-basis: 100%;
-        }
-        #viewport {
-          min-height: 360px;
-        }
-        .rail ul,
-        #transcript {
-          flex: none;
-          max-height: 260px;
-          min-height: 160px;
-        }
-        .crumb,
-        .log-head,
-        footer,
-        #error {
-          padding-left: 16px;
-          padding-right: 16px;
-        }
-        nav {
-          width: 100%;
-          border-left: 0;
-          border-top: 1px solid var(--line);
-        }
-        nav button {
-          flex: 1 1 0;
-          justify-content: center;
-        }
-        #timeline {
-          width: 90px;
-        }
-      }
       @media (prefers-reduced-motion: reduce) {
-        .dot.live {
+        .dot.working {
           animation: none;
         }
       }
@@ -928,84 +941,97 @@
   </head>
   <body data-role="defender">
     <header>
-      <div class="crumb">
-        <b>SUDOKO</b><span class="sep">/</span><span id="role-name">Defense</span
-        ><span id="context" class="muted"></span>
+      <div class="h-left">
+        <b>SUDOKO</b>
+        <nav class="seg" aria-label="Role view">
+          <button data-role="attacker" aria-pressed="false">
+            <span class="dot" style="background: #f02d38"></span>Attacker
+          </button>
+          <button data-role="defender" aria-pressed="true">
+            <span class="dot" style="background: #277dfd"></span>Defender
+          </button>
+          <button data-role="observer" aria-pressed="false">
+            <span class="dot" style="background: #c2cad4"></span>Observer
+          </button>
+        </nav>
       </div>
-      <div class="hcell">
-        <span class="dot" id="live-dot"></span><span id="status" role="status">Loading…</span>
+      <div class="h-mid">
+        <div class="match">
+          <span id="match" class="ellipsis">Blue team · FC-01</span>
+          <span class="badge" id="badge">—</span>
+        </div>
+        <span id="context" class="sub ellipsis"></span>
       </div>
-      <div class="hcell" id="clock">0:00<span>&nbsp;/ 1:00</span></div>
-      <div class="hcell" id="playback">
-        <button id="play" aria-label="Play recording">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M6 4l14 8-14 8z" />
-          </svg>
-        </button>
-        <input id="timeline" type="range" min="0" max="1" value="0" aria-label="Scrub recording" />
+      <div class="h-right">
+        <div id="playback">
+          <button id="play" aria-label="Play recording">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M6 4l14 8-14 8z" />
+            </svg>
+          </button>
+          <input id="timeline" type="range" min="0" max="1" value="0" aria-label="Scrub recording" />
+        </div>
+        <span class="pill replay" id="live" role="status" title="Loading…">Replay</span>
+        <div class="clock">
+          <div id="clock">0:00<span>&nbsp;/ 1:00</span></div>
+          <div class="progress"><i id="progress"></i></div>
+        </div>
       </div>
-      <nav aria-label="Role view">
-        <button data-role="attacker" aria-pressed="false" style="--tab: #f02d38">
-          <span class="dot" style="background: #f02d38"></span>Attacker
-        </button>
-        <button data-role="defender" aria-pressed="true" style="--tab: #277dfd">
-          <span class="dot" style="background: #277dfd"></span>Defender
-        </button>
-        <button data-role="observer" aria-pressed="false" style="--tab: #c2cad4">
-          <span class="dot" style="background: #c2cad4"></span>Observer
-        </button>
-      </nav>
     </header>
     <p id="error" role="status"></p>
-    <section class="status" id="status-row" aria-label="Status"></section>
     <main>
       <aside id="rail-left" class="rail" aria-label="Agents"></aside>
       <section class="map" aria-label="Drone swarm map">
-        <div class="map-head">
+        <div class="bar">
           <h2 id="map-title"></h2>
-          <span class="legend" id="legend"></span>
           <span class="grow"></span>
-          <span id="caption"></span>
-          <button id="reframe" title="Reframe the fleet (double-click the map)">Fit</button
-          ><button id="camera">Top-down</button>
+          <div class="seg" id="cam" aria-label="Camera">
+            <button id="reframe" title="Reframe the fleet (double-click the map)">Fit</button>
+            <button id="camera" aria-pressed="false">Top-down</button>
+          </div>
         </div>
-        <div class="strip" id="strip"></div>
         <div id="viewport">
           <div class="tip" id="tip-sel" hidden></div>
           <div class="tip" id="tip-hover" hidden></div>
-          <div class="vp-hint">drag orbit · right-drag pan · scroll zoom · double-click reframe</div>
+          <div class="ov tr" id="ov-sel" hidden></div>
+          <div class="ov bl key" aria-label="Map controls">
+            <span>Drag</span><span>Orbit</span>
+            <span>Right-drag</span><span>Pan</span>
+            <span>Scroll</span><span>Zoom</span>
+            <span>Double-click</span><span>Reframe</span>
+          </div>
+          <div class="ov br legend" id="legend"></div>
         </div>
-        <section class="log" aria-label="Log">
-          <div class="log-head">
-            <h2 id="log-title"></h2>
-            <span id="log-note" class="mono muted" style="font-size: 12px"></span>
+        <section class="log" aria-label="Activity log">
+          <div class="bar">
+            <h2>Activity</h2>
+            <div class="seg" id="filter" aria-label="Log filter">
+              <button data-filter="all" aria-pressed="true">All</button>
+              <button data-filter="problems" aria-pressed="false">Problems<span class="count" id="problems"></span></button>
+              <button data-filter="you" aria-pressed="false">You</button>
+            </div>
+            <span class="grow"></span>
+            <button id="only-sel" aria-pressed="false">Only DR-000</button>
           </div>
-          <div class="scroll">
-            <table>
-              <thead><tr id="log-cols"></tr></thead>
-              <tbody id="log"></tbody>
-            </table>
-          </div>
+          <ul class="rows" id="log"></ul>
         </section>
       </section>
-      <aside id="rail-right" class="rail" aria-label="Right column">
-        <div id="blue-rail" hidden></div>
-        <div id="chat">
-          <div class="rail-head">
-            <h2 id="chat-name">Sentinel</h2>
-            <span id="chat-state"><span class="dot"></span><span id="chat-sub"></span></span>
-          </div>
-          <div id="transcript" role="log" aria-live="polite"></div>
-          <div id="actions" role="group" aria-label="Actions"></div>
-          <form class="compose" id="compose">
-            <input id="say" aria-label="Message agent" autocomplete="off" />
-            <button id="send" type="submit" aria-label="Send">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M5 12h14M13 6l6 6-6 6" />
-              </svg>
-            </button>
-          </form>
+      <aside id="rail-right" class="rail" aria-label="Right column" hidden></aside>
+      <aside id="chat" aria-label="Chat">
+        <div class="bar">
+          <h2 id="chat-name">Sentinel</h2>
+          <span id="chat-sub"></span>
         </div>
+        <div id="transcript" role="log" aria-live="polite"></div>
+        <div id="context-slot"></div>
+        <form class="compose" id="compose">
+          <input id="say" aria-label="Message agent" autocomplete="off" />
+          <button id="send" type="submit" aria-label="Send">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </button>
+        </form>
       </aside>
     </main>
     <footer>
@@ -1025,6 +1051,19 @@
         </p>
       </details>
     </footer>
+    <div id="modal" hidden>
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="modal-name">
+        <div class="head">
+          <span class="dot" id="modal-dot"></span>
+          <span class="name" id="modal-name"></span>
+          <span class="tag" id="modal-state"></span>
+          <button id="modal-close" aria-label="Close">×</button>
+        </div>
+        <p id="modal-text"></p>
+        <div class="stats" id="modal-stats"></div>
+        <ul class="rows" id="modal-log"></ul>
+      </div>
+    </div>
     <script type="module" src="/fleet.js"></script>
   </body>
 </html>

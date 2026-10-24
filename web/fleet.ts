@@ -34,9 +34,9 @@ type Ev = {
   policy_version: number;
 };
 type Frame = { drones: Drone[]; agents: Agent[]; events: Ev[] };
-type Msg =
-  | { who: "you" | "agent"; text: string; queued?: boolean }
-  | { card: number };
+type Msg = { who: "you" | "agent"; text: string; queued?: boolean };
+// An operator command, queued locally at match time `at` (evidence micros).
+type Op = { at: number; text: string };
 
 const $ = (id: string) => document.getElementById(id)!;
 const el = (tag: string, cls = "", text: unknown = "") => {
@@ -53,13 +53,6 @@ const ACCEPTED = "unauthorized_command_accepted",
   BLOCKED = "unauthorized_command_blocked",
   RECOVERED = "recovery_verified",
   POLICY = "policy_applied";
-const KIND_COLOR: Record<string, string> = {
-  [ACCEPTED]: "c-red",
-  [BLOCKED]: "c-amber",
-  [RECOVERED]: "c-green",
-  [POLICY]: "c-blue",
-  discovered: "c-grey",
-};
 const EMPTY: Frame = { drones: [], agents: [], events: [] };
 
 let role: Role = "defender",
@@ -72,8 +65,14 @@ let role: Role = "defender",
   close = () => {},
   version = 0,
   live = false,
-  lastReceived = 0;
+  lastReceived = 0,
+  filter: "all" | "problems" | "you" = "all",
+  onlySel = false,
+  modalAgent = 0;
 const chats: Record<Role, Msg[]> = { attacker: [], defender: [], observer: [] };
+const ops: Record<Role, Op[]> = { attacker: [], defender: [], observer: [] };
+// Transcript bubbles already in the DOM per role; new messages are appended, never rebuilt.
+const shown: Record<Role, number> = { attacker: 0, defender: 0, observer: 0 };
 const pulled: Record<Role, Set<number>> = {
   attacker: new Set(),
   defender: new Set(),
@@ -134,11 +133,18 @@ function derive(f: Frame) {
   );
   const lastViolation = new Map<number, string>();
   const lastBlockedAt = new Map<number, number>();
-  for (const e of ev)
+  // When each currently held drone was taken: its first acceptance since its last recovery.
+  const heldSince = new Map<number, number>();
+  const policyBy = new Map<number, number>();
+  for (const e of ev) {
     if (e.kind === ACCEPTED || e.kind === BLOCKED) {
       lastViolation.set(e.drone, e.kind);
       if (e.kind === BLOCKED) lastBlockedAt.set(e.drone, e.at);
     }
+    if (e.kind === ACCEPTED && !heldSince.has(e.drone)) heldSince.set(e.drone, e.at);
+    else if (e.kind === RECOVERED) heldSince.delete(e.drone);
+    if (e.kind === POLICY) policyBy.set(e.drone, e.actor);
+  }
   let n = 0,
     sum = 0;
   // Time to recover runs from the takeover, not from the attacker's repeat commands on a drone
@@ -150,15 +156,6 @@ function derive(f: Frame) {
       n++;
       sum += r.at - a.at;
     }
-  }
-  // Drones under unauthorized control over time, from evidence order alone.
-  const series: [number, number][] = [];
-  const held = new Set<number>();
-  for (const e of ev) {
-    if (e.kind === ACCEPTED) held.add(e.drone);
-    else if (e.kind === RECOVERED) held.delete(e.drone);
-    else continue;
-    series.push([rel(e.at), held.size]);
   }
   const { expected, deviation } = formationOf(f.drones);
   const offFormation = f.drones.filter((d) => (deviation.get(d.id) ?? 0) > OFF_FORMATION_M);
@@ -179,274 +176,412 @@ function derive(f: Frame) {
     lostBack,
     lastViolation,
     lastBlockedAt,
+    heldSince,
+    policyBy,
     latest: t1,
     mttr: n ? sum / n / 1e6 : undefined,
-    series,
     state: (d: Drone) =>
       d.controller === "attacker" ? "comp" : everTaken.has(d.id) ? "rec" : "home",
   };
 }
 type Derived = ReturnType<typeof derive>;
+const heldFor = (d: Derived, id: number) => {
+  const since = d.heldSince.get(id);
+  return since === undefined ? "" : ((d.latest - since) / 1e6).toFixed(1) + "s";
+};
 
-function spark(series: [number, number][], elapsed: number, color: string) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 600 44");
-  svg.setAttribute("preserveAspectRatio", "none");
-  svg.setAttribute("class", "spark");
-  svg.setAttribute("role", "img");
-  const max = Math.max(1, ...series.map((p) => p[1]));
-  const x = (t: number) => Math.min(600, (t / 60) * 600).toFixed(1);
-  const pts = series.map((p) => `${x(p[0])} ${(40 - (p[1] / max) * 36).toFixed(1)}`);
-  if (!pts.length) pts.push("0 40");
-  pts.push(`${x(elapsed)} ${pts.at(-1)!.split(" ")[1]}`);
-  svg.setAttribute(
-    "aria-label",
-    `Over the match, peak ${max}, now ${series.at(-1)?.[1] ?? 0}`,
-  );
-  svg.innerHTML =
-    `<line x1="${x(elapsed)}" y1="0" x2="${x(elapsed)}" y2="44" stroke="#2B3645" stroke-dasharray="2 3"/>` +
-    `<path d="M0 40 L${pts.join(" L")} L${x(elapsed)} 40 Z" fill="${color}" fill-opacity="0.16"/>` +
-    `<path d="M${pts.join(" L")}" fill="none" stroke="${color}" stroke-width="1.25" vector-effect="non-scaling-stroke"/>`;
-  return svg;
+/* ---------- copy shared by attacker and defender; only the words differ ---------- */
+const stateLabel = (st: string) =>
+  role === "attacker"
+    ? st === "comp"
+      ? ["SEIZED", "red"]
+      : st === "rec"
+        ? ["CONTROL LOST", ""]
+        : ["HOME CONTROL", ""]
+    : st === "comp"
+      ? [role === "defender" ? "COMPROMISED" : "UNAUTHORIZED", "red"]
+      : st === "rec"
+        ? ["RECOVERED", "green"]
+        : ["HOME", "blue"];
+function stateWord(st: string) {
+  return role === "attacker"
+    ? st === "comp"
+      ? "seized"
+      : st === "rec"
+        ? "control lost"
+        : "home control"
+    : st === "comp"
+      ? "compromised"
+      : st === "rec"
+        ? "recovered"
+        : "home";
 }
-function bar(segments: [number, string][], label: string) {
-  const b = el("div", "bar");
-  b.setAttribute("role", "img");
-  b.setAttribute("aria-label", label);
-  segments.forEach(([n, color], i) => {
-    if (!n) return;
-    if (i && b.childElementCount) b.append(el("i", "gap"));
-    const s = el("i");
-    s.style.flex = `${n} 1 0`;
-    s.style.background = color;
-    b.append(s);
-  });
-  return b;
+/** One sentence about a drone, from what this role can see. */
+function oneLine(drone: Drone, d: Derived) {
+  const st = d.state(drone),
+    dev = d.deviation.get(drone.id) ?? 0,
+    held = heldFor(d, drone.id),
+    off = dev > OFF_FORMATION_M ? `${dev.toFixed(1)} m off formation` : "in formation",
+    policy = role === "attacker" ? "" : ` under policy v${drone.policy_version}`;
+  if (st === "comp")
+    return `${tag(drone.id)} is ${stateWord("comp")}${held ? `, held ${held}` : ""}, ${off}.`;
+  if (st === "rec")
+    return role === "attacker"
+      ? `${tag(drone.id)} was held, then lost back; it is ${off}.`
+      : `${tag(drone.id)} recovered${policy}, ${off}.`;
+  if (d.lastViolation.get(drone.id) === BLOCKED)
+    return `${tag(drone.id)} blocked its last command (403)${policy}, ${off}.`;
+  return role === "attacker"
+    ? `${tag(drone.id)} is discovered, not yet commanded, ${off}.`
+    : `${tag(drone.id)} has no violation recorded, ${off}.`;
 }
-function cell(label: string, ...value: (string | Node)[]) {
-  const c = el("div");
-  c.append(el("label", "", label));
-  const v = el("div", "v");
-  v.append(...value);
-  c.append(v);
-  return c;
+/** Agent card state and sentence from its last_action (values set in arena-live/src/fleet.rs). */
+function agentLine(a: Agent, d: Derived): [string, string] {
+  const t = tag(a.target);
+  switch (a.last_action) {
+    case "command: 200":
+      return ["working", `Holding ${t} after a 200.`];
+    case "command: 403":
+      return ["failed", `${t} returned 403; it is hardened.`];
+    case "discover":
+      return ["working", `Scanning the fleet; discovered ${t}.`];
+    case "verify recovery": {
+      const pv = frame.drones.find((x) => x.id === a.target)?.policy_version;
+      return ["done", `Verified recovery on ${t}${pv === undefined ? "" : ` under policy v${pv}`}.`];
+    }
+    case "monitor":
+      return ["working", d.compromised.length ? `Monitoring; ${d.compromised.length} held drone${d.compromised.length === 1 ? "" : "s"} awaiting detection.` : "Monitoring the fleet; nothing held."];
+    default:
+      return ["paused", "Waiting for the first tick."];
+  }
 }
-const dim = (s: string) => el("span", "", s);
-function chipRow(ids: number[], label: string) {
-  const g = el("div", "chips");
-  g.setAttribute("role", "group");
-  g.setAttribute("aria-label", label);
-  if (!ids.length) g.append(el("span", "muted", "none"));
-  for (const id of ids) {
-    const b = el("button", "", tag(id));
+
+/* ---------- header ---------- */
+function header(d: Derived) {
+  const total = frame.drones.length,
+    comp = d.compromised.length;
+  $("match").textContent =
+    role === "attacker" ? "Red team · FC-01" : role === "defender" ? "Blue team · FC-01" : "Observer · FC-01";
+  const [text, hot] =
+    role === "attacker"
+      ? [d.accepted.length ? "ENGAGED" : "RECON", d.accepted.length > 0]
+      : role === "defender"
+        ? [comp ? "CRITICAL" : "NOMINAL", comp > 0]
+        : [comp ? "CONTESTED" : "HELD", false];
+  $("badge").textContent = text;
+  $("badge").className = "badge" + (hot ? " red" : "");
+  $("context").textContent =
+    role === "attacker"
+      ? "Fleet size unknown · red credential"
+      : role === "defender"
+        ? `${total} drones · blue credential`
+        : `${total} drones · ${frame.agents.length} agents · full state`;
+  $("clock").firstChild!.textContent = clock(d.elapsed);
+  $("progress").style.width = `${Math.min(100, (d.elapsed / 60) * 100)}%`;
+}
+
+/* ---------- agent rails: label bar, ring gauge, chips, label bar, cards ---------- */
+function ring(pct: number, color: string) {
+  const r = el("div", "ring");
+  const C = 2 * Math.PI * 28;
+  r.innerHTML =
+    `<svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">` +
+    `<circle cx="32" cy="32" r="28" fill="none" stroke="#182227" stroke-width="6"/>` +
+    `<circle cx="32" cy="32" r="28" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(C * pct).toFixed(1)} ${C.toFixed(1)}"/></svg>`;
+  r.append(el("span", "pct", `${Math.round(pct * 100)}%`));
+  return r;
+}
+type RailSpec = {
+  title: string;
+  dot: string;
+  count: number;
+  line: string;
+  sub: string;
+  color: string;
+  chips: number[];
+  chipsLabel: string;
+  agentsLabel: string;
+  agents: Agent[];
+};
+function rail(host: HTMLElement, s: RailSpec, d: Derived) {
+  const total = frame.drones.length;
+  const head = el("div", "bar");
+  if (s.dot) {
+    const dd = el("span", "dot");
+    dd.style.background = s.dot;
+    head.append(dd);
+  }
+  head.append(el("h2", "", s.title));
+  const g = el("div", "gauge");
+  g.setAttribute("role", "img");
+  g.setAttribute("aria-label", `${s.count} of ${total} drones ${s.line}`);
+  const text = el("div", "gauge-text");
+  text.append(el("b", "ellipsis", s.line), el("span", "ellipsis", s.sub));
+  g.append(ring(total ? s.count / total : 0, s.color), text);
+  const chips = el("div", "chipgrid");
+  chips.setAttribute("role", "group");
+  chips.setAttribute("aria-label", s.chipsLabel);
+  if (!s.chips.length) chips.append(el("span", "none", "none"));
+  for (const id of s.chips) {
+    const b = el("button", "chip", tag(id));
+    b.append(el("span", "", heldFor(d, id)));
     b.setAttribute("aria-pressed", String(id === selected));
     b.onclick = () => pull(id);
-    g.append(b);
+    chips.append(b);
   }
-  return g;
-}
-
-function statusRow(d: Derived) {
-  const row = $("status-row");
-  const total = frame.drones.length,
-    comp = d.compromised.length,
-    violations = d.accepted.length + d.blocked.length,
-    rate = violations ? Math.round((d.blocked.length / violations) * 100) + "%" : "—";
-  const badge = (text: string, hot: boolean) => {
-    const c = el("div", "badge-cell");
-    c.append(el("span", "badge" + (hot ? " red" : ""), text));
-    return c;
-  };
-  const when = (e?: Ev) => (e ? clock(d.rel(e.at)) : "—");
-  const last = (e?: Ev) =>
-    e ? [clock(d.rel(e.at)) + " ", dim(tag(e.drone))] : ["—"];
-  const offCell = (label: string) =>
-    d.offFormation.length
-      ? cell(label, el("span", "c-amber", d.offFormation.length), dim(` · max ${d.maxDeviation.toFixed(1)} m`))
-      : cell(label, el("span", "c-green", "in sync"));
-  const mttr =
-    d.mttr === undefined ? "—" : d.mttr < 1 ? Math.round(d.mttr * 1000) + "ms" : d.mttr.toFixed(1) + "s";
-  if (role === "defender") {
-    const compCell = cell(
-      "Compromised",
-      el("span", "c-red", comp),
-      dim(` / ${total}`),
-      bar(
-        [
-          [total - comp - d.lostBack.length, "var(--blue)"],
-          [d.lostBack.length, "var(--green)"],
-          [comp, "var(--red)"],
-        ],
-        `${total - comp} drones home, ${d.lostBack.length} of them recovered; ${comp} compromised`,
-      ),
-      spark(d.series, d.elapsed, "#F02D38"),
+  const ul = el("ul", "cards");
+  for (const a of [...s.agents].sort((x, y) => x.id - y.id)) {
+    const [state, doing] = agentLine(a, d);
+    const b = el("button", "agent");
+    b.setAttribute("aria-haspopup", "dialog");
+    b.append(
+      el("span", "dot " + state),
+      el("span", "name", agentName(a.id)),
+      el("span", "drone", tag(a.target)),
+      el("span", "doing", doing),
     );
-    compCell.className = "wide";
-    compCell.lastElementChild!.className = "v meter";
-    row.replaceChildren(
-      badge(comp ? "CRITICAL" : "NOMINAL", comp > 0),
-      compCell,
-      cell("Last breach", ...last(d.accepted.at(-1))),
-      offCell("Off formation"),
-      cell("Mean time to recover", mttr),
-      cell("Block rate", rate + " ", dim(`${d.blocked.length} / ${violations}`)),
-      cell("Unrecovered", chipRow(d.compromised.map((x) => x.id), "Unrecovered drones")),
-    );
-  } else if (role === "attacker") {
-    const seized = cell(
-      "Seized of discovered",
-      el("span", "c-red", comp),
-      dim(` / ${total}`),
-      bar(
-        [
-          [comp, "var(--red)"],
-          [total - comp, "#2B3645"],
-        ],
-        `${comp} seized, ${total - comp} discovered drones under home control`,
-      ),
-      spark(d.series, d.elapsed, "#F02D38"),
-    );
-    seized.className = "wide";
-    seized.lastElementChild!.className = "v meter";
-    row.replaceChildren(
-      badge(d.accepted.length ? "ENGAGED" : "RECON", d.accepted.length > 0),
-      seized,
-      cell("Last takeover", ...last(d.accepted.at(-1))),
-      offCell("Pulled off formation"),
-      cell("Lost back", String(d.lostBack.length) + " ", dim(`of ${d.acceptedIds.size}`)),
-      cell("Blocked", String(d.blocked.length)),
-      cell("Holding", chipRow(d.compromised.map((x) => x.id), "Seized drones")),
-    );
-  } else {
-    const share = cell(
-      "Control share",
-      el("span", "c-blue", `${total - comp} blue`),
-      bar(
-        [
-          [total - comp, "var(--blue)"],
-          [comp, "var(--red)"],
-        ],
-        `${total - comp} drones under blue control, ${comp} under red`,
-      ),
-      el("span", "c-red", `${comp} red`),
-      spark(d.series, d.elapsed, "#F02D38"),
-    );
-    share.className = "wide";
-    share.lastElementChild!.className = "v meter";
-    row.replaceChildren(
-      badge(comp ? "CONTESTED" : "HELD", false),
-      share,
-      cell("First takeover", when(d.accepted[0])),
-      offCell("Off formation"),
-      cell("Mean time to recover", mttr),
-      cell("Block rate", rate + " ", dim(`${d.blocked.length} / ${violations}`)),
-      cell(
-        "Takeovers recovered",
-        el("span", "c-green", d.recovered.length),
-        dim(` / ${d.accepted.length}`),
-      ),
-    );
-  }
-}
-
-/* ---------- agent rails ---------- */
-const pillClass = (a: string) =>
-  a === "command: 200"
-    ? "pill red"
-    : a === "command: 403"
-      ? "pill amber"
-      : a === "verify recovery"
-        ? "pill blue"
-        : "pill";
-function rail(
-  host: HTMLElement,
-  title: string,
-  dot: string,
-  stats: [unknown, string, string][],
-  agents: Agent[],
-) {
-  const head = el("div", "rail-head");
-  if (dot) {
-    const d = el("span", "dot");
-    d.style.background = dot;
-    head.append(d);
-  }
-  head.append(el("h2", "", `${title} · ${agents.length}`));
-  const s = el("div", "rail-stats");
-  for (const [v, label, color] of stats) {
-    const span = el("span", "", label);
-    const b = el("b", "", v);
-    b.style.color = color;
-    span.prepend(b);
-    s.append(span);
-  }
-  const ul = el("ul");
-  for (const a of [...agents].sort((x, y) => x.id - y.id)) {
+    b.title = doing;
+    b.onclick = () => openModal(a.id);
     const li = el("li");
-    const name = el("span", "", agentName(a.id));
-    name.append(el("small", "", `→ ${tag(a.target)} · ${a.step} steps`));
-    li.append(name, el("span", pillClass(a.last_action), a.last_action));
+    li.append(b);
     ul.append(li);
   }
-  host.replaceChildren(head, s, ul);
+  const head2 = el("div", "bar");
+  head2.append(el("h2", "", s.agentsLabel));
+  host.replaceChildren(head, g, chips, head2, ul);
 }
 function rails(d: Derived) {
+  const comp = d.compromised.map((x) => x.id),
+    total = frame.drones.length;
   const red = frame.agents.filter((a) => a.role === "attacker"),
     blue = frame.agents.filter((a) => a.role === "defender");
-  const discovered = new Set(
-    frame.events.filter((e) => e.kind === "discovered").map((e) => e.drone),
-  ).size;
-  const redStats: [unknown, string, string][] = [
-    [d.accepted.length, "accepted", "var(--red-text)"],
-    [d.blocked.length, "blocked", "var(--amber)"],
-    [role === "attacker" ? frame.drones.length : discovered, "discovered", "var(--fg)"],
-  ];
-  const blueStats: [unknown, string, string][] = [
-    [d.recovered.length, "recovered", "var(--green)"],
-    role === "observer"
-      ? [d.policies.length, "policies", "var(--blue-text)"]
-      : [d.blocked.length, "blocked", "var(--amber)"],
-    [frame.drones.filter((x) => x.isolated).length, "isolated", "var(--fg)"],
-  ];
-  if (role === "observer") {
-    rail($("rail-left"), "Red · attack", "#F02D38", redStats, red);
-    rail($("blue-rail"), "Blue · defense", "#277DFD", blueStats, blue);
-  } else
-    rail(
-      $("rail-left"),
-      "My agents",
-      "",
-      role === "attacker" ? redStats : blueStats,
-      frame.agents,
-    );
-  $("blue-rail").hidden = role !== "observer";
-  $("chat").hidden = role === "observer";
+  const held: Omit<RailSpec, "title" | "dot" | "agentsLabel" | "agents"> = {
+    count: comp.length,
+    line: role === "defender" ? "of the fleet compromised" : "of the fleet held",
+    sub: `${comp.length} of ${total} ${role === "attacker" ? "discovered" : "drones"}`,
+    color: "#f02d38",
+    chips: comp,
+    chipsLabel: role === "defender" ? "Unrecovered drones" : "Held drones",
+  };
+  if (role !== "observer") {
+    rail($("rail-left"), { ...held, title: "Fleet status", dot: "", agentsLabel: `My agents · ${frame.agents.length}`, agents: frame.agents }, d);
+    return;
+  }
+  rail($("rail-left"), { ...held, title: "Red · attack", dot: "#f02d38", agentsLabel: `Red agents · ${red.length}`, agents: red }, d);
+  rail(
+    $("rail-right"),
+    {
+      title: "Blue · defense",
+      dot: "#277dfd",
+      count: d.lostBack.length,
+      line: "of the fleet recovered",
+      sub: `${d.lostBack.length} of ${total} drones · ${comp.length} unrecovered`,
+      color: "#2bd47f",
+      chips: comp,
+      chipsLabel: "Unrecovered drones",
+      agentsLabel: `Blue agents · ${blue.length}`,
+      agents: blue,
+    },
+    d,
+  );
 }
 
-/* ---------- chat ---------- */
+/* ---------- agent detail modal ---------- */
+function openModal(id: number) {
+  modalAgent = id;
+  fillModal(derive(frame));
+  $("modal").hidden = false;
+  $("modal-close").focus();
+}
+function closeModal() {
+  modalAgent = 0;
+  $("modal").hidden = true;
+}
+function fillModal(d: Derived) {
+  const a = frame.agents.find((x) => x.id === modalAgent);
+  if (!a) {
+    closeModal();
+    return;
+  }
+  const [state, doing] = agentLine(a, d);
+  $("modal-dot").className = "dot " + state;
+  $("modal-name").textContent = agentName(a.id);
+  $("modal-state").textContent = state;
+  $("modal-text").textContent = doing;
+  const mine = frame.events.filter((e) => e.actor === a.id);
+  const stats: [string, unknown][] =
+    a.role === "attacker"
+      ? [
+          ["target", tag(a.target)],
+          ["held", mine.filter((e) => e.kind === ACCEPTED && d.heldSince.has(e.drone)).length],
+          ["403s", mine.filter((e) => e.kind === BLOCKED).length],
+        ]
+      : [
+          ["drone", tag(a.target)],
+          ["recovered", mine.filter((e) => e.kind === RECOVERED).length],
+          ["blocked", d.blocked.filter((e) => d.policyBy.get(e.drone) === a.id).length],
+        ];
+  $("modal-stats").replaceChildren(
+    ...stats.map(([k, v]) => {
+      const c = el("div", "", k);
+      c.prepend(el("b", "", v));
+      return c;
+    }),
+  );
+  const lines = entries(d).filter((e) => e.actorId === a.id).slice(-5).reverse();
+  $("modal-log").replaceChildren(
+    ...(lines.length ? lines.map((e) => rowEl(e, d, false)) : [el("li", "row muted", "No log lines from this agent yet.")]),
+  );
+}
+
+/* ---------- activity log: every action, threat and operator command ---------- */
+type Entry = {
+  at: number;
+  id: number;
+  drone: number;
+  actorId: number;
+  actor: string;
+  cls: string;
+  text: string;
+  problem: boolean;
+  you: boolean;
+};
+function entries(d: Derived): Entry[] {
+  const teamOf = new Map(frame.agents.map((a) => [a.id, a.role]));
+  const own = (e: Ev) => (role === "observer" ? (teamOf.get(e.actor) === "defender" ? "c-blue" : "c-red") : "c-team");
+  const out: Entry[] = frame.events.map((e) => {
+    const dr = tag(e.drone),
+      ag = agentName(e.actor),
+      pv = ` under policy v${e.policy_version}`;
+    let actor = ag,
+      cls = own(e),
+      text: string;
+    switch (e.kind) {
+      case "discovered":
+        text = ` discovered ${dr}.`;
+        break;
+      case ACCEPTED:
+        if (role === "defender") [actor, cls] = ["Unknown origin", "c-red"];
+        text = role === "defender" ? ` took control of ${dr} (200).` : ` took ${dr} (200).`;
+        break;
+      case BLOCKED:
+        if (role === "attacker") [actor, cls, text] = ["Defense", "c-amber", ` blocked ${ag} on ${dr} (403).`];
+        else if (role === "defender") [actor, cls, text] = ["Unknown origin", "c-red", ` was blocked on ${dr} (403)${pv}.`];
+        else text = ` was blocked on ${dr} (403)${pv}.`;
+        break;
+      case POLICY:
+        text = ` applied policy v${e.policy_version} to ${dr}.`;
+        break;
+      case RECOVERED:
+        text = ` verified recovery on ${dr}: 403 then 200${pv}.`;
+        break;
+      default:
+        text = ` ${e.kind.replaceAll("_", " ")} on ${dr}.`;
+    }
+    return {
+      at: e.at,
+      id: e.id,
+      drone: e.drone,
+      actorId: e.actor,
+      actor,
+      cls,
+      text,
+      problem: e.kind === BLOCKED || (e.kind === ACCEPTED && role !== "attacker"),
+      you: false,
+    };
+  });
+  for (const o of ops[role])
+    out.push({ at: o.at, id: 0, drone: Number(/DR-(\d+)/.exec(o.text)?.[1] ?? 0), actorId: -1, actor: "You", cls: "c-white", text: ` queued “${o.text}”.`, problem: false, you: true });
+  return out.sort((a, b) => a.at - b.at || a.id - b.id);
+}
+function rowEl(e: Entry, d: Derived, clickable = true) {
+  const li = el("li", "row");
+  li.setAttribute("aria-selected", String(!!e.id && e.id === selectedEvent));
+  const s = el("span", "s");
+  s.append(el("b", e.cls, e.actor), e.text);
+  s.title = e.actor + e.text;
+  li.append(el("span", "t", clock(d.rel(e.at))), s);
+  if (clickable && e.drone) {
+    li.tabIndex = 0;
+    li.setAttribute("role", "button");
+    li.onclick = () => {
+      selectedEvent = e.id;
+      pull(e.drone);
+    };
+    li.onkeydown = (k) => {
+      if (k.key === "Enter" || k.key === " ") {
+        k.preventDefault();
+        li.click();
+      }
+    };
+  } else li.style.cursor = "default";
+  return li;
+}
+function log(d: Derived) {
+  const all = entries(d);
+  $("problems").textContent = all.filter((e) => e.problem).length ? String(all.filter((e) => e.problem).length) : "";
+  document.querySelectorAll<HTMLButtonElement>("#filter button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === filter)));
+  const only = $("only-sel");
+  only.style.visibility = selected ? "visible" : "hidden";
+  only.textContent = `Only ${tag(selected)}`;
+  only.setAttribute("aria-pressed", String(onlySel && !!selected));
+  const rows = all
+    .filter((e) => (filter === "all" ? true : filter === "you" ? e.you : e.problem))
+    .filter((e) => !(onlySel && selected) || e.drone === selected)
+    .slice(-150)
+    .reverse();
+  $("log").replaceChildren(...rows.map((e) => rowEl(e, d)));
+}
+
+/* ---------- chat: operator messages and agent replies only ---------- */
+const agentOf = () => (role === "attacker" ? "Crimson" : "Sentinel");
+const typing = el("div", "bubble typing", "working…");
+typing.hidden = true;
+let replyTimer = 0;
 function post(m: Msg) {
   const c = chats[role];
   c.push(m);
-  if (c.length > 200) c.shift();
+  if (c.length > 200) {
+    c.shift();
+    $("transcript").querySelector(".bubble:not(.typing):not(.hint)")?.remove();
+    shown[role]--;
+  }
+}
+function reply(text: string, delay = 700) {
+  clearTimeout(replyTimer);
+  typing.hidden = false;
+  $("transcript").scrollTop = 1e9;
+  replyTimer = window.setTimeout(() => {
+    typing.hidden = true;
+    post({ who: "agent", text });
+    chat(derive(frame));
+  }, delay);
 }
 function pull(id: number) {
   selected = id;
-  if (role !== "observer") {
+  selectedEvent = frame.events.find((e) => e.id === selectedEvent && e.drone === id) ? selectedEvent : 0;
+  if (role !== "observer" && !pulled[role].has(id)) {
     pulled[role].add(id);
-    const lastCard = chats[role].findLast((m) => "card" in m);
-    if (!lastCard || lastCard.card !== id) {
-      post({ who: "you", text: `Pull up ${tag(id)}` });
-      post({ card: id });
-    }
+    post({ who: "you", text: `Pull up ${tag(id)}` });
+    const d = derive(frame),
+      drone = frame.drones.find((x) => x.id === id);
+    reply(drone ? oneLine(drone, d) : `${tag(id)} is not visible in this frame.`, 400);
   }
   render(frame);
-  $("transcript").scrollTop = 1e9;
 }
-function queue(text: string) {
-  if (!text.trim()) return;
+function say(text: string) {
+  text = text.trim();
+  if (!text || role === "observer") return;
+  const d = derive(frame);
   post({ who: "you", text, queued: true });
+  ops[role].push({ at: d.latest, text });
+  const id = Number(/DR-0*(\d+)/i.exec(text)?.[1] ?? 0),
+    drone = frame.drones.find((x) => x.id === id);
+  reply(
+    (drone ? oneLine(drone, d) + " " : "") +
+      `Queued for ${agentOf()}: commands are queued, not executed, so nothing acts on it yet.`,
+  );
   render(frame);
-  $("transcript").scrollTop = 1e9;
 }
 function summary(e: Ev) {
   const d = tag(e.drone),
@@ -471,205 +606,52 @@ function summary(e: Ev) {
   }
 }
 function ingest() {
-  // Agent lines come only from real evidence rows that arrived after the baseline.
+  // The agent follows up only on drones the operator asked about; everything else is in the log.
   const top = Math.max(0, ...frame.events.map((e) => e.id));
   if (!top) return;
   if (seen[role])
     for (const e of frame.events)
-      if (e.id > seen[role] && (e.actor !== 0 || pulled[role].has(e.drone)))
-        post({ who: "agent", text: summary(e) });
+      if (e.id > seen[role] && pulled[role].has(e.drone)) post({ who: "agent", text: summary(e) });
   seen[role] = Math.max(seen[role], top);
 }
-function card(id: number, d: Derived) {
-  const drone = frame.drones.find((x) => x.id === id);
-  const c = el("div", "card");
-  if (!drone) {
-    c.append(el("div", "head", `${tag(id)} is not visible in this frame.`));
-    return c;
-  }
-  const st = d.state(drone);
-  const head = el("div", "head", tag(id));
-  const [label, cls] =
-    role === "attacker"
-      ? st === "comp"
-        ? ["SEIZED", "tag red"]
-        : st === "rec"
-          ? ["CONTROL LOST", "tag"]
-          : ["HOME CONTROL", "tag"]
-      : st === "comp"
-        ? ["COMPROMISED", "tag red"]
-        : st === "rec"
-          ? ["RECOVERED", "tag green"]
-          : ["HOME", "tag blue"];
-  head.append(el("span", cls, label));
-  const fields = el("div", "fields");
-  const f = (k: string, v: unknown) => {
-    const s = el("span", "", " " + v);
-    s.prepend(el("span", "", k));
-    fields.append(s);
-  };
-  f("ctrl", drone.controller);
-  const dev = d.deviation.get(id);
-  if (dev !== undefined) f("off-slot", dev.toFixed(1) + "m");
-  if (role === "attacker") {
-    f("pos", `${drone.x.toFixed(0)},${drone.y.toFixed(0)},${drone.z.toFixed(1)}`);
-    f("tick", drone.tick);
-    fields.append(el("span", "redacted", "batt redacted"), el("span", "redacted", "policy redacted"));
-  } else {
-    f("policy", "v" + drone.policy_version);
-    f("batt", drone.battery.toFixed(1) + "%");
-    f("iso", drone.isolated);
-    f("ok", drone.commands);
-    f("blocked", drone.rejected);
-  }
-  const lastV = d.lastViolation.get(id);
-  const assess =
-    role === "attacker"
-      ? st === "comp"
-        ? "Command accepted (200). Held until the defense applies a policy and verifies recovery."
-        : st === "rec"
-          ? "Held, then lost. Current control is shown above; the defender’s policy is not visible."
-          : lastV === BLOCKED
-            ? "Last command returned 403. This drone has been hardened."
-            : "Discovered, not yet commanded."
-      : st === "comp"
-        ? "Unauthorized control confirmed. Command integrity is affected until recovery is verified."
-        : st === "rec"
-          ? "Recovery verified: unauthorized probe returned 403 and an authorized command returned 200 under the same policy version."
-          : lastV === BLOCKED
-            ? "A violation hit this drone and was blocked (403). Still under home control."
-            : "No violation recorded. Absence of evidence is not proof of safety.";
-  const off = dev ?? 0;
-  const drift = off > OFF_FORMATION_M ? ` ${off.toFixed(1)} m out of formation.` : st === "comp" ? "" : " Flying in formation.";
-  c.append(head, fields, el("p", "", assess + drift));
-  const pinned = frame.events.find((e) => e.id === selectedEvent && e.drone === id);
-  if (pinned)
-    c.append(
-      el(
-        "div",
-        "pinned",
-        `pinned #${pinned.id} · T+${clock(d.rel(pinned.at))} · ${pinned.kind} · ${pinned.status}`,
-      ),
-    );
-  return c;
+function bubble(m: Msg) {
+  const b = el("div", "bubble" + (m.who === "you" ? " you" : ""), m.text);
+  if (m.queued) b.append(el("span", "queued", "queued · not executed"));
+  return b;
 }
 function chat(d: Derived) {
   if (role === "observer") return;
-  const agent = role === "attacker" ? "Crimson" : "Sentinel";
-  $("chat-name").textContent = agent;
+  $("chat-name").textContent = agentOf();
   $("chat-sub").textContent = role === "attacker" ? "attacking FC-01" : "defending FC-01";
-  ($("say") as HTMLInputElement).placeholder =
-    `Message ${agent.toLowerCase()}, or click a drone`;
-  const t = $("transcript");
+  ($("say") as HTMLInputElement).placeholder = `Message ${agentOf()}`;
+  const t = $("transcript"),
+    c = chats[role];
   const stick = t.scrollHeight - t.scrollTop - t.clientHeight < 40;
-  t.replaceChildren(
-    ...chats[role].map((m) => {
-      if ("card" in m) return card(m.card, d);
-      const row = el("div", "msg");
-      row.append(
-        el("span", "who " + (m.who === "you" ? "" : "agent"), m.who === "you" ? "YOU" : agent.toUpperCase()),
-      );
-      const body = el("span", "body", m.text);
-      if (m.queued) body.append(el("span", "queued", "queued"));
-      row.append(body);
-      return row;
-    }),
-  );
-  if (!chats[role].length)
-    t.append(el("div", "msg muted", "Click a drone or a status chip to pull up its asset card. Agent lines appear as evidence lands."));
+  if (!t.contains(typing)) t.append(typing);
+  if (!c.length && !t.querySelector(".hint"))
+    t.insertBefore(el("div", "bubble hint", "Say something, or click a drone to talk about it."), typing);
+  for (let i = shown[role]; i < c.length; i++) {
+    t.querySelector(".hint")?.remove();
+    t.insertBefore(bubble(c[i]), typing);
+  }
+  shown[role] = c.length;
   if (stick) t.scrollTop = t.scrollHeight;
-  const s = frame.drones.find((x) => x.id === selected);
-  const tg = s ? tag(s.id) : "";
-  const chips: [string, string, string][] =
-    role === "defender"
-      ? [
-          [s ? `Policy v${s.policy_version + 1} · ${tg}` : "Policy · select a drone", "team", s ? `Apply policy v${s.policy_version + 1} to ${tg}.` : ""],
-          ["Isolate", "", s ? `Isolate ${tg}.` : ""],
-          ["Verify", "green", s ? `Verify recovery on ${tg}.` : ""],
-          ["Recover all", "", "Work through every unrecovered drone, oldest breach first."],
-        ]
-      : [
-          [s ? `Command ${tg}` : "Command · select a drone", "team", s ? `Send command to ${tg}.` : ""],
-          ["Discover", "", "Discover the next sector."],
-          ["Hold", "", "Hold what we have. No new commands."],
-          ["Skip hardened", "", "Skip anything returning 403."],
-        ];
-  $("actions").replaceChildren(
-    ...chips.map(([label, cls, text]) => {
-      const b = el("button", cls, label) as HTMLButtonElement;
-      b.disabled = !text;
-      b.onclick = () => queue(text);
-      return b;
-    }),
-  );
-}
-
-/* ---------- log ---------- */
-function log(d: Derived) {
-  const cols =
-    role === "attacker"
-      ? ["T+", "Agent", "Drone", "Outcome", "Status"]
-      : ["T+", role === "defender" ? "Source" : "Actor", "Drone", "Event", "Status", "Policy"];
-  $("log-cols").replaceChildren(...cols.map((c) => el("th", "", c.toUpperCase())));
-  $("log-title").textContent =
-    role === "attacker" ? "Operation log" : role === "defender" ? "Threats & responses" : "Evidence · both teams";
-  $("log-note").textContent =
-    role === "attacker"
-      ? "own outcomes only · weakness: missing authorization on command handler"
-      : role === "defender"
-        ? "attacker IDs withheld"
-        : `${d.accepted.length + d.blocked.length} commands · ${d.recovered.length} recoveries · recovery counts only on 403 then 200 under one policy version`;
-  const kindLabel = (k: string) =>
-    role === "defender"
-      ? k === ACCEPTED ? "command violation · accepted" : k === BLOCKED ? "command violation · blocked" : k
-      : role === "attacker"
-        ? k === ACCEPTED ? "command accepted" : k === BLOCKED ? "command blocked" : k
-        : k;
-  const teamOf = new Map(frame.agents.map((a) => [a.id, a.role]));
-  const rows = frame.events
-    .filter((e) => !selected || e.drone === selected)
-    .slice(-100)
-    .reverse();
-  if (selected) {
-    const clear = el("button", "c-amber", `filtered to ${tag(selected)} · show all`);
-    clear.onclick = () => {
+  const slotEl = $("context-slot"),
+    s = frame.drones.find((x) => x.id === selected);
+  if (!s) slotEl.replaceChildren(el("span", "", "Click a drone to talk about it"));
+  else if (slotEl.querySelector(".chip")?.firstChild?.textContent !== tag(s.id)) {
+    const chip = el("div", "chip", tag(s.id));
+    chip.append(el("span", "tag " + stateLabel(d.state(s))[1], stateLabel(d.state(s))[0]));
+    const x = el("button", "", "×");
+    x.setAttribute("aria-label", `Detach ${tag(s.id)}`);
+    x.onclick = () => {
       selected = 0;
       selectedEvent = 0;
       render(frame);
     };
-    $("log-note").append(" · ", clear);
+    chip.append(x);
+    slotEl.replaceChildren(el("span", "", "About"), chip);
   }
-  $("log").replaceChildren(
-    ...rows.map((e) => {
-      const tr = el("tr");
-      tr.setAttribute("aria-selected", String(e.id === selectedEvent));
-      tr.tabIndex = 0;
-      const actor =
-        e.actor === 0
-          ? el("td", "muted", "unknown origin")
-          : el("td", teamOf.get(e.actor) === "defender" ? "c-blue" : "c-red", agentName(e.actor));
-      tr.append(
-        el("td", "muted", clock(d.rel(e.at))),
-        actor,
-        el("td", "", tag(e.drone)),
-        el("td", KIND_COLOR[e.kind] ?? "", kindLabel(e.kind)),
-        el("td", "", e.status),
-      );
-      if (role !== "attacker")
-        tr.append(el("td", "muted", e.kind === "discovered" ? "—" : "v" + e.policy_version));
-      tr.onclick = () => {
-        selectedEvent = e.id;
-        pull(e.drone);
-      };
-      tr.onkeydown = (k) => {
-        if (k.key === "Enter" || k.key === " ") {
-          k.preventDefault();
-          tr.click();
-        }
-      };
-      return tr;
-    }),
-  );
 }
 
 /* ---------- Three.js scene + Canvas fallback ---------- */
@@ -1058,19 +1040,6 @@ function effects(t: number) {
 }
 const tipSel = $("tip-sel"),
   tipHover = $("tip-hover");
-function stateWord(st: string) {
-  return role === "attacker"
-    ? st === "comp"
-      ? "seized"
-      : st === "rec"
-        ? "control lost"
-        : "home control"
-    : st === "comp"
-      ? "compromised"
-      : st === "rec"
-        ? "recovered"
-        : "home";
-}
 function screen(d: Drone) {
   const shown = drones.get(d.id)?.userData.pos as THREE.Vector3 | undefined;
   const p = (shown && renderer ? shown.clone() : new THREE.Vector3(d.x, d.z, d.y)).project(camera);
@@ -1243,50 +1212,37 @@ function mapScene(d: Derived) {
   const n = frame.drones.length;
   if (role === "attacker") {
     $("map-title").textContent = `Discovered swarm · ${n}`;
-    legend([["#F02D38", "Seized"], ["#A9B4C1", "Home control"], ["ring", "Blocked · last 3s"], ["ghost", "Formation slot"]]);
+    legend([["#F02D38", "Seized"], ["#A9B4C1", "Home control"], ["ring-key", "Blocked · last 3s"], ["ghost", "Formation slot"]]);
   } else {
     $("map-title").textContent = role === "defender" ? `Managed swarm · ${n}` : `Full state · ${n}`;
     legend([
       ["#5B9DFF", "Home"],
       ["#F02D38", role === "defender" ? "Compromised" : "Unauthorized"],
       ["#2BD47F", "Recovered"],
-      ["ring", "Blocked · last 3s"],
+      ["ring-key", "Blocked · last 3s"],
       ["iso", "Isolated"],
       ["ghost", "Formation slot"],
     ]);
   }
-  const sel = frame.drones.find((x) => x.id === selected);
-  const tick = sel?.tick ?? Math.max(0, ...frame.drones.map((x) => x.tick));
-  $("caption").textContent =
-    `sim coords · tick ${tick}` +
-    (role === "attacker"
-      ? " · undiscovered drones not drawn · policies hidden"
-      : role === "defender"
-        ? " · attacker origin hidden"
-        : "");
-  const strip = $("strip");
-  if (role !== "observer") strip.replaceChildren();
-  else if (!sel) strip.replaceChildren(el("span", "muted", "Select a drone on the map or in the evidence table."));
-  else {
-    const st = d.state(sel);
-    const f = (k: string, v: unknown) => {
-      const s = el("span", "", " " + v);
-      s.prepend(el("span", "muted", k));
-      return s;
+  // Selected-drone card: an absolute overlay, so selecting never moves the map.
+  const ov = $("ov-sel"),
+    sel = frame.drones.find((x) => x.id === selected);
+  ov.hidden = !sel;
+  if (sel) {
+    const [label, cls] = stateLabel(d.state(sel));
+    const head = el("div", "head");
+    head.append(el("b", "mono", tag(sel.id)), el("span", "tag " + cls, label));
+    const x = el("button", "", "×");
+    x.setAttribute("aria-label", "Clear selection");
+    x.onclick = () => {
+      selected = 0;
+      selectedEvent = 0;
+      render(frame);
     };
-    strip.replaceChildren(
-      el("b", "", tag(sel.id)),
-      el("span", st === "comp" ? "tag red" : st === "rec" ? "tag green" : "tag blue", st === "comp" ? "UNAUTHORIZED" : st === "rec" ? "RECOVERED" : "HOME"),
-      f("ctrl", sel.controller),
-      f("off-slot", (d.deviation.get(sel.id) ?? 0).toFixed(1) + "m"),
-      f("policy", "v" + sel.policy_version),
-      f("batt", sel.battery.toFixed(1) + "%"),
-      f("iso", sel.isolated),
-      f("ok", sel.commands),
-      f("blocked", sel.rejected),
-    );
-    const pinned = frame.events.find((e) => e.id === selectedEvent && e.drone === sel.id);
-    if (pinned) strip.append(el("span", "c-amber", `pinned #${pinned.id} · ${pinned.kind} · ${pinned.status}`));
+    head.append(x);
+    const line = el("div", "line", oneLine(sel, d));
+    line.title = line.textContent!;
+    ov.replaceChildren(head, line);
   }
 }
 
@@ -1298,25 +1254,20 @@ function render(next: Frame) {
     .querySelectorAll<HTMLButtonElement>("nav button")
     .forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.role === role)));
   const d = derive(frame);
-  $("role-name").textContent = role === "attacker" ? "Attack" : role === "defender" ? "Defense" : "Observer";
-  $("context").textContent =
-    role === "attacker"
-      ? "target FC-01 · fleet size unknown · attacker credential"
-      : role === "defender"
-        ? `FC-01 · ${frame.drones.length} drones · defender credential`
-        : `FC-01 · ${frame.drones.length} drones · ${frame.agents.length} agents · full state`;
-  $("clock").firstChild!.textContent = clock(d.elapsed);
+  header(d);
   ingest();
-  statusRow(d);
   rails(d);
   mapScene(d);
   chat(d);
   log(d);
+  if (modalAgent) fillModal(d);
   redraw();
 }
-function setStatus(text: string, dot: "live" | "down" | "") {
-  $("status").textContent = text;
-  $("live-dot").className = "dot " + dot;
+function setStatus(text: string, kind: "live" | "stale" | "replay") {
+  const p = $("live");
+  p.textContent = kind === "live" ? "Live" : kind === "stale" ? "Stale" : "Replay";
+  p.className = "pill " + (kind === "live" ? "" : kind);
+  p.title = text;
 }
 async function workspace(next: Role) {
   const v = ++version;
@@ -1324,7 +1275,16 @@ async function workspace(next: Role) {
   role = next;
   selected = 0;
   selectedEvent = 0;
+  onlySel = false;
   playing = false;
+  closeModal();
+  clearTimeout(replyTimer);
+  typing.hidden = true;
+  // The only full transcript rebuild: switching role swaps in that role's conversation.
+  $("transcript").replaceChildren(typing);
+  shown[role] = 0;
+  $("rail-right").hidden = role !== "observer";
+  $("chat").hidden = role === "observer";
   $("error").textContent = webglNote;
   render(EMPTY);
   if (recording) {
@@ -1339,7 +1299,7 @@ async function workspace(next: Role) {
     recording = await fetch("/fleet-recording.json").then((r) => r.json());
     ($("timeline") as HTMLInputElement).max = String(recording.frames.length - 1);
     render(recording.frames[index][role]);
-    setStatus("Recorded · fixture", "");
+    setStatus("Recorded · fixture", "replay");
     return;
   }
   live = true;
@@ -1387,9 +1347,9 @@ async function workspace(next: Role) {
           "SELECT * FROM visible_evidence",
         ]);
     })
-    .onConnectError(() => setStatus("Disconnected · state frozen", "down"))
+    .onConnectError(() => setStatus("Disconnected · state frozen", "stale"))
     .onDisconnect(() => {
-      if (v === version) setStatus("Disconnected · state frozen", "down");
+      if (v === version) setStatus("Disconnected · state frozen", "stale");
     })
     .build();
   close = () => conn.disconnect();
@@ -1517,7 +1477,7 @@ controls.addEventListener("change", () => {
 });
 $("camera").onclick = () => {
   overhead = !overhead;
-  $("camera").textContent = overhead ? "Perspective" : "Top-down";
+  $("camera").setAttribute("aria-pressed", String(overhead));
   reframe();
 };
 $("reframe").onclick = reframe;
@@ -1532,12 +1492,30 @@ document.querySelectorAll<HTMLButtonElement>("nav button").forEach(
 ($("compose") as HTMLFormElement).onsubmit = (e) => {
   e.preventDefault();
   const input = $("say") as HTMLInputElement;
-  queue(input.value);
+  say(input.value);
   input.value = "";
 };
+document.querySelectorAll<HTMLButtonElement>("#filter button").forEach(
+  (b) =>
+    (b.onclick = () => {
+      filter = b.dataset.filter as typeof filter;
+      log(derive(frame));
+    }),
+);
+$("only-sel").onclick = () => {
+  onlySel = !onlySel;
+  log(derive(frame));
+};
+$("modal-close").onclick = closeModal;
+$("modal").onclick = (e) => {
+  if (e.target === $("modal")) closeModal();
+};
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && modalAgent) closeModal();
+});
 setInterval(() => {
   if (live && lastReceived && Date.now() - lastReceived > 5000)
-    setStatus("No recent updates · state frozen", "down");
+    setStatus("No recent updates · state frozen", "stale");
 }, 1000);
 function nearest(event: MouseEvent) {
   const bounds = host.getBoundingClientRect();
