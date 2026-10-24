@@ -35,7 +35,10 @@ import {
 
 // Import all reducer arg schemas
 import AcquireBackendReducer from "./acquire_backend_reducer";
+import CreateChatOperationReducer from "./create_chat_operation_reducer";
+import EnableFleetChatReducer from "./enable_fleet_chat_reducer";
 import EnqueueBackendRunReducer from "./enqueue_backend_run_reducer";
+import ExecuteFleetChatActionReducer from "./execute_fleet_chat_action_reducer";
 import GrantBackendViewerReducer from "./grant_backend_viewer_reducer";
 import GrantFleetViewReducer from "./grant_fleet_view_reducer";
 import HeartbeatBackendReducer from "./heartbeat_backend_reducer";
@@ -45,6 +48,7 @@ import SaveBackendSnapshotReducer from "./save_backend_snapshot_reducer";
 import StartFleetReducer from "./start_fleet_reducer";
 import StopFleetReducer from "./stop_fleet_reducer";
 import TransitionBackendRunReducer from "./transition_backend_run_reducer";
+import UpdateChatOperationReducer from "./update_chat_operation_reducer";
 
 // Import all procedure arg schemas
 
@@ -111,7 +115,10 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("acquire_backend", AcquireBackendReducer),
+  __reducerSchema("create_chat_operation", CreateChatOperationReducer),
+  __reducerSchema("enable_fleet_chat", EnableFleetChatReducer),
   __reducerSchema("enqueue_backend_run", EnqueueBackendRunReducer),
+  __reducerSchema("execute_fleet_chat_action", ExecuteFleetChatActionReducer),
   __reducerSchema("grant_backend_viewer", GrantBackendViewerReducer),
   __reducerSchema("grant_fleet_view", GrantFleetViewReducer),
   __reducerSchema("heartbeat_backend", HeartbeatBackendReducer),
@@ -121,6 +128,7 @@ const reducersSchema = __reducers(
   __reducerSchema("start_fleet", StartFleetReducer),
   __reducerSchema("stop_fleet", StopFleetReducer),
   __reducerSchema("transition_backend_run", TransitionBackendRunReducer),
+  __reducerSchema("update_chat_operation", UpdateChatOperationReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

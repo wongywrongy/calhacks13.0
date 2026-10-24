@@ -95,6 +95,7 @@ pub fn acquire_backend(
         r.error = "Scheduler restarted; create a new run".into();
         ctx.db.backend_run().id().update(r);
     }
+    for mut r in ctx.db.backend_chat().iter().filter(|r|r.state=="running") { r.state="interrupted".into(); ctx.db.backend_chat().id().update(r); }
     ctx.db.backend_lease().id().delete(0);
     ctx.db.backend_lease().insert(Lease {
         id: 0,
@@ -299,4 +300,42 @@ pub fn visible_backend_events(ctx: &ViewContext) -> Vec<Event> {
         return vec![];
     }
     ctx.db.backend_event().run_id().filter(""..).collect()
+}
+
+#[table(accessor=backend_chat)]
+#[derive(Clone)]
+pub struct ChatOperation {
+    #[primary_key] pub id: String,
+    #[unique] pub request_key: String,
+    pub role: String,
+    pub epoch: u64,
+    pub state: String,
+    pub config: String,
+    pub result: String,
+}
+#[reducer]
+pub fn create_chat_operation(ctx: &ReducerContext, session: String, id: String, key: String, role: String, epoch: u64, config: String) -> Result<(), String> {
+    lease(ctx, &session)?;
+    if !["attacker", "defender"].contains(&role.as_str()) || config.len()>16000 || id.len()!=36 || key.len()>120 { return Err("Invalid chat operation".into()); }
+    if let Some(old)=ctx.db.backend_chat().request_key().find(&key) {
+        return if old.config==config && old.role==role {Ok(())}else{Err("Idempotency conflict".into())};
+    }
+    if ctx.db.backend_chat().iter().any(|r|r.role==role && r.state=="running") {return Err("Role operation already active".into())}
+    ctx.db.backend_chat().insert(ChatOperation{id,request_key:key,role,epoch,state:"running".into(),config,result:"[]".into()}); Ok(())
+}
+#[reducer]
+pub fn update_chat_operation(ctx: &ReducerContext, session: String, id: String, state: String, result: String) -> Result<(),String> {
+    lease(ctx,&session)?;
+    if !["running","completed","cancelled","failed"].contains(&state.as_str()) || result.len()>200000 {return Err("Invalid operation result".into())}
+    let mut r=ctx.db.backend_chat().id().find(&id).ok_or("Operation missing")?;
+    if r.state!="running" {return Err("Operation already terminal".into())}
+    r.state=state;r.result=result;ctx.db.backend_chat().id().update(r);Ok(())
+}
+pub(crate) fn chat_authority(ctx:&ReducerContext, session:&str, id:&str, agent:u32, target:u32, epoch:u64)->Result<String,String>{
+    lease(ctx,session)?;
+    let r=ctx.db.backend_chat().id().find(id.to_string()).ok_or("Operation missing")?;
+    if r.state!="running" || r.epoch!=epoch {return Err("Operation inactive".into())}
+    let v:serde_json::Value=serde_json::from_str(&r.config).map_err(|_|"Invalid config")?;
+    if !v["tasks"].as_array().ok_or("Missing tasks")?.iter().any(|t| t["agentId"].as_u64()==Some(agent as u64)&&t["target"].as_u64()==Some(target as u64)){return Err("Outside assignment".into())}
+    Ok(r.role)
 }

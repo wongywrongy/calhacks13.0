@@ -1,6 +1,6 @@
 # Backend service and Bitdeer preparation
 
-The backend branch adds a long-running authenticated API without modifying the fleet UI or its Rust module. It runs actual concurrent HTTP sandbox matches, stores redacted evidence in SpacetimeDB, and forwards fleet lifecycle operations to the same database. It does not yet translate model decisions into drone reducer actions.
+The backend branch adds a long-running authenticated API without modifying the fleet UI or its Rust module. It runs actual concurrent HTTP sandbox matches, stores redacted evidence in SpacetimeDB, and forwards fleet lifecycle operations to the same database. Chat-driven fleet operations now translate model decisions into drone reducer actions; see [FLEET_CHAT_API.md](FLEET_CHAT_API.md). The HTTP suite remains a separate execution path.
 
 ## Start
 
@@ -107,7 +107,7 @@ SPACETIME_BINARY=/path/to/spacetimedb-standalone npm run test:backend-fleet
 
 Service tests exercise two simultaneous real HTTP matches (48 security agents total), redacted persistence across reopen, cursor replay, authentication, idempotency, bounded queue admission, cancellation, restart interruption, shared model admission, and provider refusal without fixture substitution.
 
-Remaining integration: credentialed Bitdeer smoke run, model-driven fleet action reducers and evidence linkage, frontend server-side authentication/route wiring, remote deployment, load/latency profiling, database retention policy, and distributed worker execution if horizontal scale becomes necessary. No UI files were changed by this backend milestone.
+Remaining integration: credentialed Bitdeer smoke run, credentialed fleet chat validation, frontend server-side authentication/route wiring, remote deployment, load/latency profiling, database retention policy, and distributed worker execution if horizontal scale becomes necessary. No UI files were changed by this backend milestone.
 
 ### Verification after the SpacetimeDB-only revision
 

@@ -36,6 +36,23 @@ export const ArenaSnapshot = __t.object("ArenaSnapshot", {
 });
 export type ArenaSnapshot = __Infer<typeof ArenaSnapshot>;
 
+export const ChatAction = __t.object("ChatAction", {
+  key: __t.string(),
+  evidenceId: __t.u64(),
+});
+export type ChatAction = __Infer<typeof ChatAction>;
+
+export const ChatOperation = __t.object("ChatOperation", {
+  id: __t.string(),
+  requestKey: __t.string(),
+  role: __t.string(),
+  epoch: __t.u64(),
+  state: __t.string(),
+  config: __t.string(),
+  result: __t.string(),
+});
+export type ChatOperation = __Infer<typeof ChatOperation>;
+
 export const Discovery = __t.object("Discovery", {
   drone: __t.u32(),
   epoch: __t.u64(),

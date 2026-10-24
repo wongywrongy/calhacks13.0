@@ -56,3 +56,34 @@ pub fn visible_drones(ctx:&ViewContext)->Vec<Drone>{let r=role(ctx);if r.is_empt
 pub fn visible_agents(ctx:&ViewContext)->Vec<Agent>{let r=role(ctx);ctx.db.fleet_agent().epoch().filter(0u64..) .filter(|a|r=="observer"||a.role==r).collect()}
 #[view(accessor=visible_evidence,public)]
 pub fn visible_evidence(ctx:&ViewContext)->Vec<Evidence>{let r=role(ctx);if r.is_empty(){return vec![]}ctx.db.fleet_evidence().epoch().filter(0u64..) .filter(|e|r=="observer"||if r=="attacker"{e.kind=="discovered"||e.kind.starts_with("unauthorized_command")}else{e.kind!="discovered"}).map(|mut e|{if r=="defender"&&e.kind.starts_with("unauthorized_command"){e.actor=0;}if r=="attacker"{e.policy_version=0;}e}).collect()}
+
+// Explicitly switch security decisions from scheduled fixtures to external model workers.
+#[reducer]
+pub fn enable_fleet_chat(ctx:&ReducerContext)->Result<(),String>{
+ owner(ctx)?;
+ for t in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(t.id);}
+ Ok(())
+}
+#[table(accessor=fleet_chat_action)]
+pub struct ChatAction { #[primary_key] key:String, evidence_id:u64 }
+#[reducer]
+pub fn execute_fleet_chat_action(ctx:&ReducerContext,session:String,operation:String,sequence:u32,agent:u32,target:u32,kind:String,version:u32)->Result<(),String>{
+ owner(ctx)?;
+ let mut a=ctx.db.fleet_agent().id().find(agent).ok_or("Agent missing")?;
+ let role=crate::backend::chat_authority(ctx,&session,&operation,agent,target,a.epoch)?;
+ if !live(ctx,a.epoch)||a.role!=role||sequence>24 {return Err("Invalid agent action".into())}
+ let key=format!("{}:{}:{}",operation,agent,sequence);
+ if ctx.db.fleet_chat_action().key().find(&key).is_some(){return Ok(())}
+ let mut d=ctx.db.fleet_drone().id().find(target).ok_or("Drone missing")?;
+ if d.epoch!=a.epoch{return Err("Stale drone".into())}
+ match (role.as_str(),kind.as_str()) {
+ ("attacker","discover")=>{if ctx.db.fleet_discovery().drone().find(target).is_none(){ctx.db.fleet_discovery().insert(Discovery{drone:target,epoch:a.epoch});}emit(ctx,a.epoch,agent,&d,"discovered",200);},
+ ("attacker","command")=>{if ctx.db.fleet_discovery().drone().find(target).is_none(){return Err("Discover first".into())}let status=command(&mut d,false);emit(ctx,a.epoch,agent,&d,if status==200{"unauthorized_command_accepted"}else{"unauthorized_command_blocked"},status);},
+ ("defender","isolate")=>{if d.policy_version!=version{return Err("Stale policy".into())}d.isolated=true;d.policy_version+=1;emit(ctx,a.epoch,agent,&d,"policy_applied",200);},
+ ("defender","verify")=>{if d.policy_version!=version{return Err("Stale policy".into())}let bad=command(&mut d,false);let good=command(&mut d,true);if bad==403&&good==200{d.controller="defender".into();emit(ctx,a.epoch,agent,&d,"recovery_verified",200);}else{emit(ctx,a.epoch,agent,&d,"recovery_failed",409);}},
+ (_,"wait")=>{},
+ _=>return Err("Action not permitted".into())
+ }
+ let waiting=kind=="wait";a.target=target;a.step+=1;a.last_action=kind;
+ ctx.db.fleet_agent().id().update(a);ctx.db.fleet_drone().id().update(d);let evidence_id=if waiting {0}else{ctx.db.fleet_evidence().iter().filter(|e|e.actor==agent&&e.drone==target).map(|e|e.id).max().unwrap_or(0)};ctx.db.fleet_chat_action().insert(ChatAction{key,evidence_id});Ok(())
+}

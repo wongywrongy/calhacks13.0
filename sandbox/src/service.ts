@@ -7,6 +7,7 @@ import { projectRun } from "./projection.ts";
 import { readJson, send } from "./server.ts";
 import { DecisionPool } from "./decision-pool.ts";
 import { RunStore, StoreError } from "./run-store.ts";
+import { FleetChat, type ChatRole } from "./fleet-chat.ts";
 import { spacetimeConfig } from "./spacetime.ts";
 
 class HttpError extends Error {
@@ -105,8 +106,12 @@ export async function startService(options: {
     throw Error(
       "SpacetimeDB is required: set SPACETIME_URI, SPACETIME_DATABASE and SPACETIME_TOKEN",
     );
+  const roleTokens = { attacker: env.SUDOKO_ATTACKER_TOKEN, defender: env.SUDOKO_DEFENDER_TOKEN };
+  const credentials = [options.operatorToken, options.observerToken, ...Object.values(roleTokens)].filter(Boolean) as string[];
+  if (credentials.some(t => t.length < 32) || new Set(credentials).size !== credentials.length) throw Error("Service credentials must be distinct and at least 32 characters");
   const store = new RunStore(fleet);
   await store.open(maxActive, maxQueued);
+  const chat = new FleetChat(store, pool, env);
   const active = new Map<
     string,
     { abort: AbortController; done: Promise<void> }
@@ -201,6 +206,7 @@ export async function startService(options: {
     () =>
       void store.heartbeat().catch(() => {
         closing = true;
+        void chat.close();
         for (const w of active.values()) w.abort.abort();
       }),
     5000,
@@ -234,6 +240,24 @@ export async function startService(options: {
       const operator = equal(credential, options.operatorToken);
       const observer =
         options.observerToken && equal(credential, options.observerToken);
+      const chatRole = (Object.keys(roleTokens) as ChatRole[]).find(r => roleTokens[r] && equal(credential, roleTokens[r]!));
+      if (url.pathname.startsWith("/v1/chat/")) {
+        if (!chatRole) fail(403, "Role-specific chat credential required");
+        if (req.headers.origin) fail(403, "Use the same-origin server proxy");
+        if (closing) fail(503, "Service shutting down");
+        if (req.method === "POST" && url.pathname === "/v1/chat/operations") {
+          let b: any;
+          try { b = await readJson(req); } catch { fail(400, "Invalid JSON"); }
+          object(b, ["message"]);
+          if (typeof b.message !== "string") fail(400, "Message required");
+          const operation = await chat.start(chatRole!, b.message, String(req.headers["idempotency-key"] ?? ""));
+          return send(res, { status: 202, body: operation });
+        }
+        const route = /^\/v1\/chat\/operations\/([a-f0-9-]{36})(?:\/(stop))?$/.exec(url.pathname);
+        if (route && req.method === "GET" && !route[2]) return send(res, {status:200,body:await chat.get(route[1],chatRole!)});
+        if (route && req.method === "POST" && route[2] === "stop") return send(res, {status:200,body:await chat.stop(route[1],chatRole!)});
+        fail(404, "Chat route not found");
+      }
       if (!operator && !observer) fail(401, "Bearer credential required");
       if (req.method !== "GET" && !operator) fail(403, "Operator required");
       // No credentialed cross-origin browser access and no ambient cookie authentication.
@@ -427,6 +451,7 @@ export async function startService(options: {
         });
       }
       if (req.method === "POST" && url.pathname === "/v1/fleet/start") {
+        if (chat.busy) fail(409, "Stop chat operations before resetting the fleet");
         const b = await body();
         object(b, ["drones", "attackers", "defenders", "hardened"]);
         if (typeof b.hardened !== "boolean")
@@ -468,7 +493,7 @@ export async function startService(options: {
           e instanceof HttpError || e instanceof StoreError ? e.status : 502,
         body: {
           error:
-            e instanceof HttpError ? e.message : "Service dependency failed",
+            e instanceof HttpError || e instanceof StoreError ? e.message : "Service dependency failed",
         },
       });
     } finally {
@@ -489,6 +514,7 @@ export async function startService(options: {
     async close() {
       closing = true;
       clearInterval(heartbeat);
+      await chat.close();
       const unlock = await lock();
       for (const id of pending.splice(0)) await store.state(id, "cancelled");
       const workers = [...active.values()];
