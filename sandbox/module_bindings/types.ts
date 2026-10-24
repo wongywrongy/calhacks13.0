@@ -20,6 +20,16 @@ export const Agent = __t.object("Agent", {
 });
 export type Agent = __Infer<typeof Agent>;
 
+export const AgentProfile = __t.object("AgentProfile", {
+  id: __t.u32(),
+  epoch: __t.u64(),
+  role: __t.string(),
+  name: __t.string(),
+  specialty: __t.string(),
+  operation: __t.string(),
+});
+export type AgentProfile = __Infer<typeof AgentProfile>;
+
 export const AgentSchedule = __t.object("AgentSchedule", {
   id: __t.u64(),
   scheduledAt: __t.scheduleAt(),
@@ -84,6 +94,18 @@ export const ChatTransition = __t.object("ChatTransition", {
   at: __t.i64(),
 });
 export type ChatTransition = __Infer<typeof ChatTransition>;
+
+export const ChatTurn = __t.object("ChatTurn", {
+  id: __t.string(),
+  requestKey: __t.string(),
+  role: __t.string(),
+  state: __t.string(),
+  config: __t.string(),
+  result: __t.string(),
+  created: __t.i64(),
+  updated: __t.i64(),
+});
+export type ChatTurn = __Infer<typeof ChatTurn>;
 
 export const Discovery = __t.object("Discovery", {
   drone: __t.u32(),

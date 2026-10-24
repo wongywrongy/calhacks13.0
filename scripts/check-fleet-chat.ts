@@ -33,19 +33,18 @@ if (mocked)
       system = JSON.parse(body.messages[0].content),
       context = JSON.parse(body.messages[1].content);
     modelInputs.push({ system, context });
-    if (providerMode === "blocked")
+    if (providerMode === "blocked" || (providerMode === "blocked-specialists" && !system.agents))
       await delay(30000, undefined, { signal: init.signal });
     else await delay(100, undefined, { signal: init.signal });
     if (providerMode === "rate-limit")
       return new Response("{}", { status: 429 });
-    const value = system.agents
+    let value: any = system.agents
       ? {
-          tasks: system.agents
-            .slice(0, 2)
-            .map((agentId: number, i: number) => ({
-              agentId,
+          tasks: [0, 1].map((i: number) => ({
+              name: "Kestrel",
+              specialty: system.role === "attacker" ? "reconnaissance" : "containment",
               target: context.selectedTarget ?? i + 1,
-              objective: "Inspect assigned drone <img src=x onerror=alert(1)>",
+              objective: "Assess assigned drone <img src=x onerror=alert(1)>",
             })),
         }
       : {
@@ -58,6 +57,7 @@ if (mocked)
                 ? "verify"
                 : "isolate",
         };
+    if (system.task?.startsWith("Route") && value.tasks) value = { intent: "deploy", answer: "Prepare specialists", evidenceIds: [], tasks: value.tasks };
     return Response.json({
       choices: [
         { finish_reason: "stop", message: { content: JSON.stringify(value) } },
@@ -91,8 +91,10 @@ const report: any = {
   limits: CHAT_LIMITS,
   operations: [],
 };
+const browserErrors: string[] = [];
+report.layout = [];
 const output = demo
-  ? "output/fleet-demo-mocked"
+  ? mocked ? "output/fleet-demo-mocked" : "output/fleet-demo-smoke"
   : mocked
     ? "output/fleet-ui-mocked"
     : "output/fleet-ui-smoke";
@@ -101,8 +103,9 @@ try {
   let fleet: any;
   assert.equal(
     (await service.store.query("SELECT * FROM fleet_session")).length,
-    0,
+    1,
   );
+  assert.equal((await service.store.query("SELECT * FROM fleet_agent")).length, 0);
   assert.equal(
     (await service.store.query("SELECT * FROM agent_schedule")).length,
     0,
@@ -122,7 +125,7 @@ try {
       `SUDOKO_DEMO_${role.toUpperCase()}_VIEWER_TOKEN`
     ] = viewer.token;
     const context = await browser.newContext({
-      viewport: { width: 1440, height: 1000 },
+      viewport: { width: 1440, height: 900 },
     });
     if (!demo) {
       const auth = await context.request.post(service.url + "/api/session", {
@@ -133,9 +136,7 @@ try {
     }
     const page = await context.newPage();
     pages[role] = page;
-    page.on("pageerror", (error: any) =>
-      console.error("Browser error:", error.message),
-    );
+    page.on("pageerror", (error: any) => browserErrors.push(error.message));
     page.on("dialog", () => {
       throw Error("Model text executed as HTML");
     });
@@ -183,21 +184,43 @@ try {
       403,
     );
   }
-  await pages.defender.locator("#say").fill("Protect the swarm");
-  const earlyDefense = pages.defender.waitForResponse((r: any) =>
-    r.url().endsWith("/api/chat/messages"),
-  );
-  await pages.defender.locator("#say").press("Enter");
-  assert.equal((await earlyDefense).status(), 409);
-  await pages.defender.waitForFunction(() =>
-    document
-      .querySelector("#chat-sub")
-      ?.textContent?.includes("first attacker objective"),
-  );
-  assert.equal(
-    (await service.store.query("SELECT * FROM fleet_session")).length,
-    0,
-  );
+  assert.equal(await pages.defender.locator(".agent").count(), 0);
+  assert.match(await pages.defender.locator("#rail-left").textContent(), /No agents deployed/);
+  await pages.defender.screenshot({ path: output + "/fresh-session.png" });
+  const dimensions = async (page: any, label: string) => {
+    const result = await page.evaluate(() => {
+      const rect = (selector: string) => {
+        const e = document.querySelector(selector)! as HTMLElement;
+        const r = e.getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height, scrollHeight: e.scrollHeight, clientHeight: e.clientHeight };
+      };
+      const canvas = document.querySelector("#viewport canvas")! as HTMLCanvasElement;
+      return { size: [innerWidth, innerHeight], pageHeight: document.documentElement.scrollHeight,
+        bodyRows: getComputedStyle(document.body).gridTemplateRows,
+        main: rect("main"), viewport: rect("#viewport"), log: rect(".log"), rail: rect("#rail-left"), chat: rect("#chat"),
+        controls: rect(".ov.bl"), legend: rect("#legend"), canvas: { width: canvas.width, height: canvas.height } };
+    });
+    assert.equal(result.pageHeight, result.size[1]);
+    assert.ok(result.main.y + result.main.height >= result.size[1] - 1);
+    assert.ok(result.viewport.height > result.log.height * 1.5);
+    assert.ok(result.log.height <= 240);
+    for (const box of [result.controls, result.legend]) {
+      assert.ok(box.y >= result.viewport.y);
+      assert.ok(box.y + box.height <= result.viewport.y + result.viewport.height);
+    }
+    assert.ok(Math.abs(result.canvas.width / result.canvas.height - result.viewport.width / result.viewport.height) < 0.01);
+    report.layout.push({ label, ...result });
+    await page.screenshot({ path: output + `/${label}.png` });
+  };
+  for (const [width, height] of [[1440, 900], [1920, 1080], [1200, 800]]) {
+    await pages.defender.setViewportSize({ width, height });
+    await delay(300);
+    await dimensions(pages.defender, `fresh-${width}x${height}`);
+  }
+  await pages.defender.setViewportSize({ width: 1440, height: 900 });
+  await delay(5500);
+  assert.match(await pages.attacker.locator("#live").textContent(), /Awaiting objective/);
+
   assert.ok(
     !(await pages.attacker.locator("#clock").textContent()).includes("1:00"),
   );
@@ -218,6 +241,13 @@ try {
     const start = await response;
     const conversation = await start.json();
     let op = conversation.operations?.at(-1);
+    if (conversation.accepted) for (let i = 0; i < 150; i++) {
+      const c = await page.request.get(service.url + "/api/chat/conversation", { headers: { "x-sudoko-role": role } }).then((r: any) => r.json());
+      const turn = c.turns.find((t: any) => t.id === conversation.accepted.id);
+      if (turn?.error) throw Error(JSON.stringify(turn));
+      if (turn?.operationId) { op = c.operations.find((o: any) => o.id === turn.operationId); break; }
+      await delay(200);
+    }
     assert.equal(start.status(), 202, conversation.error);
     fleet ??= (await service.store.query("SELECT * FROM fleet_session"))[0];
     report.epoch = fleet.epoch;
@@ -225,7 +255,7 @@ try {
     assert.equal(op.epoch, fleet.epoch);
     for (
       let i = 0;
-      i < 110 && ["planning", "running"].includes(op.state);
+      i < 170 && ["planning", "running"].includes(op.state);
       i++
     ) {
       await delay(500);
@@ -243,6 +273,8 @@ try {
       `${role} operation ended as ${op.state}`,
     );
     assert.ok(op.tasks.length >= 2);
+    assert.ok(op.tasks.every((t: any) => t.name && t.name.length <= 32));
+    assert.equal(new Set(op.tasks.map((t: any) => t.name.toLowerCase())).size, op.tasks.length);
     const outcome =
       role === "attacker"
         ? "unauthorized_command_accepted"
@@ -279,6 +311,7 @@ try {
     for (const w of op.workers) {
       const card = page.locator(`.agent[data-agent-id="${w.agentId}"]`);
       assert.equal(await card.getAttribute("data-state"), w.state);
+      assert.equal(await card.locator(".name").textContent(), w.name);
       await card.click();
       assert.equal(await page.locator("#modal-state").textContent(), w.state);
       assert.ok(
@@ -311,7 +344,7 @@ try {
         `DR-${String(contextReceipt.target).padStart(3, "0")}`,
       ),
     );
-    await page.locator("#say").fill("Status");
+    await page.locator("#say").fill("What is the status of our fleet?");
     const statusReply = page.waitForResponse((r: any) =>
       r.url().endsWith("/api/chat/messages"),
     );
@@ -336,7 +369,7 @@ try {
     );
     assert.equal(duplicate.status(), 202);
     assert.equal(
-      (await duplicate.json()).messages.filter((m: any) => m.text === "Status")
+      (await duplicate.json()).messages.filter((m: any) => m.text === "What is the status of our fleet?")
         .length,
       1,
     );
@@ -374,7 +407,7 @@ try {
         document.querySelector("#transcript")?.textContent?.includes(objective),
       objectives[role],
     );
-    assert.match(await page.locator("#transcript").textContent(), /Status/);
+    assert.match(await page.locator("#transcript").textContent(), /status of our fleet/);
     assert.equal(
       (await service.store.query("SELECT * FROM fleet_chat_action")).length,
       before,
@@ -451,7 +484,14 @@ try {
       await page.locator("#say").press("Enter");
       const r = await response;
       assert.equal(r.status(), 202);
-      return r.json();
+      let c = await r.json();
+      if (c.accepted) for (let i = 0; i < 60; i++) {
+        const status = await page.request.get(service.url + "/api/chat/conversation", { headers: { "x-sudoko-role": "attacker" } });
+        c = await status.json();
+        if (!c.turns.some((t: any) => ["queued", "running"].includes(t.state))) break;
+        await delay(100);
+      }
+      return c;
     };
     for (let i = 0; i < 5; i++) await send("Status");
     await page
@@ -475,14 +515,15 @@ try {
     const before = (
       await service.store.query("SELECT * FROM fleet_chat_action")
     ).length;
-    providerMode = "blocked";
+    providerMode = "blocked-specialists";
     const running = await send("Inspect again");
     const pending = running.operations.at(-1);
-    assert.equal(pending.state, "planning");
+    assert.ok(["planning", "running"].includes(pending.state));
+    await page.waitForSelector(`.agent[data-operation-id="${pending.id}"][data-state="working"]`);
     const changed = await send("Change the objective");
     assert.ok(
       changed.messages.some((m: any) =>
-        m.text.startsWith("No new instruction was applied"),
+        m.text.startsWith("No change applied"),
       ),
     );
     const stopped = await send("Stop");
@@ -493,6 +534,8 @@ try {
     await page.waitForFunction(
       () => document.querySelector("#chat-sub")?.textContent === "cancelled",
     );
+    await delay(500);
+    assert.equal((await service.store.query("SELECT * FROM fleet_chat_action")).length, before);
     providerMode = "rate-limit";
     await send("Inspect with provider failure");
     await page.waitForFunction(
@@ -514,6 +557,27 @@ try {
     await page.screenshot({ path: output + "/provider-failure.png" });
     report.mockedFailureAndStopVerified = true;
   }
+
+  if (mocked) {
+    const page = pages.defender;
+    await page.context().setOffline(true);
+    await delay(6500);
+    assert.match(await page.locator("#live").textContent(), /Disconnected|Stale/);
+    await dimensions(page, "disconnected");
+    await page.context().setOffline(false);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector("#live")?.textContent?.startsWith("Live"));
+    await page.route("**/fleet-config*", async (route: any) => { await delay(1500); await route.continue(); });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await dimensions(page, "loading");
+    await page.waitForFunction(() => document.querySelector("#live")?.textContent?.startsWith("Live"));
+    await page.unroute("**/fleet-config*");
+    await service.store.call("stop_fleet", []);
+    await page.waitForFunction(() => document.querySelector("#live")?.textContent === "Fleet ended");
+    await dimensions(page, "fleet-ended");
+  }
+  report.browserErrors = browserErrors;
+  assert.deepEqual(browserErrors, []);
   report.passed = true;
   report.totalCalls = report.operations.reduce(
     (n: number, o: any) => n + o.inferences.length,

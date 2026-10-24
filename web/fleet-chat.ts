@@ -1,9 +1,12 @@
 export type Worker = {
   agentId: number;
+  name?: string;
+  specialty?: string;
   target: number;
   objective: string;
   state: string;
   operationId: string;
+  deployedAt?: number;
   error?: string;
 };
 export type Operation = {
@@ -13,6 +16,7 @@ export type Operation = {
   message: string;
   epoch: number;
   createdAt: number;
+  models?: { coordinator: string; specialist: string };
   tasks: { agentId: number; target: number; objective: string }[];
   workers: Worker[];
   results: {
@@ -47,10 +51,15 @@ export type ChatMessage = {
 };
 export const activeOperation = (op?: Operation) =>
   !!op && ["planning", "running"].includes(op.state);
+export type ConversationTurn = { id: string; state: string; createdAt: number; updatedAt: number; intent?: string; error?: string; metric?: { status: string; stage: string; epoch?: number } };
 export class OperationChat {
   messages: ChatMessage[] = [];
   operations: Operation[] = [];
+  turns: ConversationTurn[] = [];
+  get pendingTurn() { return this.turns.find((t) => ["queued", "running"].includes(t.state) && Date.now() - t.createdAt < 31000); }
   sending = false;
+  lastUpdated = 0;
+  fleet: { active: boolean; epoch: number } | null = null;
   private closed = false;
   private timer?: ReturnType<typeof setTimeout>;
   private pending?: { key: string; message: string; target?: number };
@@ -92,6 +101,7 @@ export class OperationChat {
   }
   async submit(message: string, target?: number) {
     if (this.sending) return;
+    if (/^(?:stop|cancel|pause)[.!]?$/i.test(message.trim())) this.clearPending();
     if (
       this.pending &&
       (this.pending.message !== message || this.pending.target !== target)
@@ -103,6 +113,7 @@ export class OperationChat {
       localStorage.setItem(this.storageKey, JSON.stringify(this.pending));
       const r = await fetch("/api/chat/messages", {
         method: "POST",
+        signal: AbortSignal.timeout(12000),
         credentials: "same-origin",
         headers: {
           "content-type": "application/json",
@@ -126,12 +137,15 @@ export class OperationChat {
     this.pending = undefined;
     localStorage.removeItem(this.storageKey);
   }
-  private update(body: { messages: ChatMessage[]; operations: Operation[] }) {
+  private update(body: { messages: ChatMessage[]; operations: Operation[]; turns?: ConversationTurn[]; fleet?: { active: boolean; epoch: number } | null }) {
     if (this.closed) return;
     const ids = new Set(this.messages.map((m) => m.id));
     this.messages.push(...body.messages.filter((m) => !ids.has(m.id)));
     this.messages.sort((a, b) => a.id - b.id);
     this.operations = body.operations;
+    this.turns = body.turns ?? [];
+    this.lastUpdated = Date.now();
+    if (body.fleet !== undefined) this.fleet = body.fleet;
     this.changed();
   }
   private async poll() {
@@ -140,6 +154,7 @@ export class OperationChat {
       while (more && !this.closed) {
         const r = await fetch(`/api/chat/conversation?after=${this.cursor}`, {
           credentials: "same-origin",
+          signal: AbortSignal.timeout(12000),
           headers: { "x-sudoko-role": this.role },
         });
         const body = await r.json();
@@ -155,7 +170,7 @@ export class OperationChat {
           e instanceof Error ? e.message : "Conversation unavailable",
         );
     }
-    if (!this.closed) this.timer = setTimeout(() => void this.poll(), 750);
+    if (!this.closed) this.timer = setTimeout(() => void this.poll(), this.pendingTurn || activeOperation(this.operation) ? 250 : 750);
   }
   close() {
     this.closed = true;

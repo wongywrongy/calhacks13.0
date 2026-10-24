@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>SudoKO · Swarm security workspace</title>
+    <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       rel="stylesheet"
@@ -63,7 +64,7 @@
       body {
         margin: 0;
         display: grid;
-        grid-template-rows: 56px auto minmax(0, 1fr) 26px;
+        grid-template-rows: 56px auto minmax(0, 1fr);
         height: 100dvh;
         overflow: hidden;
       }
@@ -296,7 +297,10 @@
         accent-color: var(--team);
       }
       .pill {
-        width: 64px;
+        width: max-content;
+        min-width: 64px;
+        padding: 0 10px;
+        white-space: nowrap;
         height: 24px;
         display: flex;
         align-items: center;
@@ -347,6 +351,7 @@
         display: none;
       }
       #error {
+        grid-row: 2;
         margin: 0;
         padding: 6px 24px;
         border-bottom: 1px solid var(--line);
@@ -354,15 +359,19 @@
         font-size: 13px;
       }
 
+      header { grid-row: 1; }
+
       /* 2. Main row: rail | map | chat on fixed tracks. */
       main {
+        grid-row: 3;
         display: grid;
         grid-template-columns: 288px minmax(0, 1fr) 360px;
         min-height: 0;
       }
       .rail {
         display: grid;
-        grid-template-rows: 40px 96px 112px 40px minmax(0, 1fr);
+        grid-template-rows: 40px 96px auto 40px minmax(0, 1fr);
+        overflow: hidden;
         min-height: 0;
         background: var(--panel);
         border-right: 1px solid var(--line);
@@ -408,6 +417,7 @@
         color: var(--muted);
       }
       .chipgrid {
+        max-height: 112px;
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         grid-auto-rows: 28px;
@@ -443,6 +453,13 @@
         border-color: var(--team);
         color: var(--team-text);
       }
+      .empty-agents {
+        padding: 16px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .empty-agents b { display: block; color: var(--fg); margin-bottom: 4px; }
+      #provider { font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .cards {
         list-style: none;
         margin: 0;
@@ -467,6 +484,9 @@
         background: var(--raised);
       }
       .agent .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         font: 500 13px var(--mono);
       }
       .agent .drone {
@@ -486,7 +506,7 @@
       /* 3. Map column. */
       .map {
         display: grid;
-        grid-template-rows: 40px minmax(0, 1fr) 300px;
+        grid-template-rows: 40px minmax(0, 1fr) clamp(160px, 24vh, 240px);
         min-height: 0;
       }
       #viewport {
@@ -605,7 +625,7 @@
         width: 92px;
       }
 
-      /* 4. Activity log, fixed 300px under the map. */
+      /* 4. Bounded activity log; rows scroll inside the workspace. */
       .log {
         display: grid;
         grid-template-rows: 40px minmax(0, 1fr);
@@ -764,7 +784,7 @@
         border-top: 1px solid var(--line);
       }
       #say {
-        height: 48px;
+        height: 100%;
         padding: 0 16px;
         background: var(--bg);
         border: 0;
@@ -854,44 +874,14 @@
         cursor: default;
       }
 
-      footer {
-        position: relative;
-        padding: 0 24px;
-        font-size: 11px;
-        line-height: 26px;
-        color: var(--muted);
-        background: #040b11;
-        border-top: 1px solid var(--line);
+      @media (min-width: 901px) and (max-width: 1350px) {
+        main { grid-template-columns: 240px minmax(0, 1fr) 300px; }
+        header { padding-inline: 12px; gap: 12px; }
+        .h-left { gap: 10px; }
+        #cam button { width: 68px; }
       }
-      footer summary {
-        list-style: none;
-        cursor: pointer;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      footer summary::-webkit-details-marker {
-        display: none;
-      }
-      footer summary b {
-        font-weight: 500;
-        color: #c2cad4;
-      }
-      footer details[open] p {
-        position: absolute;
-        left: 16px;
-        bottom: calc(100% + 6px);
-        z-index: 5;
-        max-width: 720px;
-        margin: 0;
-        padding: 12px 14px;
-        line-height: 1.6;
-        border: 1px solid var(--line2);
-        border-radius: 4px;
-        background: var(--raised);
-      }
-      /* Below 1280px the panels stack and the page scrolls. */
-      @media (max-width: 1279px) {
+      /* Small screens stack; laptop workspaces retain their full-height columns. */
+      @media (max-width: 900px) {
         body {
           display: block;
           height: auto;
@@ -971,7 +961,7 @@
           </button>
           <input id="timeline" type="range" min="0" max="1" value="0" aria-label="Scrub recording" />
         </div>
-        <span class="pill replay" id="live" role="status" title="Loading…">Replay</span>
+        <span class="pill replay" id="live" role="status" title="Loading…">Connecting</span>
         <div class="clock">
           <div id="clock">0:00<span>&nbsp;/ 1:00</span></div>
           <div class="progress"><i id="progress"></i></div>
@@ -1019,7 +1009,7 @@
       <aside id="rail-right" class="rail" aria-label="Right column" hidden></aside>
       <aside id="chat" aria-label="Chat">
         <div class="bar">
-          <h2 id="chat-name">Sentinel</h2>
+          <div><h2 id="chat-name">Sentinel</h2><div id="provider"></div></div>
           <span id="chat-sub"></span>
         </div>
         <div id="transcript" role="log" aria-live="polite"></div>
@@ -1034,23 +1024,6 @@
         </form>
       </aside>
     </main>
-    <footer>
-      <details>
-        <summary id="mode-summary">
-          <b>Fixture decisions · synthetic drone command service</b> · chat commands are
-          read-only · terrain is schematic scenery · more ▴
-        </summary>
-        <p id="mode-description">
-          Fixture decisions · Synthetic drone command service · SpacetimeDB scheduled
-          entities and identity-scoped views. The recorded demo permits switching between
-          exported workspaces; live credentials only access their granted workspace. Chat
-          input is read-only in fixture and recorded views. Model operations require an
-          authenticated live sandbox. Movement and battery are simulation state, not physical flight
-          measurements. Terrain, sky and the FC-01 mast are schematic scenery, not measured
-          geography.
-        </p>
-      </details>
-    </footer>
     <div id="modal" hidden>
       <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="modal-name">
         <div class="head">

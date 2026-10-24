@@ -51,10 +51,10 @@ export class RunStore {
       throw new StoreError(
         message.includes("queue full")
           ? 429
-          : message.includes("Idempotency conflict")
+          : (message.includes("Idempotency conflict") || message.includes("Conversation already pending"))
             ? 409
             : 502,
-        "SpacetimeDB rejected " + name,
+        "SpacetimeDB rejected " + name + (message.includes("Stale policy") ? ": stale_policy" : message.includes("Operation expired") ? ": operation_expired" : message.includes("Outside assignment") ? ": outside_assignment" : ""),
       );
     }
   }

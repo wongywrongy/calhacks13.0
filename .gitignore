@@ -8,3 +8,7 @@ web/dist/
 arena-live/target/
 
 .demo.env
+
+.vercel/
+.vercel
+.env*

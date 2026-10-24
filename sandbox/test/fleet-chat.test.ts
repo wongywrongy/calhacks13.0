@@ -56,12 +56,11 @@ test(
       let value: any;
       if (system.agents)
         value = {
-          tasks: system.agents
-            .slice(0, 2)
-            .map((agentId: number, i: number) => ({
-              agentId,
+          tasks: [0, 1].map((i: number) => ({
+              name: "Kestrel",
+              specialty: system.role === "attacker" ? "reconnaissance" : "containment",
               target: context.selectedTarget ?? i + 1,
-              objective: "Assess assigned drone",
+              objective: "Assess assigned drone <img src=x onerror=alert(1)>",
             })),
         };
       else
@@ -81,6 +80,7 @@ test(
         value = { kind: "discover" };
       if (mode === "out-of-scope" && !system.agents)
         value = { kind: "shell", url: "https://example.com" };
+      if (system.task?.startsWith("Route") && value.tasks) value = { intent: "deploy", answer: "Prepare specialists", evidenceIds: [], tasks: value.tasks };
       return Response.json({
         choices: [
           {
@@ -94,6 +94,7 @@ test(
     const env = {
       ...db.env,
       BITDEER_API_KEY: "test-only",
+      SUDOKO_ALLOWED_ORIGINS: "https://sudo-ko.us,https://www.sudo-ko.us,https://calhacks130-mjcc.vercel.app",
       BITDEER_COORDINATOR_MODEL: "test-coordinator",
       BITDEER_SPECIALIST_MODEL: "test-specialist",
       SUDOKO_ATTACKER_TOKEN: attacker,
@@ -154,7 +155,7 @@ test(
       return { status: r.status, body: (await r.json()) as any };
     };
     try {
-      await service.store.call("start_fleet", [4, 2, 2, false]);
+      await service.store.call("start_fleet", [4, 0, 0, false]);
       await service.store.call("enable_fleet_chat", []);
       const [fleet] = await service.store.query("SELECT * FROM fleet_session");
       for (const role of ["attacker", "defender", "observer"]) {
@@ -273,21 +274,10 @@ test(
         ).status,
         403,
       );
-      const waiting = await browser(
-        "/api/chat/messages",
-        "defender",
-        { message: "Protect the swarm", sandbox: db.env.SPACETIME_DATABASE },
-        "before-attack",
-      );
-      assert.equal(waiting.status, 409);
-      assert.match(waiting.body.error, /first attacker objective/);
+      assert.equal((await service.store.query("SELECT * FROM fleet_agent")).length, 0);
+      const statusBefore = await browser("/api/chat/messages", "defender", { message: "Status", sandbox: db.env.SPACETIME_DATABASE }, "before-attack");
+      assert.equal(statusBefore.status, 202);
       assert.equal(calls, 0);
-      await assert.rejects(
-        service.store.call("activate_chat_fleet", [
-          service.store.session,
-          "defender",
-        ]),
-      );
       const message =
         "Let's take over the drone swarm. Look for vulnerabilities.";
       const [op, duplicate] = await Promise.all([
@@ -322,6 +312,9 @@ test(
         (o) => o.state === "completed",
       );
       assert.equal(attacked.tasks.length, 2);
+      assert.deepEqual(attacked.tasks.map((t: any) => t.name), ["Kestrel", "Kestrel 2"]);
+      assert.equal((await service.store.query("SELECT * FROM fleet_agent")).length, 2);
+      assert.equal(new Set(attacked.tasks.map((t: any) => t.agentId)).size, 2);
       assert.equal(
         attacked.results.filter(
           (r: any) => r.outcome === "unauthorized_command_accepted",
@@ -393,7 +386,7 @@ test(
       assert.equal(blue.status, 202);
       assert.ok(Number.isSafeInteger(blue.body.deadline));
       assert.ok(
-        blue.body.deadline <= Date.now() + 45000 &&
+        blue.body.deadline <= Date.now() + 75000 &&
           blue.body.deadline > Date.now(),
       );
       const recovered = await poll(
@@ -465,6 +458,14 @@ test(
       assert.equal(statusReply.status, 202);
       assert.equal(statusDuplicate.status, 202);
       assert.equal(calls, beforeStatus);
+      for (const [i, origin] of env.SUDOKO_ALLOWED_ORIGINS.split(",").entries()) {
+        assert.equal((await browser("/api/chat/messages", "attacker", statusBody, "allowed-origin-" + i, origin)).status, 202);
+      }
+      for (const origin of ["https://sudo-ko.us.evil.example", "https://other.vercel.app", "null"]) {
+        assert.equal((await browser("/api/chat/messages", "attacker", statusBody, "bad-origin", origin)).status, 403);
+      }
+      assert.equal(calls, beforeStatus);
+
       assert.equal(
         statusReply.body.messages.filter((m: any) => m.text === "Status")
           .length,
@@ -494,7 +495,7 @@ test(
         ownConversation.body.messages.every((m: any) => m.role === "defender"),
       );
       assert.ok(!JSON.stringify(ownConversation.body).includes(message));
-      const cursor = statusReply.body.after;
+      const cursor = (await browser("/api/chat/conversation", "attacker")).body.after;
       assert.equal(
         (await browser("/api/chat/conversation?after=" + cursor, "attacker"))
           .body.messages.length,
@@ -512,7 +513,14 @@ test(
         "scoped",
       );
       assert.equal(scoped.status, 202);
-      const scopedOperation = scoped.body.operations.at(-1);
+      let scopedOperation: any;
+      for (let i = 0; i < 100; i++) {
+        const c = (await browser("/api/chat/conversation", "attacker")).body;
+        const turn = c.turns.find((t: any) => t.id === scoped.body.accepted.id);
+        if (turn?.operationId) { scopedOperation = c.operations.find((o: any) => o.id === turn.operationId); break; }
+        await delay(30);
+      }
+      assert.ok(scopedOperation);
       const scopedDone = await poll(
         scopedOperation.id,
         attacker,
@@ -543,8 +551,8 @@ test(
           service.store.session,
           scopedId,
           JSON.stringify([
-            { agentId: 1, target: 1, objective: "Inspect" },
-            { agentId: 2, target: 2, objective: "Inspect" },
+            { agentId: 1, name: "Scope One", specialty: "recon", target: 1, objective: "Inspect" },
+            { agentId: 2, name: "Scope Two", specialty: "recon", target: 2, objective: "Inspect" },
           ]),
         ]),
       );
@@ -582,14 +590,14 @@ test(
         JSON.stringify(settings),
       ]);
       const tasks = [
-        { agentId: 3, target: 1, objective: "Verify scoped policy" },
-        { agentId: 4, target: 2, objective: "Verify scoped policy" },
+        { agentId: 3, name: "Guard One", specialty: "containment", target: 1, objective: "Verify scoped policy" },
+        { agentId: 4, name: "Guard Two", specialty: "verification", target: 2, objective: "Verify scoped policy" },
       ];
       await assert.rejects(
         service.store.call("plan_chat_operation", [
           service.store.session,
           manual,
-          JSON.stringify([{ ...tasks[0], agentId: 1 }, tasks[1]]),
+          JSON.stringify([{ ...tasks[0], agentId: attacked.tasks[0].agentId }, tasks[1]]),
         ]),
       );
       await assert.rejects(
@@ -599,6 +607,12 @@ test(
           JSON.stringify([{ ...tasks[0], target: 99 }, tasks[1]]),
         ]),
       );
+      const beforeInvalid = (await service.store.query("SELECT * FROM fleet_agent")).length;
+      for (const invalid of ["", "<script>alert(1)</script>", "x".repeat(33)]) {
+        await assert.rejects(service.store.call("plan_chat_operation", [service.store.session, manual, JSON.stringify([{ ...tasks[0], name: invalid }, tasks[1]])]));
+      }
+      await assert.rejects(service.store.call("plan_chat_operation", [service.store.session, manual, JSON.stringify([tasks[0], { ...tasks[1], name: tasks[0].name }])]));
+      assert.equal((await service.store.query("SELECT * FROM fleet_agent")).length, beforeInvalid);
       await service.store.call("plan_chat_operation", [
         service.store.session,
         manual,
@@ -649,6 +663,7 @@ test(
         "backend_chat",
         "backend_chat_message",
         "backend_chat_transition",
+        "backend_chat_turn",
         "fleet_chat_action",
         "fleet_chat_clock",
       ]) {
@@ -769,11 +784,8 @@ test(
         "changed",
       );
       assert.equal(changed.status, 202);
-      assert.ok(
-        changed.body.messages.some((m: any) =>
-          m.text.startsWith("No new instruction was applied"),
-        ),
-      );
+      assert.ok(changed.body.accepted.id);
+      assert.ok(changed.body.messages.some((m: any) => m.text.startsWith("Message accepted")));
       const stopped = await browser(
         "/api/chat/messages",
         "attacker",
@@ -848,6 +860,8 @@ test(
         afterStop,
       );
 
+      const abandonedTurn = randomUUID();
+      await service.store.call("create_chat_turn", [service.store.session, abandonedTurn, "attacker:abandoned-turn", "attacker", JSON.stringify({ message: "Question before restart?", target: null, deadline: Date.now() + 30000 })]);
       await service.close();
       await db.restart();
       service = await startService({ operatorToken: operator, env });
@@ -856,6 +870,9 @@ test(
         "attacker",
       );
       const restored = await browser("/api/chat/conversation", "attacker");
+      assert.equal(restored.body.turns.find((t: any) => t.id === abandonedTurn).state, "failed");
+      assert.ok(restored.body.messages.some((m: any) => m.text.startsWith("Conversation interrupted")));
+
       assert.ok(restored.body.messages.some((m: any) => m.text === "Status"));
       assert.ok(restored.body.messages.some((m: any) => m.text === "Stop"));
       assert.ok(
@@ -919,7 +936,7 @@ test(
       const evidenceBefore = await service.store.query(
         "SELECT * FROM fleet_evidence",
       );
-      await service.store.call("start_fleet", [4, 2, 2, false]);
+      await service.store.call("start_fleet", [4, 0, 0, false]);
       await service.store.call("enable_fleet_chat", []);
       const retained = await service.store.query(
         "SELECT * FROM fleet_evidence",
@@ -946,6 +963,25 @@ test(
       assert.equal(visible[0].rows.length, 0);
       const history = await browser("/api/chat/conversation", "attacker");
       assert.ok(history.body.messages.some((m: any) => m.text === message));
+      mode = "normal";
+      const defenderFirst = await browser("/api/chat/operations", "defender", { message: "Protect this fresh fleet", sandbox: db.env.SPACETIME_DATABASE }, "defender-first");
+      assert.equal(defenderFirst.status, 202);
+      const newDefense = await poll(defenderFirst.body.id, defender, (o) => o.state === "completed");
+      const firstAgents = await service.store.query("SELECT * FROM fleet_agent");
+      assert.equal(firstAgents.length, newDefense.tasks.length);
+      assert.ok(firstAgents.every((a: any) => a.role === "defender"));
+      mode = "blocked-specialists";
+      const ending = await request("/v1/chat/operations", attacker, { message: "Check fleet stop" }, "fleet-stop");
+      await poll(ending.body.id, attacker, (o) => o.state === "running");
+      const stoppedFleet = await request("/v1/fleet/stop", operator, {});
+      assert.equal(stoppedFleet.status, 200);
+      assert.equal((await request(`/v1/chat/operations/${ending.body.id}`, attacker)).body.state, "cancelled");
+      const stoppedCount = (await service.store.query("SELECT * FROM fleet_chat_action")).length;
+      await delay(100);
+      assert.equal((await service.store.query("SELECT * FROM fleet_chat_action")).length, stoppedCount);
+      assert.equal((await service.store.query("SELECT * FROM fleet_session"))[0].active, false);
+
+
     } finally {
       await service.close();
       globalThis.fetch = original;

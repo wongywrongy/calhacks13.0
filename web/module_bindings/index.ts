@@ -37,6 +37,7 @@ import {
 import AcquireBackendReducer from "./acquire_backend_reducer";
 import ActivateChatFleetReducer from "./activate_chat_fleet_reducer";
 import CreateChatOperationReducer from "./create_chat_operation_reducer";
+import CreateChatTurnReducer from "./create_chat_turn_reducer";
 import EnableFleetChatReducer from "./enable_fleet_chat_reducer";
 import EnqueueBackendRunReducer from "./enqueue_backend_run_reducer";
 import ExecuteFleetChatActionReducer from "./execute_fleet_chat_action_reducer";
@@ -52,11 +53,13 @@ import StartFleetReducer from "./start_fleet_reducer";
 import StopFleetReducer from "./stop_fleet_reducer";
 import TransitionBackendRunReducer from "./transition_backend_run_reducer";
 import UpdateChatOperationReducer from "./update_chat_operation_reducer";
+import UpdateChatTurnReducer from "./update_chat_turn_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
 import ArenaSnapshotRow from "./arena_snapshot_table";
+import VisibleAgentProfilesRow from "./visible_agent_profiles_table";
 import VisibleAgentsRow from "./visible_agents_table";
 import VisibleBackendEventsRow from "./visible_backend_events_table";
 import VisibleBackendRunsRow from "./visible_backend_runs_table";
@@ -79,6 +82,13 @@ const tablesSchema = __schema({
       { name: 'arena_snapshot_slot_key', constraint: 'unique', columns: ['slot'] },
     ],
   }, ArenaSnapshotRow),
+  visibleAgentProfiles: __table({
+    name: 'visible_agent_profiles',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleAgentProfilesRow),
   visibleAgents: __table({
     name: 'visible_agents',
     indexes: [
@@ -128,6 +138,7 @@ const reducersSchema = __reducers(
   __reducerSchema("acquire_backend", AcquireBackendReducer),
   __reducerSchema("activate_chat_fleet", ActivateChatFleetReducer),
   __reducerSchema("create_chat_operation", CreateChatOperationReducer),
+  __reducerSchema("create_chat_turn", CreateChatTurnReducer),
   __reducerSchema("enable_fleet_chat", EnableFleetChatReducer),
   __reducerSchema("enqueue_backend_run", EnqueueBackendRunReducer),
   __reducerSchema("execute_fleet_chat_action", ExecuteFleetChatActionReducer),
@@ -143,6 +154,7 @@ const reducersSchema = __reducers(
   __reducerSchema("stop_fleet", StopFleetReducer),
   __reducerSchema("transition_backend_run", TransitionBackendRunReducer),
   __reducerSchema("update_chat_operation", UpdateChatOperationReducer),
+  __reducerSchema("update_chat_turn", UpdateChatTurnReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
@@ -153,6 +165,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
   tables: typeof tablesSchema.schemaType.tables & {
     /** @deprecated Use `arenaSnapshot` instead. This alias will be removed in the next major version. */
     readonly "arena_snapshot": Omit<typeof tablesSchema.schemaType.tables["arenaSnapshot"], "accessorName"> & { readonly accessorName: "arena_snapshot" };
+    /** @deprecated Use `visibleAgentProfiles` instead. This alias will be removed in the next major version. */
+    readonly "visible_agent_profiles": Omit<typeof tablesSchema.schemaType.tables["visibleAgentProfiles"], "accessorName"> & { readonly accessorName: "visible_agent_profiles" };
     /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
     readonly "visible_agents": Omit<typeof tablesSchema.schemaType.tables["visibleAgents"], "accessorName"> & { readonly accessorName: "visible_agents" };
     /** @deprecated Use `visibleBackendEvents` instead. This alias will be removed in the next major version. */
@@ -184,6 +198,7 @@ const REMOTE_MODULE = {
 
 const tableAccessorAliases = {
   "arena_snapshot": "arenaSnapshot",
+  "visible_agent_profiles": "visibleAgentProfiles",
   "visible_agents": "visibleAgents",
   "visible_backend_events": "visibleBackendEvents",
   "visible_backend_runs": "visibleBackendRuns",
@@ -212,6 +227,8 @@ type __DbViewBase = __DbConnectionImpl<typeof REMOTE_MODULE>["db"];
 export type DbView = __DbViewBase & {
   /** @deprecated Use `arenaSnapshot` instead. This alias will be removed in the next major version. */
   readonly "arena_snapshot": __DbViewBase["arenaSnapshot"];
+  /** @deprecated Use `visibleAgentProfiles` instead. This alias will be removed in the next major version. */
+  readonly "visible_agent_profiles": __DbViewBase["visibleAgentProfiles"];
   /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
   readonly "visible_agents": __DbViewBase["visibleAgents"];
   /** @deprecated Use `visibleBackendEvents` instead. This alias will be removed in the next major version. */
@@ -230,6 +247,8 @@ type __TablesBase = __QueryBuilder<typeof tablesSchema.schemaType>;
 export type Tables = __TablesBase & {
   /** @deprecated Use `arenaSnapshot` instead. This alias will be removed in the next major version. */
   readonly "arena_snapshot": __TablesBase["arenaSnapshot"];
+  /** @deprecated Use `visibleAgentProfiles` instead. This alias will be removed in the next major version. */
+  readonly "visible_agent_profiles": __TablesBase["visibleAgentProfiles"];
   /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
   readonly "visible_agents": __TablesBase["visibleAgents"];
   /** @deprecated Use `visibleBackendEvents` instead. This alias will be removed in the next major version. */

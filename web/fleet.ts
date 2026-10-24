@@ -26,6 +26,8 @@ type Agent = {
   step: number;
   target: number;
   last_action: string;
+  name?: string;
+  specialty?: string;
 };
 type Ev = {
   id: number;
@@ -46,7 +48,7 @@ const el = (tag: string, cls = "", text: unknown = "") => {
   return n;
 };
 const tag = (id: number) => "DR-" + String(id).padStart(3, "0");
-const agentName = (id: number) => "Agent " + String(id).padStart(2, "0");
+const agentName = (id: number) => frame.agents.find((a) => a.id === id)?.name || workerFor(id)?.name || "Agent " + String(id).padStart(2, "0");
 const clock = (s: number) =>
   `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const ACCEPTED = "unauthorized_command_accepted",
@@ -65,6 +67,7 @@ let role: Role = "defender",
   close = () => {},
   version = 0,
   live = false,
+  socketConnected = false,
   lastReceived = 0,
   filter: "all" | "problems" | "you" = "all",
   onlySel = false,
@@ -75,6 +78,7 @@ const shown: Record<Role, number> = { attacker: 0, defender: 0, observer: 0 };
 let operationChat: OperationChat | undefined;
 let modelDriven = false,
   fleetEpoch = 0,
+  coordinatorModel = "",
   chatError = "";
 const workerFor = (id: number): Worker | undefined =>
   operationChat?.operations
@@ -372,7 +376,7 @@ function rail(host: HTMLElement, s: RailSpec, d: Derived) {
   const chips = el("div", "chipgrid");
   chips.setAttribute("role", "group");
   chips.setAttribute("aria-label", s.chipsLabel);
-  if (!s.chips.length) chips.append(el("span", "none", "none"));
+  if (!s.chips.length) chips.append(el("span", "none", "No drones held"));
   for (const id of s.chips) {
     const b = el("button", "chip", tag(id));
     b.append(el("span", "", heldFor(d, id)));
@@ -381,6 +385,11 @@ function rail(host: HTMLElement, s: RailSpec, d: Derived) {
     chips.append(b);
   }
   const ul = el("ul", "cards");
+  if (!s.agents.length) {
+    const empty = el("li", "empty-agents");
+    empty.append(el("b", "", "No agents deployed"), el("span", "", "Send an objective through chat to deploy specialists."));
+    ul.append(empty);
+  }
   for (const a of [...s.agents].sort((x, y) => x.id - y.id)) {
     const [state, doing] = agentLine(a, d);
     const b = el("button", "agent");
@@ -621,22 +630,17 @@ function entries(d: Derived): Entry[] {
       you: false,
     };
   });
-  for (const m of operationChat?.messages ?? []) {
-    if (m.speaker !== "operator") continue;
-    out.push({
-      at: m.at * 1000,
-      id: 0,
-      drone: m.target,
-      actorId: -1,
-      actor: "You",
-      cls: "c-white",
-      text: ` submitted “${m.text}”.`,
-      problem: false,
-      you: true,
-      operationId: m.operation,
-      status: "submitted",
+  for (const t of operationChat?.turns ?? []) if (t.state === "failed" && t.error && (!t.metric?.epoch || t.metric.epoch === fleetEpoch)) out.push({
+    at: t.updatedAt * 1000, id: 0, drone: 0, actorId: 0, actor: agentOf(), cls: "c-team",
+    text: ` request failed · ${t.error}`, problem: true, you: false, status: "failed",
+  });
+  for (const o of (operationChat?.operations ?? []).filter((o) => o.epoch === fleetEpoch))
+    for (const w of o.workers) out.push({
+      at: (w.deployedAt ?? o.createdAt) * 1000, id: 0, drone: w.target, actorId: w.agentId,
+      actor: w.name || agentName(w.agentId), cls: "c-team",
+      text: ` deployed · ${w.specialty || "specialist"} · ${tag(w.target)}`,
+      problem: false, you: true, operationId: o.id, status: "deployed",
     });
-  }
   for (const o of (operationChat?.operations ?? []).filter(
     (o) => o.epoch === fleetEpoch,
   ))
@@ -779,20 +783,22 @@ function chat(d: Derived) {
   if (role === "observer") return;
   $("chat-name").textContent = agentOf();
   const op = operationChat?.operation;
+  const turn = operationChat?.pendingTurn;
+  const latestTurn = operationChat?.turns.at(-1);
+  const turnStatus = latestTurn?.state === "failed" || latestTurn?.state === "cancelled" ? latestTurn.state
+    : latestTurn?.state === "completed" && ["answer", "clarify"].includes(latestTurn.intent ?? "") ? latestTurn.intent === "answer" ? "answered" : "clarification" : "";
   $("chat-sub").textContent =
-    chatError ||
+    chatError || turn?.state || turnStatus ||
     (op
       ? op.state
-      : role === "attacker"
-        ? "attacking FC-01"
-        : "defending FC-01");
+      : modelDriven ? "Awaiting objective" : role === "attacker" ? "attacking FC-01" : "defending FC-01");
+  $("provider").textContent = modelDriven ? `Bitdeer · ${op?.models?.coordinator || coordinatorModel}` : "Fixture decisions";
   $("chat-sub").title = chatError || op?.state || "";
-  typing.hidden = !operationChat?.sending && !activeOperation(op);
+  typing.hidden = !operationChat?.sending && !activeOperation(op) && !turn;
   typing.textContent = operationChat?.sending
     ? "sending…"
-    : op?.state === "planning"
-      ? "planning…"
-      : "working…";
+    : turn ? turn.state === "queued" ? "queued for coordinator…" : "considering your request…"
+      : op?.state === "planning" ? "validating deployment…" : "working…";
   ($("say") as HTMLInputElement).disabled =
     (modelDriven && !operationChat) || !!operationChat?.sending;
   ($("say") as HTMLInputElement).placeholder = `Message ${agentOf()}`;
@@ -805,7 +811,7 @@ function chat(d: Derived) {
       el(
         "div",
         "bubble hint",
-        "Say something, or click a drone to talk about it.",
+        "Send an objective to deploy specialists, or select a drone for context.",
       ),
       typing,
     );
@@ -1566,8 +1572,10 @@ function render(next: Frame) {
 }
 function setStatus(text: string, kind: "live" | "stale" | "replay") {
   const p = $("live");
-  p.textContent =
-    kind === "live" ? "Live" : kind === "stale" ? "Stale" : "Replay";
+  p.textContent = kind === "live" && modelDriven
+    ? operationChat?.fleet?.active === false ? "Fleet ended"
+      : `Live · ${activeOperation(operationChat?.operation) ? "Agents running" : operationChat?.operation?.state === "completed" ? "Completed" : operationChat?.operation?.state === "failed" ? "Failed" : operationChat?.operation?.state === "cancelled" ? "Stopped" : "Awaiting objective"}`
+    : kind === "live" ? "Live" : kind === "stale" ? text.startsWith("Disconnected") ? "Disconnected" : "Stale" : "Replay";
   p.className = "pill " + (kind === "live" ? "" : kind);
   p.title = text;
 }
@@ -1575,6 +1583,8 @@ async function workspace(next: Role) {
   if (next === role && operationChat) return;
   const v = ++version;
   close();
+  socketConnected = false;
+  lastReceived = 0;
   operationChat?.close();
   operationChat = undefined;
   role = next;
@@ -1625,6 +1635,7 @@ async function workspace(next: Role) {
   sessionStorage.setItem("sudoko.role", role);
   fleetEpoch = config.epoch;
   modelDriven = !!config.authenticated;
+  coordinatorModel = config.models?.coordinator || "";
   $("rail-right").hidden = role !== "observer";
   $("chat").hidden = role === "observer";
   document
@@ -1643,6 +1654,7 @@ async function workspace(next: Role) {
       config.sandbox,
       role,
       () => {
+        chatError = "";
         chats[role] = operationChat!.messages.map((m) => ({
           id: m.id,
           who: m.speaker === "operator" ? "you" : "agent",
@@ -1657,12 +1669,6 @@ async function workspace(next: Role) {
     );
     void operationChat.resume();
   }
-  if (config.authenticated) {
-    $("mode-summary").textContent =
-      `${config.demo ? "Hackathon demo · " : ""}Model operations · SpacetimeDB reducer simulation · more ▴`;
-    $("mode-description").textContent =
-      "Role-bound model operations execute owned simulation reducers. The activity log shows committed evidence. Stop cancels your operation; Status reports measured results. Changed objectives require stopping first. The HTTP practice suite is separate. Terrain and flight are simulated.";
-  }
   const conn = DbConnection.builder()
     .withUri(config.uri)
     .withDatabaseName(config.database)
@@ -1672,6 +1678,7 @@ async function workspace(next: Role) {
         c.disconnect();
         return;
       }
+      socketConnected = true;
       let queued = false;
       const update = () => {
         if (queued) return;
@@ -1694,7 +1701,7 @@ async function workspace(next: Role) {
             );
           render({
             drones: [...c.db.visibleDrones.iter()].map(snake) as Drone[],
-            agents: [...c.db.visibleAgents.iter()].map(snake) as Agent[],
+            agents: [...c.db.visibleAgents.iter()].map((a) => ({ ...snake(a), ...snake([...c.db.visibleAgentProfiles.iter()].find((p) => p.id === a.id) ?? {}) })) as Agent[],
             events: ([...c.db.visibleEvidence.iter()].map(snake) as Ev[]).sort(
               (a, b) => a.id - b.id,
             ),
@@ -1704,6 +1711,7 @@ async function workspace(next: Role) {
       for (const table of [
         c.db.visibleDrones,
         c.db.visibleAgents,
+        c.db.visibleAgentProfiles,
         c.db.visibleEvidence,
       ] as any[]) {
         table.onInsert(update);
@@ -1715,14 +1723,15 @@ async function workspace(next: Role) {
         .subscribe([
           "SELECT * FROM visible_drones",
           "SELECT * FROM visible_agents",
+          "SELECT * FROM visible_agent_profiles",
           "SELECT * FROM visible_evidence",
         ]);
     })
     .onConnectError(() => {
-      if (v === version) setStatus("Disconnected · state frozen", "stale");
+      if (v === version) { socketConnected = false; setStatus("Disconnected · state frozen", "stale"); }
     })
     .onDisconnect(() => {
-      if (v === version) setStatus("Disconnected · state frozen", "stale");
+      if (v === version) { socketConnected = false; setStatus("Disconnected · state frozen", "stale"); }
     })
     .build();
   close = () => conn.disconnect();
@@ -1900,8 +1909,12 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && modalAgent) closeModal();
 });
 setInterval(() => {
-  if (live && lastReceived && Date.now() - lastReceived > 5000)
-    setStatus("No recent updates · state frozen", "stale");
+  if (!live) return;
+  if (!socketConnected) { setStatus("Disconnected · state frozen", "stale"); return; }
+  const updated = modelDriven ? operationChat?.lastUpdated || lastReceived : lastReceived;
+  if (updated && Date.now() - updated > 5000)
+    setStatus("No recent backend updates · state frozen", "stale");
+  else setStatus("Connected · role-scoped state", "live");
 }, 1000);
 function nearest(event: MouseEvent) {
   const bounds = host.getBoundingClientRect();

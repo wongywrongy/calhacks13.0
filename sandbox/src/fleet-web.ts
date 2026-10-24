@@ -8,7 +8,7 @@ import {
 import { readFile } from "node:fs/promises";
 import { readJson, send } from "./server.ts";
 import { StoreError, RunStore } from "./run-store.ts";
-import { FleetChat, type ChatRole } from "./fleet-chat.ts";
+import { FleetChat, chatModels, type ChatRole } from "./fleet-chat.ts";
 import type { spacetimeConfig } from "./spacetime.ts";
 
 // Browser sessions carry only an encrypted, already-granted viewer credential.
@@ -25,6 +25,8 @@ export function fleetWeb(options: {
     .update("sudoko-fleet-session:" + options.secret)
     .digest();
   const publicOrigin = env.SUDOKO_PUBLIC_ORIGIN;
+  const allowedOrigins = new Set([publicOrigin, ...(env.SUDOKO_ALLOWED_ORIGINS || "").split(",")].filter((s): s is string => !!s));
+  for (const origin of allowedOrigins) if (new URL(origin).origin !== origin) throw Error("SUDOKO_ALLOWED_ORIGINS must contain exact origins");
   const demo = env.SUDOKO_DEMO_MODE === "1";
   if (publicOrigin && new URL(publicOrigin).origin !== publicOrigin)
     throw Error("SUDOKO_PUBLIC_ORIGIN must be an origin");
@@ -146,10 +148,11 @@ export function fleetWeb(options: {
     if (url.pathname !== "/fleet-config" && !url.pathname.startsWith("/api/"))
       return false;
     res.setHeader("cache-control", "no-store");
-    // The configured ingress origin, or exact loopback host, is the CSRF boundary.
-    const origin = publicOrigin || `http://${req.headers.host}`;
+    // Only explicitly configured origins (or loopback development) may mutate state.
+    const origin = req.headers.origin && allowedOrigins.has(req.headers.origin)
+      ? req.headers.origin : publicOrigin || `http://${req.headers.host}`;
     if (
-      !publicOrigin &&
+      !publicOrigin && !allowedOrigins.has(origin) &&
       !["127.0.0.1", "localhost", "[::1]"].includes(new URL(origin).hostname)
     )
       throw new StoreError(
@@ -203,7 +206,7 @@ export function fleetWeb(options: {
       send(res, {
         status: 200,
         body: {
-          uri: env.FLEET_PUBLIC_URI || fleet.uri,
+          uri: (url.searchParams.get("internet") === "1" ? env.FLEET_INTERNET_URI : undefined) || env.FLEET_PUBLIC_URI || fleet.uri,
           database: fleet.database,
           sandbox: fleet.database,
           role: viewer.role,
@@ -214,6 +217,7 @@ export function fleetWeb(options: {
           chat: viewer.role !== "observer",
           epoch: fleetState?.epoch,
           engine: fixtures ? "fixture" : "bitdeer",
+          models: chatModels(env),
         },
       });
       return true;

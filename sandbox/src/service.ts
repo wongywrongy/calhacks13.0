@@ -136,6 +136,10 @@ export async function startService(options: {
     env,
   });
   await store.open(maxActive, maxQueued);
+  const [initialFleet] = await store.query("SELECT * FROM fleet_session");
+  if (!initialFleet || (initialFleet.active && Number(initialFleet.deadline) !== 0))
+    await store.call("activate_chat_fleet", [store.session, "attacker"]);
+  if (env.BITDEER_API_KEY) await store.call("enable_fleet_chat", []);
   const active = new Map<
     string,
     { abort: AbortController; done: Promise<void> }
@@ -534,18 +538,18 @@ export async function startService(options: {
           fail(400, "Explicit hardened boolean required");
         await fleetCall("start_fleet", [
           integer(b.drones, 1, 256, "drones"),
-          integer(b.attackers, 1, 32, "attackers"),
-          integer(b.defenders, 1, 32, "defenders"),
+          integer(b.attackers, 0, 32, "attackers"),
+          integer(b.defenders, 0, 32, "defenders"),
           b.hardened,
         ]);
         if (env.BITDEER_API_KEY) await fleetCall("enable_fleet_chat", []);
         return send(res, {
           status: 200,
-          body: { started: true, engine: "fixture", durationMs: 60000 },
+          body: { started: true, engine: b.attackers + b.defenders ? "fixture" : "awaiting-objective", durationMs: b.attackers + b.defenders ? 60000 : null },
         });
       }
       if (req.method === "POST" && url.pathname === "/v1/fleet/stop") {
-        await fleetCall("stop_fleet", []);
+        await chat.endFleet();
         return send(res, { status: 200, body: { stopped: true } });
       }
       if (req.method === "POST" && url.pathname === "/v1/fleet/grants") {

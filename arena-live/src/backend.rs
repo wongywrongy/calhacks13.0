@@ -96,6 +96,10 @@ pub fn acquire_backend(
         ctx.db.backend_run().id().update(r);
     }
     for mut r in ctx.db.backend_chat().iter().filter(|r|["planning","running"].contains(&r.state.as_str())) { chat_transition(ctx,&r.id,"interrupted"); append_chat_message(ctx,format!("{}:terminal",r.id),&r.role,&r.id,"coordinator","Operation interrupted by backend restart. No automatic resumption.".into(),0)?; r.state="interrupted".into(); ctx.db.backend_chat().id().update(r); }
+    for mut t in ctx.db.backend_chat_turn().iter().filter(|t|["queued","running"].contains(&t.state.as_str())) {
+        append_chat_message(ctx,format!("{}:reply",t.id),&t.role,"","coordinator","Conversation interrupted by backend restart. Please retry your request.".into(),0)?;
+        t.state="failed".into();t.updated=now(ctx);ctx.db.backend_chat_turn().id().update(t);
+    }
     ctx.db.backend_lease().id().delete(0);
     ctx.db.backend_lease().insert(Lease {
         id: 0,
@@ -333,13 +337,16 @@ pub fn create_chat_operation(ctx: &ReducerContext, session: String, id: String, 
     if ctx.db.backend_chat().iter().any(|r|r.role==role && ["planning","running"].contains(&r.state.as_str())) {return Err("Role operation already active".into())}
     let v:serde_json::Value=serde_json::from_str(&config).map_err(|_|"Invalid config")?;
     let deadline=v["deadline"].as_i64().ok_or("Missing deadline")?;
-    if deadline<=now(ctx)||deadline>now(ctx)+45000||v["maxDecisionsPerAgent"].as_u64()!=Some(8)||v["maxModelCalls"].as_u64()!=Some(33) {return Err("Invalid operation budget".into())}
+    if deadline<=now(ctx)||deadline>now(ctx)+75000||v["maxDecisionsPerAgent"].as_u64()!=Some(8)||v["maxModelCalls"].as_u64()!=Some(33) {return Err("Invalid operation budget".into())}
     crate::fleet::validate_chat_fleet(ctx,epoch)?;
     let target=v["target"].as_u64().unwrap_or(0);
     if !v["target"].is_null() && (target==0||target>u32::MAX as u64){return Err("Invalid selected target".into())}
     if target>0 {crate::fleet::validate_chat_target(ctx,&role,target as u32)?;}
     let message=v["message"].as_str().ok_or("Missing objective")?;
-    append_chat_message(ctx,format!("{}:user",key),&role,&id,"operator",message.into(),target as u32)?;
+    if let Some(turn_id)=v["turnId"].as_str(){
+        let turn=ctx.db.backend_chat_turn().id().find(turn_id.to_string()).ok_or("Turn missing")?;
+        if turn.role!=role||turn.state!="running"{return Err("Turn outside role or inactive".into())}
+    }else{append_chat_message(ctx,format!("{}:user",key),&role,&id,"operator",message.into(),target as u32)?;}
     append_chat_message(ctx,format!("{}:planning",id),&role,&id,"coordinator","Planning a bounded operation. No action has executed yet.".into(),target as u32)?;
     crate::fleet::enable_fleet_chat(ctx)?;
     chat_transition(ctx,&id,"planning");
@@ -357,14 +364,18 @@ pub fn plan_chat_operation(ctx:&ReducerContext,session:String,id:String,tasks:St
     let entries=assignments.as_array().ok_or("Invalid assignments")?;
     if !(2..=4).contains(&entries.len()) {return Err("Require 2..4 specialists".into())}
     let mut used=std::collections::HashSet::new();
+    let mut names=std::collections::HashSet::new();
     for t in entries {
         let a=t["agentId"].as_u64().filter(|n|*n<=u32::MAX as u64).ok_or("Invalid agent")? as u32;
         let d=t["target"].as_u64().filter(|n|*n<=u32::MAX as u64).ok_or("Invalid target")? as u32;
-        if !used.insert(a)||t.as_object().map(|o|o.len())!=Some(3)||t["objective"].as_str().map(|s|s.trim().is_empty()||s.len()>1200).unwrap_or(true) {return Err("Invalid assignment".into())}
+        if !used.insert(a)||t.as_object().map(|o|o.len())!=Some(5)||t["objective"].as_str().map(|s|s.trim().is_empty()||s.len()>1200).unwrap_or(true) {return Err("Invalid assignment".into())}
         if let Some(target)=v["target"].as_u64(){if target!=d as u64{return Err("Outside selected target".into())}}
-        crate::fleet::validate_chat_assignment(ctx,&r.role,r.epoch,a,d)?;
+        let name=t["name"].as_str().ok_or("Missing name")?;
+        let specialty=t["specialty"].as_str().ok_or("Missing specialty")?;
+        if name.is_empty()||name.chars().count()>32||name.trim()!=name||!name.chars().all(|c|c.is_ascii_alphanumeric()||c==' '||c=='-')||!names.insert(name.to_ascii_lowercase())||specialty.is_empty()||specialty.len()>48||!specialty.chars().all(|c|c.is_ascii_alphanumeric()||c==' '||c=='-'){return Err("Invalid specialist name or specialty".into())}
+        crate::fleet::deploy_chat_agent(ctx,&r.role,r.epoch,a,d,name,specialty,&id)?;
     }
-    let detail=entries.iter().map(|t|format!("Agent {} → DR-{:03}: {}",t["agentId"].as_u64().unwrap(),t["target"].as_u64().unwrap(),t["objective"].as_str().unwrap())).collect::<Vec<_>>().join("\n");
+    let detail=entries.iter().map(|t|format!("{} ({}) → DR-{:03}: {}",t["name"].as_str().unwrap(),t["specialty"].as_str().unwrap(),t["target"].as_u64().unwrap(),t["objective"].as_str().unwrap())).collect::<Vec<_>>().join("\n");
     append_chat_message(ctx,format!("{}:plan",id),&r.role,&id,"coordinator",format!("Validated assignments (instructions, not results):\n{}",detail),v["target"].as_u64().unwrap_or(0) as u32)?;
     v["tasks"]=assignments;r.config=v.to_string();r.state="running".into();
     chat_transition(ctx,&id,"running");ctx.db.backend_chat().id().update(r);Ok(())
@@ -431,4 +442,51 @@ pub fn activate_chat_fleet(ctx:&ReducerContext,session:String,role:String)->Resu
  lease(ctx,&session)?;
  if !["attacker","defender"].contains(&role.as_str()){return Err("Invalid role".into())}
  crate::fleet::activate_chat_fleet(ctx,&role)
+}
+
+
+pub(crate) fn has_agent_assignment(ctx:&ReducerContext,epoch:u64,id:u32)->bool {
+    ctx.db.backend_chat().iter().filter(|r|r.epoch==epoch).any(|r| {
+        serde_json::from_str::<serde_json::Value>(&r.config).ok().and_then(|v|v["tasks"].as_array().cloned()).map(|tasks|tasks.iter().any(|t|t["agentId"].as_u64()==Some(id as u64))).unwrap_or(false)
+    })
+}
+
+// Conversation inference is durable and role-private; it is not a deployed operation.
+#[table(accessor=backend_chat_turn)]
+pub struct ChatTurn {
+    #[primary_key] id:String,
+    #[unique] request_key:String,
+    #[index(btree)] role:String,
+    state:String,
+    config:String,
+    result:String,
+    created:i64,
+    updated:i64,
+}
+#[reducer]
+pub fn create_chat_turn(ctx:&ReducerContext,session:String,id:String,key:String,role:String,config:String)->Result<(),String>{
+    lease(ctx,&session)?;
+    if id.len()!=36||key.len()>120||!["attacker","defender"].contains(&role.as_str())||config.len()>12000{return Err("Invalid conversation turn".into())}
+    if let Some(old)=ctx.db.backend_chat_turn().request_key().find(&key){return if old.role==role&&old.config==config{Ok(())}else{Err("Idempotency conflict".into())}}
+    if ctx.db.backend_chat_turn().role().filter(role.as_str()).any(|t|["queued","running"].contains(&t.state.as_str())){return Err("Conversation already pending".into())}
+    let v:serde_json::Value=serde_json::from_str(&config).map_err(|_|"Invalid turn config")?;
+    let message=v["message"].as_str().filter(|m|!m.trim().is_empty()&&m.len()<=8000).ok_or("Invalid message")?;
+    let target=v["target"].as_u64().unwrap_or(0);
+    let deadline=v["deadline"].as_i64().ok_or("Missing turn deadline")?;
+    if deadline<=now(ctx)||deadline>now(ctx)+30000||target>256{return Err("Invalid turn budget".into())}
+    if target>0{crate::fleet::validate_chat_target(ctx,&role,target as u32)?;}
+    append_chat_message(ctx,format!("{}:user",key),&role,"","operator",message.into(),target as u32)?;
+    append_chat_message(ctx,format!("{}:accepted",id),&role,"","coordinator","Message accepted. Considering your request…".into(),target as u32)?;
+    ctx.db.backend_chat_turn().insert(ChatTurn{id,request_key:key,role,state:"queued".into(),config,result:"{}".into(),created:now(ctx),updated:now(ctx)});Ok(())
+}
+#[reducer]
+pub fn update_chat_turn(ctx:&ReducerContext,session:String,id:String,state:String,result:String,reply:String)->Result<(),String>{
+    lease(ctx,&session)?;
+    let mut t=ctx.db.backend_chat_turn().id().find(&id).ok_or("Turn missing")?;
+    if !["queued","running"].contains(&t.state.as_str())||!["queued","running","completed","failed","cancelled"].contains(&state.as_str())||result.len()>20000||reply.len()>8000{return Err("Invalid turn transition".into())}
+    serde_json::from_str::<serde_json::Value>(&result).map_err(|_|"Invalid turn result")?;
+    if !["queued","running"].contains(&state.as_str()){
+        append_chat_message(ctx,format!("{}:reply",id),&t.role,"","coordinator",reply,0)?;
+    }
+    t.state=state;t.result=result;t.updated=now(ctx);ctx.db.backend_chat_turn().id().update(t);Ok(())
 }

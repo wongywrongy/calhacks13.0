@@ -1,0 +1,45 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "output/vercel-static",
+  "rewrites": [
+    {
+      "source": "/fleet-config",
+      "destination": "https://neo.taile1abc7.ts.net/fleet-config?internet=1"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://neo.taile1abc7.ts.net/api/:path*"
+    },
+    {
+      "source": "/signin",
+      "destination": "https://neo.taile1abc7.ts.net/signin"
+    },
+    {
+      "source": "/healthz",
+      "destination": "https://neo.taile1abc7.ts.net/healthz"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/fleet-config",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    },
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    }
+  ]
+}

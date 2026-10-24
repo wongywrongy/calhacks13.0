@@ -14,6 +14,12 @@ pub struct Drone { #[primary_key] id:u32, #[index(btree)] epoch:u64, x:f32,y:f32
 #[table(accessor=fleet_agent)]
 #[derive(Clone)]
 pub struct Agent { #[primary_key] id:u32, #[index(btree)] epoch:u64, role:String, step:u32, target:u32, last_action:String }
+#[table(accessor=fleet_agent_profile)]
+#[derive(Clone)]
+pub struct AgentProfile { #[primary_key] pub id:u32, #[index(btree)] epoch:u64, role:String, name:String, specialty:String, operation:String }
+#[view(accessor=visible_agent_profiles,public)]
+pub fn visible_agent_profiles(ctx:&ViewContext)->Vec<AgentProfile>{let r=role(ctx);let Some(s)=ctx.db.fleet_session().id().find(0)else{return vec![]};ctx.db.fleet_agent_profile().epoch().filter(s.epoch).filter(|a|r=="observer"||a.role==r).collect()}
+
 #[table(accessor=fleet_evidence)]
 #[derive(Clone)]
 pub struct Evidence { #[primary_key] #[auto_inc] id:u64, #[index(btree)] epoch:u64, at:i64, actor:u32, drone:u32, kind:String, status:u32, policy_version:u32 }
@@ -42,12 +48,13 @@ fn emit(ctx:&ReducerContext,epoch:u64,actor:u32,d:&Drone,kind:&str,status:u32){c
 pub fn grant_fleet_view(ctx:&ReducerContext,identity:String,role:String)->Result<(),String>{owner(ctx)?;let identity=Identity::from_hex(identity).map_err(|_|"Invalid identity")?;if !["attacker","defender","observer"].contains(&role.as_str()){return Err("Invalid role".into())} if ctx.db.fleet_principal().identity().find(identity).is_some(){ctx.db.fleet_principal().identity().update(Principal{identity,role});}else{ctx.db.fleet_principal().insert(Principal{identity,role});} Ok(())}
 #[reducer]
 pub fn start_fleet(ctx:&ReducerContext,drones:u32,attackers:u32,defenders:u32,hardened:bool)->Result<(),String>{
- owner(ctx)?;if !(1..=256).contains(&drones)||!(1..=32).contains(&attackers)||!(1..=32).contains(&defenders){return Err("Fleet/agent limits exceeded".into())}
+ owner(ctx)?;if !(1..=256).contains(&drones)||!(0..=32).contains(&attackers)||!(0..=32).contains(&defenders){return Err("Fleet/agent limits exceeded".into())}
  let epoch=ctx.db.fleet_session().id().find(0).map(|s|s.epoch+1).unwrap_or(1);
  ctx.db.fleet_chat_clock().id().delete(0);
  for d in ctx.db.drone_schedule().iter(){ctx.db.drone_schedule().id().delete(d.id);} for a in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(a.id);}
  for d in ctx.db.fleet_drone().iter(){ctx.db.fleet_drone().id().delete(d.id);}for a in ctx.db.fleet_agent().iter(){ctx.db.fleet_agent().id().delete(a.id);}for d in ctx.db.fleet_discovery().iter(){ctx.db.fleet_discovery().drone().delete(d.drone);}for h in ctx.db.fleet_hold().iter(){ctx.db.fleet_hold().drone().delete(h.drone);}
- ctx.db.fleet_session().id().delete(0);ctx.db.fleet_session().insert(Session{id:0,epoch,active:true,hardened,drones,deadline:ctx.timestamp.to_micros_since_unix_epoch()+60_000_000});
+ ctx.db.fleet_session().id().delete(0);ctx.db.fleet_session().insert(Session{id:0,epoch,active:true,hardened,drones,deadline:if attackers+defenders==0{0}else{ctx.timestamp.to_micros_since_unix_epoch()+60_000_000}});
+ if attackers+defenders==0{ctx.db.fleet_chat_clock().insert(ChatClock{id:0,epoch,started:ctx.timestamp.to_micros_since_unix_epoch()});}
  for id in 1..=drones{let (x,y,z)=formation::formation(id,0.);ctx.db.fleet_drone().insert(Drone{id,epoch,x,y,z,battery:100.,tick:0,controller:"defender".into(),isolated:hardened,policy_version:0,commands:0,rejected:0});ctx.db.drone_schedule().insert(DroneSchedule{id:id as u64,epoch,scheduled_at:Duration::from_millis(180+(id%7) as u64*20).into()});}
  for id in 1..=attackers+defenders{let role=if id<=attackers{"attacker"}else{"defender"};ctx.db.fleet_agent().insert(Agent{id,epoch,role:role.into(),step:0,target:(id-1)%drones+1,last_action:"ready".into()});ctx.db.agent_schedule().insert(AgentSchedule{id:id as u64,epoch,scheduled_at:Duration::from_millis(350+(id%9) as u64*37).into()});}Ok(())
 }
@@ -82,6 +89,10 @@ pub fn visible_evidence(ctx:&ViewContext)->Vec<Evidence>{let r=role(ctx);if r.is
 #[reducer]
 pub fn enable_fleet_chat(ctx:&ReducerContext)->Result<(),String>{
  owner(ctx)?;
+ // Retire unused fixture seeds, preserving every worker referenced by actual plans or evidence.
+ for a in ctx.db.fleet_agent().iter(){
+  if !crate::backend::has_agent_assignment(ctx,a.epoch,a.id)&&!ctx.db.fleet_evidence().epoch().filter(a.epoch).any(|e|e.actor==a.id){ctx.db.fleet_agent().id().delete(a.id);}
+ }
  for t in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(t.id);}
  Ok(())
 }
@@ -114,11 +125,6 @@ pub fn execute_fleet_chat_action(ctx:&ReducerContext,session:String,operation:St
 pub(crate) fn validate_chat_fleet(ctx:&ReducerContext,epoch:u64)->Result<(),String>{
  if !live(ctx,epoch){return Err("Fleet inactive or stale".into())}Ok(())
 }
-pub(crate) fn validate_chat_assignment(ctx:&ReducerContext,role:&str,epoch:u64,agent:u32,target:u32)->Result<(),String>{
- let a=ctx.db.fleet_agent().id().find(agent).ok_or("Agent missing")?;
- let d=ctx.db.fleet_drone().id().find(target).ok_or("Drone missing")?;
- if a.role!=role||a.epoch!=epoch||d.epoch!=epoch{return Err("Outside role or epoch".into())}Ok(())
-}
 #[derive(spacetimedb::SpacetimeType)]
 pub struct FleetAccess { identity:Identity, role:String }
 #[view(accessor=visible_fleet_access,public)]
@@ -132,12 +138,12 @@ pub(crate) fn validate_chat_target(ctx:&ReducerContext,role:&str,target:u32)->Re
  if role=="attacker" && ctx.db.fleet_discovery().drone().find(target).map(|r|r.epoch)!=Some(d.epoch){return Err("Selected drone is not visible".into())}Ok(())
 }
 
-// Called only by the leased backend after authenticating the first attacker objective.
+// Called only by the leased backend. Session movement is independent of operation budgets.
 pub(crate) fn activate_chat_fleet(ctx:&ReducerContext,role:&str)->Result<(),String>{
  owner(ctx)?;
  if let Some(s)=ctx.db.fleet_session().id().find(0){if s.active&&s.deadline==0{return Ok(())}}
- if role!="attacker"{return Err("Waiting for the first attacker objective".into())}
- if ctx.db.fleet_session().id().find(0).is_none(){start_fleet(ctx,48,2,2,false)?;}
+ if !["attacker","defender"].contains(&role){return Err("Invalid role".into())}
+ if ctx.db.fleet_session().id().find(0).is_none(){start_fleet(ctx,48,0,0,false)?;}
  let mut s=ctx.db.fleet_session().id().find(0).unwrap();
  if ctx.db.fleet_chat_clock().id().find(0).is_none(){ctx.db.fleet_chat_clock().insert(ChatClock{id:0,epoch:s.epoch,started:if s.deadline>0{s.deadline-60_000_000}else{ctx.timestamp.to_micros_since_unix_epoch()}});}
  s.deadline=0;s.active=true;
@@ -146,4 +152,14 @@ pub(crate) fn activate_chat_fleet(ctx:&ReducerContext,role:&str)->Result<(),Stri
  }
  ctx.db.fleet_session().id().update(s);
  enable_fleet_chat(ctx)
+}
+
+
+pub(crate) fn deploy_chat_agent(ctx:&ReducerContext,role:&str,epoch:u64,id:u32,target:u32,name:&str,specialty:&str,operation:&str)->Result<(),String>{
+ if id==0||ctx.db.fleet_agent().id().find(id).is_some()||ctx.db.fleet_agent_profile().id().find(id).is_some(){return Err("Agent identity collision".into())}
+ let d=ctx.db.fleet_drone().id().find(target).ok_or("Drone missing")?;
+ if d.epoch!=epoch||!["attacker","defender"].contains(&role){return Err("Outside role or epoch".into())}
+ ctx.db.fleet_agent().insert(Agent{id,epoch,role:role.into(),step:0,target,last_action:"deployed".into()});
+ ctx.db.fleet_agent_profile().insert(AgentProfile{id,epoch,role:role.into(),name:name.into(),specialty:specialty.into(),operation:operation.into()});
+ Ok(())
 }
