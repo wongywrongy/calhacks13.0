@@ -11,8 +11,8 @@ implementations plus labelled historical prototypes.
 | Historical prototypes | none | `arena/` (initial SpacetimeDB module) and `web/index.html` (mock timeline). Not run by any script, not a security authority. `docs/STEER.md` and `docs/PRESENTATION_READY.md` are planning documents from before fleet mode. |
 
 Fleet command checks run inside database reducers; the HTTP suite makes real HTTP
-requests. Both use fixture decisions unless a Bitdeer model is configured for the HTTP
-suite. Neither is a real drone or flight-controller test.
+requests. The HTTP suite and fleet demos support fixture decisions. Authenticated fleet chat uses
+Bitdeer model decisions exclusively; see [FLEET_CHAT_API.md](docs/FLEET_CHAT_API.md). Neither is a real drone or flight-controller test.
 
 ## Fleet mode
 
@@ -158,7 +158,7 @@ played back. The board HTTP service is read-only and listens on loopback.
 
 For actual model decisions, configure `BITDEER_API_KEY` and `BITDEER_MODEL`, then
 run `npm run demo -- --engine bitdeer --autorun`. Missing credentials fail rather
-than silently switching to fixtures. Live inference has not yet been verified.
+than silently switching to fixtures. Credentialed fleet-chat inference is recorded in docs/FLEET_CHAT_VALIDATION.md; the HTTP path is tested separately.
 
 For SpacetimeDB 2.13.0, build `arena-live` with a Rust toolchain and the
 `wasm32-unknown-unknown` target using `npm run spacetime:build`. Start a local
@@ -189,3 +189,12 @@ The static preview does not execute new attacks or connect to a live backend.
 `npm run build:fleet`, and `SPACETIME_BINARY=… npm run test:fleet`. Regenerate
 `web/module_bindings` with `npm run spacetime:bindings` whenever `arena-live` changes.
 Docker isolation and live Bitdeer inference remain separate unverified gates.
+
+## Model-driven fleet chat
+
+The existing attacker/defender chat can run authenticated Bitdeer operations on one live
+SpacetimeDB fleet. Build the fleet UI, configure the server `.env`, and run `npm run backend`.
+Use granted viewer identities at `/signin`; browser role selection never grants permissions.
+See [FLEET_CHAT_API.md](docs/FLEET_CHAT_API.md) for setup, budgets and the start/read/stop
+contract, and [FLEET_CHAT_VALIDATION.md](docs/FLEET_CHAT_VALIDATION.md) for verification.
+The fleet reducer simulation remains separate from the HTTP practice suite.

@@ -23,7 +23,12 @@
     "build:fleet": "esbuild web/fleet.ts --bundle --format=esm --minify --outfile=web/dist/fleet.js",
     "test:fleet": "node scripts/check-fleet.ts",
     "demo:fleet": "npm run build:fleet && node scripts/check-fleet.ts --serve",
-    "export:fleet": "npm run build:fleet && node scripts/export-fleet.ts"
+    "export:fleet": "npm run build:fleet && node scripts/export-fleet.ts",
+    "backend": "node --env-file-if-exists=.env sandbox/src/service.ts",
+    "test:backend-fleet": "node scripts/check-backend-fleet.ts",
+    "test:backend-load": "node scripts/check-backend-load.ts",
+    "test:fleet-chat": "node scripts/check-fleet-chat.ts --mock",
+    "smoke:fleet-chat": "node --env-file=.env scripts/check-fleet-chat.ts"
   },
   "dependencies": {
     "spacetimedb": "2.13.0",

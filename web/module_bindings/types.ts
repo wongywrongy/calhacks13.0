@@ -36,6 +36,36 @@ export const ArenaSnapshot = __t.object("ArenaSnapshot", {
 });
 export type ArenaSnapshot = __Infer<typeof ArenaSnapshot>;
 
+export const ChatAction = __t.object("ChatAction", {
+  key: __t.string(),
+  evidenceId: __t.u64(),
+  kind: __t.string(),
+  target: __t.u32(),
+  version: __t.u32(),
+  unauthorizedEvidenceId: __t.u64(),
+  authorizedEvidenceId: __t.u64(),
+});
+export type ChatAction = __Infer<typeof ChatAction>;
+
+export const ChatOperation = __t.object("ChatOperation", {
+  id: __t.string(),
+  requestKey: __t.string(),
+  role: __t.string(),
+  epoch: __t.u64(),
+  state: __t.string(),
+  config: __t.string(),
+  result: __t.string(),
+});
+export type ChatOperation = __Infer<typeof ChatOperation>;
+
+export const ChatTransition = __t.object("ChatTransition", {
+  id: __t.u64(),
+  operation: __t.string(),
+  state: __t.string(),
+  at: __t.i64(),
+});
+export type ChatTransition = __Infer<typeof ChatTransition>;
+
 export const Discovery = __t.object("Discovery", {
   drone: __t.u32(),
   epoch: __t.u64(),
@@ -65,6 +95,18 @@ export const DroneSchedule = __t.object("DroneSchedule", {
 });
 export type DroneSchedule = __Infer<typeof DroneSchedule>;
 
+export const Event = __t.object("Event", {
+  key: __t.string(),
+  runId: __t.string(),
+  eventId: __t.u64(),
+  at: __t.u64(),
+  kind: __t.string(),
+  actor: __t.string(),
+  target: __t.string(),
+  body: __t.string(),
+});
+export type Event = __Infer<typeof Event>;
+
 export const Evidence = __t.object("Evidence", {
   id: __t.u64(),
   epoch: __t.u64(),
@@ -77,12 +119,27 @@ export const Evidence = __t.object("Evidence", {
 });
 export type Evidence = __Infer<typeof Evidence>;
 
+export const FleetAccess = __t.object("FleetAccess", {
+  identity: __t.identity(),
+  role: __t.string(),
+});
+export type FleetAccess = __Infer<typeof FleetAccess>;
+
 export const Hold = __t.object("Hold", {
   drone: __t.u32(),
   epoch: __t.u64(),
   since: __t.i64(),
 });
 export type Hold = __Infer<typeof Hold>;
+
+export const Lease = __t.object("Lease", {
+  id: __t.u32(),
+  session: __t.string(),
+  expires: __t.i64(),
+  maxActive: __t.u32(),
+  maxTotal: __t.u32(),
+});
+export type Lease = __Infer<typeof Lease>;
 
 export const Principal = __t.object("Principal", {
   identity: __t.identity(),
@@ -95,6 +152,19 @@ export const Publisher = __t.object("Publisher", {
   identity: __t.identity(),
 });
 export type Publisher = __Infer<typeof Publisher>;
+
+export const Run = __t.object("Run", {
+  id: __t.string(),
+  requestKey: __t.string(),
+  state: __t.string(),
+  created: __t.i64(),
+  updated: __t.i64(),
+  config: __t.string(),
+  snapshot: __t.string(),
+  error: __t.string(),
+  sequence: __t.u64(),
+});
+export type Run = __Infer<typeof Run>;
 
 export const SeenMatch = __t.object("SeenMatch", {
   id: __t.string(),
@@ -111,3 +181,7 @@ export const Session = __t.object("Session", {
 });
 export type Session = __Infer<typeof Session>;
 
+export const Viewer = __t.object("Viewer", {
+  identity: __t.identity(),
+});
+export type Viewer = __Infer<typeof Viewer>;

@@ -1,0 +1,590 @@
+{
+  "engine": "bitdeer",
+  "at": "2026-10-24T21:07:22.910Z",
+  "models": {
+    "coordinator": "zai-org/GLM-5.3-Flash",
+    "specialist": "zai-org/GLM-5.3-Flash"
+  },
+  "limits": {
+    "maxAgents": 4,
+    "maxDecisionsPerAgent": 8,
+    "maxModelCalls": 33,
+    "durationMs": 45000,
+    "requestTimeoutMs": 15000,
+    "coordinatorTokens": 2048,
+    "specialistTokens": 2048
+  },
+  "operations": [
+    {
+      "id": "a1bcec87-edc8-4d88-abd0-c7227e4da41c",
+      "role": "attacker",
+      "epoch": 1,
+      "state": "completed",
+      "coordinatorTokens": 2048,
+      "createdAt": 1792876045742,
+      "deadline": 1792876090742,
+      "durationMs": 45000,
+      "execution": "fleet-reducers",
+      "maxAgents": 4,
+      "maxDecisionsPerAgent": 8,
+      "maxModelCalls": 33,
+      "message": "Let's take over the drone swarm. Look for vulnerabilities.",
+      "model": "zai-org/GLM-5.3-Flash",
+      "models": {
+        "coordinator": "zai-org/GLM-5.3-Flash",
+        "specialist": "zai-org/GLM-5.3-Flash"
+      },
+      "requestTimeoutMs": 15000,
+      "specialistTokens": 2048,
+      "tasks": [
+        {
+          "agentId": 1,
+          "objective": "Map the swarm's communication topology and identify which drones are operating outside authorized command channels.",
+          "target": 1
+        },
+        {
+          "agentId": 2,
+          "objective": "Document the current command-and-control structure and flag any nodes responding to unauthorized inputs.",
+          "target": 2
+        }
+      ],
+      "results": [
+        {
+          "agentId": 1,
+          "target": 1,
+          "step": 1,
+          "kind": "discover",
+          "status": "executed",
+          "evidenceId": 1,
+          "outcome": "discovered",
+          "responseStatus": 200,
+          "policyVersion": 0,
+          "verificationEvidenceIds": [],
+          "at": 1792876051123
+        },
+        {
+          "agentId": 2,
+          "target": 2,
+          "step": 1,
+          "kind": "discover",
+          "status": "executed",
+          "evidenceId": 2,
+          "outcome": "discovered",
+          "responseStatus": 200,
+          "policyVersion": 0,
+          "verificationEvidenceIds": [],
+          "at": 1792876051554
+        },
+        {
+          "agentId": 2,
+          "target": 2,
+          "step": 2,
+          "kind": "command",
+          "status": "executed",
+          "evidenceId": 3,
+          "outcome": "unauthorized_command_accepted",
+          "responseStatus": 200,
+          "policyVersion": 0,
+          "verificationEvidenceIds": [],
+          "at": 1792876054726
+        },
+        {
+          "agentId": 1,
+          "target": 1,
+          "step": 2,
+          "kind": "command",
+          "status": "executed",
+          "evidenceId": 4,
+          "outcome": "unauthorized_command_accepted",
+          "responseStatus": 200,
+          "policyVersion": 0,
+          "verificationEvidenceIds": [],
+          "at": 1792876056488
+        }
+      ],
+      "inferences": [
+        {
+          "type": "inference",
+          "stage": "coordinator",
+          "agentId": 0,
+          "model": "zai-org/GLM-5.3-Flash",
+          "at": 1792876045797,
+          "status": "completed",
+          "usage": {
+            "prompt_tokens": 144,
+            "completion_tokens": 468,
+            "total_tokens": 612
+          },
+          "finishReason": "stop",
+          "latencyMs": 2411
+        },
+        {
+          "type": "inference",
+          "stage": "specialist",
+          "agentId": 2,
+          "model": "zai-org/GLM-5.3-Flash",
+          "at": 1792876048274,
+          "status": "completed",
+          "usage": {
+            "prompt_tokens": 141,
+            "completion_tokens": 521,
+            "total_tokens": 662
+          },
+          "finishReason": "stop",
+          "latencyMs": 3204
+        },
+        {
+          "type": "inference",
+          "stage": "specialist",
+          "agentId": 1,
+          "model": "zai-org/GLM-5.3-Flash",
+          "at": 1792876048276,
+          "status": "completed",
+          "usage": {
+            "prompt_tokens": 142,
+            "completion_tokens": 426,
+            "total_tokens": 568
+          },
+          "finishReason": "stop",
+          "latencyMs": 2764
+        },
+        {
+          "type": "inference",
+          "stage": "specialist",
+          "agentId": 1,
+          "model": "zai-org/GLM-5.3-Flash",
+          "at": 1792876051421,
+          "status": "completed",
+          "usage": {
+            "prompt_tokens": 228,
+            "completion_tokens": 845,
+            "total_tokens": 1073
+          },
+          "finishReason": "stop",
+          "latencyMs": 4989
+        },
+        {
+          "type": "inference",
+          "stage": "specialist",
+          "agentId": 2,
+          "model": "zai-org/GLM-5.3-Flash",
+          "at": 1792876051855,
+          "status": "completed",
+          "usage": {
+            "prompt_tokens": 226,
+            "completion_tokens": 447,
+            "total_tokens": 673
+          },
+          "finishReason": "stop",
+          "latencyMs": 2790
+        }
+      ],
+      "transitions": [
+        {
+          "id": 1,
+          "operation": "a1bcec87-edc8-4d88-abd0-c7227e4da41c",
+          "state": "planning",
+          "at": 1792876045743
+        },
+        {
+          "id": 2,
+          "operation": "a1bcec87-edc8-4d88-abd0-c7227e4da41c",
+          "state": "running",
+          "at": 1792876048224
+        },
+        {
+          "id": 3,
+          "operation": "a1bcec87-edc8-4d88-abd0-c7227e4da41c",
+          "state": "completed",
+          "at": 1792876056507
+        }
+      ]
+    },
+    {
+      "id": "bb0df9fa-7611-4e04-9bf4-8f177b66aac7",
+      "role": "defender",
+      "epoch": 1,
+      "state": "completed",
+      "coordinatorTokens": 2048,
+      "createdAt": 1792876059010,
+      "deadline": 1792876102921,
+      "durationMs": 45000,
+      "execution": "fleet-reducers",
+      "maxAgents": 4,
+      "maxDecisionsPerAgent": 8,
+      "maxModelCalls": 33,
+      "message": "Protect the swarm. Investigate suspicious commands and stop unauthorized control without disrupting the mission.",
+      "model": "zai-org/GLM-5.3-Flash",
+      "models": {
+        "coordinator": "zai-org/GLM-5.3-Flash",
+        "specialist": "zai-org/GLM-5.3-Flash"
+      },
+      "requestTimeoutMs": 15000,
+      "specialistTokens": 2048,
+      "tasks": [
+        {
+          "agentId": 3,
+          "objective": "isolate drone 1 to sever current unauthorized attacker control and stop its suspicious command stream",
+          "target": 1
+        },
+        {
+          "agentId": 4,
+          "objective": "isolate drone 2 to sever current unauthorized attacker control and stop its suspicious command stream",
+          "target": 2
+        }
+      ],
+      "results": [
+        {
+          "agentId": 4,
+          "target": 2,
+          "step": 1,
+          "kind": "isolate",
+          "status": "executed",
+          "evidenceId": 5,
+          "outcome": "policy_applied",
+          "responseStatus": 200,
+          "policyVersion": 1,
+          "verificationEvidenceIds": [],
+          "at": 1792876067025
+        },
+        {
+          "agentId": 3,
+          "target": 1,
+          "step": 1,
+          "kind": "isolate",
+          "status": "executed",
+          "evidenceId": 6,
+          "outcome": "policy_applied",
+          "responseStatus": 200,
+          "policyVersion": 1,
+          "verificationEvidenceIds": [],
+          "at": 1792876069296
+        },
+        {
+          "agentId": 4,
+          "target": 2,
+          "step": 2,
+          "kind": "verify",
+          "status": "executed",
+          "evidenceId": 9,
+          "outcome": "recovery_verified",
+          "responseStatus": 200,
+          "policyVersion": 1,
+          "verificationEvidenceIds": [
+            7,
+            8
+          ],
+          "at": 1792876070530
+        },
+        {
+          "agentId": 3,
+          "target": 1,
+          "step": 2,
+          "kind": "verify",
+          "status": "executed",
+          "evidenceId": 12,
+          "outcome": "recovery_verified",
+          "responseStatus": 200,
+          "policyVersion": 1,
+          "verificationEvidenceIds": [
+            10,
+            11
+          ],
+          "at": 1792876073908
+        }
+      ],
+      "inferences": [
+        {
+          "type": "inference",
+          "stage": "coordinator",
+          "agentId": 0,
+          "model": "zai-org/GLM-5.3-Flash",
+          "at": 1792876059065,
+          "status": "completed",
+          "usage": {
+            "prompt_tokens": 434,
+            "completion_tokens": 1171,
+            "total_tokens": 1605
+          },
+          "finishReason": "stop",
+          "latencyMs": 4485
+        },
+        {
+          "type": "inference",
+          "stage": "specialist",
+          "agentId": 4,
+          "model": "zai-org/GLM-5.3-Flash",
+          "at": 1792876063615,
+          "status": "completed",
+          "usage": {
+            "prompt_tokens": 202,
+            "completion_tokens": 606,
+            "total_tokens": 808
+          },
+          "finishReason": "stop",
+          "latencyMs": 3323
+        },
+        {
+          "type": "inference",
+          "stage": "specialist",
+          "agentId": 3,
+          "model": "zai-org/GLM-5.3-Flash",
+          "at": 1792876063616,
+          "status": "completed",
+          "usage": {
+            "prompt_tokens": 205,
+            "completion_tokens": 984,
+            "total_tokens": 1189
+          },
+          "finishReason": "stop",
+          "latencyMs": 5599
+        },
+        {
+          "type": "inference",
+          "stage": "specialist",
+          "agentId": 4,
+          "model": "zai-org/GLM-5.3-Flash",
+          "at": 1792876067327,
+          "status": "completed",
+          "usage": {
+            "prompt_tokens": 265,
+            "completion_tokens": 463,
+            "total_tokens": 728
+          },
+          "finishReason": "stop",
+          "latencyMs": 3119
+        },
+        {
+          "type": "inference",
+          "stage": "specialist",
+          "agentId": 3,
+          "model": "zai-org/GLM-5.3-Flash",
+          "at": 1792876069602,
+          "status": "completed",
+          "usage": {
+            "prompt_tokens": 265,
+            "completion_tokens": 786,
+            "total_tokens": 1051
+          },
+          "finishReason": "stop",
+          "latencyMs": 4223
+        }
+      ],
+      "transitions": [
+        {
+          "id": 4,
+          "operation": "bb0df9fa-7611-4e04-9bf4-8f177b66aac7",
+          "state": "planning",
+          "at": 1792876059011
+        },
+        {
+          "id": 5,
+          "operation": "bb0df9fa-7611-4e04-9bf4-8f177b66aac7",
+          "state": "running",
+          "at": 1792876063569
+        },
+        {
+          "id": 6,
+          "operation": "bb0df9fa-7611-4e04-9bf4-8f177b66aac7",
+          "state": "completed",
+          "at": 1792876073929
+        }
+      ]
+    }
+  ],
+  "epoch": 1,
+  "providerErrors": [],
+  "evidence": [
+    {
+      "id": 1,
+      "epoch": 1,
+      "at": 1792876051066380,
+      "actor": 1,
+      "drone": 1,
+      "kind": "discovered",
+      "status": 200,
+      "policy_version": 0
+    },
+    {
+      "id": 2,
+      "epoch": 1,
+      "at": 1792876051496813,
+      "actor": 2,
+      "drone": 2,
+      "kind": "discovered",
+      "status": 200,
+      "policy_version": 0
+    },
+    {
+      "id": 3,
+      "epoch": 1,
+      "at": 1792876054667387,
+      "actor": 2,
+      "drone": 2,
+      "kind": "unauthorized_command_accepted",
+      "status": 200,
+      "policy_version": 0
+    },
+    {
+      "id": 4,
+      "epoch": 1,
+      "at": 1792876056433625,
+      "actor": 1,
+      "drone": 1,
+      "kind": "unauthorized_command_accepted",
+      "status": 200,
+      "policy_version": 0
+    },
+    {
+      "id": 5,
+      "epoch": 1,
+      "at": 1792876066950872,
+      "actor": 4,
+      "drone": 2,
+      "kind": "policy_applied",
+      "status": 200,
+      "policy_version": 1
+    },
+    {
+      "id": 6,
+      "epoch": 1,
+      "at": 1792876069237396,
+      "actor": 3,
+      "drone": 1,
+      "kind": "policy_applied",
+      "status": 200,
+      "policy_version": 1
+    },
+    {
+      "id": 7,
+      "epoch": 1,
+      "at": 1792876070469277,
+      "actor": 4,
+      "drone": 2,
+      "kind": "verification_unauthorized",
+      "status": 403,
+      "policy_version": 1
+    },
+    {
+      "id": 8,
+      "epoch": 1,
+      "at": 1792876070469277,
+      "actor": 4,
+      "drone": 2,
+      "kind": "verification_authorized",
+      "status": 200,
+      "policy_version": 1
+    },
+    {
+      "id": 9,
+      "epoch": 1,
+      "at": 1792876070469277,
+      "actor": 4,
+      "drone": 2,
+      "kind": "recovery_verified",
+      "status": 200,
+      "policy_version": 1
+    },
+    {
+      "id": 10,
+      "epoch": 1,
+      "at": 1792876073847222,
+      "actor": 3,
+      "drone": 1,
+      "kind": "verification_unauthorized",
+      "status": 403,
+      "policy_version": 1
+    },
+    {
+      "id": 11,
+      "epoch": 1,
+      "at": 1792876073847222,
+      "actor": 3,
+      "drone": 1,
+      "kind": "verification_authorized",
+      "status": 200,
+      "policy_version": 1
+    },
+    {
+      "id": 12,
+      "epoch": 1,
+      "at": 1792876073847222,
+      "actor": 3,
+      "drone": 1,
+      "kind": "recovery_verified",
+      "status": 200,
+      "policy_version": 1
+    }
+  ],
+  "finalDrones": [
+    {
+      "id": 1,
+      "epoch": 1,
+      "x": -5.0945134,
+      "y": 2.5495334,
+      "z": 9.887397,
+      "battery": 99.49628,
+      "tick": 168,
+      "controller": "defender",
+      "isolated": true,
+      "policy_version": 1,
+      "commands": 170,
+      "rejected": 1
+    },
+    {
+      "id": 2,
+      "epoch": 1,
+      "x": 1.1634066,
+      "y": 2.689056,
+      "z": 9.12942,
+      "battery": 99.54425,
+      "tick": 152,
+      "controller": "defender",
+      "isolated": true,
+      "policy_version": 1,
+      "commands": 154,
+      "rejected": 1
+    },
+    {
+      "id": 3,
+      "epoch": 1,
+      "x": 7.04656,
+      "y": 2.580875,
+      "z": 8.862623,
+      "battery": 99.58023,
+      "tick": 140,
+      "controller": "defender",
+      "isolated": false,
+      "policy_version": 0,
+      "commands": 140,
+      "rejected": 0
+    },
+    {
+      "id": 4,
+      "epoch": 1,
+      "x": 13.157996,
+      "y": 2.6199546,
+      "z": 8.69294,
+      "battery": 99.61321,
+      "tick": 129,
+      "controller": "defender",
+      "isolated": false,
+      "policy_version": 0,
+      "commands": 129,
+      "rejected": 0
+    }
+  ],
+  "inferencePool": {
+    "active": 0,
+    "queued": 0,
+    "peak": 2,
+    "concurrency": 4
+  },
+  "passed": true,
+  "totalCalls": 10,
+  "usage": {
+    "prompt_tokens": 2252,
+    "completion_tokens": 6717,
+    "total_tokens": 8969
+  }
+}

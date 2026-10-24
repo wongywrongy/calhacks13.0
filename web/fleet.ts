@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { DbConnection } from "./module_bindings/index.ts";
+import { OperationChat, activeOperation, operationLines } from "./fleet-chat.ts";
 
 type Role = "attacker" | "defender" | "observer";
 type Drone = {
@@ -35,7 +36,7 @@ type Ev = {
 };
 type Frame = { drones: Drone[]; agents: Agent[]; events: Ev[] };
 type Msg =
-  | { who: "you" | "agent"; text: string; queued?: boolean }
+  | { who: "you" | "agent"; text: string }
   | { card: number };
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -73,6 +74,9 @@ let role: Role = "defender",
   version = 0,
   live = false,
   lastReceived = 0;
+let operationChat: OperationChat | undefined;
+let modelDriven = false;
+let chatError = "";
 const chats: Record<Role, Msg[]> = { attacker: [], defender: [], observer: [] };
 const pulled: Record<Role, Set<number>> = {
   attacker: new Set(),
@@ -444,7 +448,13 @@ function pull(id: number) {
 }
 function queue(text: string) {
   if (!text.trim()) return;
-  post({ who: "you", text, queued: true });
+  if (!operationChat) {
+    post({ who: "agent", text: "This view is read-only. Sign in to a live sandbox to deploy agents." });
+    render(frame);
+    return;
+  }
+  chatError = "";
+  void operationChat.submit(text.trim()).catch(e => {chatError=e.message;render(frame);});
   render(frame);
   $("transcript").scrollTop = 1e9;
 }
@@ -474,7 +484,7 @@ function ingest() {
   // Agent lines come only from real evidence rows that arrived after the baseline.
   const top = Math.max(0, ...frame.events.map((e) => e.id));
   if (!top) return;
-  if (seen[role])
+  if (seen[role] && !operationChat)
     for (const e of frame.events)
       if (e.id > seen[role] && (e.actor !== 0 || pulled[role].has(e.drone)))
         post({ who: "agent", text: summary(e) });
@@ -570,14 +580,23 @@ function chat(d: Derived) {
         el("span", "who " + (m.who === "you" ? "" : "agent"), m.who === "you" ? "YOU" : agent.toUpperCase()),
       );
       const body = el("span", "body", m.text);
-      if (m.queued) body.append(el("span", "queued", "queued"));
       row.append(body);
       return row;
     }),
   );
-  if (!chats[role].length)
+  if (operationChat?.operation) {
+    for (const [i,line] of operationLines(operationChat.operation).entries()) {
+      const row=el("div","msg");row.append(el("span",i===1?"who":"who agent",i===1?"YOU":agent.toUpperCase()),el("span","body",line));t.append(row);
+    }
+  } else if (operationChat?.sending) t.append(el("div","msg muted","Submitting objective…"));
+  if (chatError) t.append(el("div","msg",chatError));
+  if (!chats[role].length && !operationChat?.operation)
     t.append(el("div", "msg muted", "Click a drone or a status chip to pull up its asset card. Agent lines appear as evidence lands."));
   if (stick) t.scrollTop = t.scrollHeight;
+  const busy=operationChat?.sending || activeOperation(operationChat?.operation);
+  ($("say") as HTMLInputElement).disabled=Boolean(busy);
+  const submit=$("compose").querySelector<HTMLButtonElement>('button[type="submit"]');
+  if(submit)submit.disabled=Boolean(busy);
   const s = frame.drones.find((x) => x.id === selected);
   const tg = s ? tag(s.id) : "";
   const chips: [string, string, string][] =
@@ -597,11 +616,16 @@ function chat(d: Derived) {
   $("actions").replaceChildren(
     ...chips.map(([label, cls, text]) => {
       const b = el("button", cls, label) as HTMLButtonElement;
-      b.disabled = !text;
+      b.disabled = !text || Boolean(busy);
       b.onclick = () => queue(text);
       return b;
     }),
   );
+  if(activeOperation(operationChat?.operation)) {
+    const stop=el("button","","Stop operation") as HTMLButtonElement;
+    stop.onclick=()=>{stop.disabled=true;void operationChat!.stop().catch(e=>{chatError=e.message;render(frame);});};
+    $("actions").append(stop);
+  }
 }
 
 /* ---------- log ---------- */
@@ -1317,10 +1341,17 @@ function render(next: Frame) {
 function setStatus(text: string, dot: "live" | "down" | "") {
   $("status").textContent = text;
   $("live-dot").className = "dot " + dot;
+  if (modelDriven && !recording) {
+    $("mode-summary").replaceChildren(el("b","","Model-driven decisions · owned drone simulation"),document.createTextNode(" · outcomes require reducer evidence · terrain is schematic scenery · more ▴"));
+    $("mode-description").textContent="Authenticated chat deploys bounded specialists in this owned simulation. Plans are not executed actions; receipts link to committed SpacetimeDB evidence. Recovery requires unauthorized denial and legitimate acceptance. No HTTP penetration test or physical flight occurs. Terrain and the FC-01 mast are schematic scenery.";
+  }
 }
 async function workspace(next: Role) {
   const v = ++version;
   close();
+  operationChat?.close();
+  operationChat=undefined;
+  chatError="";
   role = next;
   selected = 0;
   selectedEvent = 0;
@@ -1332,7 +1363,7 @@ async function workspace(next: Role) {
     return;
   }
   const response = await fetch(`/fleet-config?role=${role}`);
-  if (!response.ok) throw Error("Could not load workspace access.");
+  if (!response.ok) throw Error(response.status===401 ? "Sign in with a granted sandbox identity at /signin." : "Could not load workspace access.");
   const config = await response.json();
   if (v !== version) return;
   if (config.recorded) {
@@ -1345,6 +1376,12 @@ async function workspace(next: Role) {
   live = true;
   $("playback").hidden = true;
   role = config.role;
+  modelDriven=config.engine==='bitdeer';
+  if(config.chat) {
+    operationChat=new OperationChat(config.sandbox,role,()=>{modelDriven=true;render(frame);},message=>{chatError=message;render(frame);});
+    void operationChat.resume().catch(e=>{chatError=e.message;render(frame);});
+  }
+  if(config.authenticated) document.querySelectorAll<HTMLButtonElement>('nav button').forEach(b=>b.disabled=b.dataset.role!==role);
   const conn = DbConnection.builder()
     .withUri(config.uri)
     .withDatabaseName(config.database)
@@ -1359,7 +1396,7 @@ async function workspace(next: Role) {
           queued = false;
           if (v !== version) return;
           lastReceived = Date.now();
-          setStatus("Live · fixture", "live");
+          setStatus(modelDriven ? "Live · model operations" : "Live · fixture", "live");
           const snake = (o: any) =>
             Object.fromEntries(
               Object.entries(o).map(([k, val]) => [
@@ -1576,5 +1613,6 @@ host.onclick = (event) => {
   if (id) pull(id);
 };
 void workspace("defender").catch((e) => {
-  $("error").textContent = `${e.message} Reload to retry.`;
+  $("error").textContent = `${e.message} `;
+  const link=el("a","","Sign in") as HTMLAnchorElement;link.href='/signin';$("error").append(link);
 });

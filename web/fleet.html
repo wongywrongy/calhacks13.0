@@ -1010,16 +1010,16 @@
     </main>
     <footer>
       <details>
-        <summary>
+        <summary id="mode-summary">
           <b>Fixture decisions · synthetic drone command service</b> · chat commands are
-          queued, not executed · terrain is schematic scenery · more ▴
+          read-only · terrain is schematic scenery · more ▴
         </summary>
-        <p>
+        <p id="mode-description">
           Fixture decisions · Synthetic drone command service · SpacetimeDB scheduled
           entities and identity-scoped views. The recorded demo permits switching between
           exported workspaces; live credentials only access their granted workspace. Chat
-          commands are queued locally: no operator-command reducers exist yet, so no agent
-          acts on them. Movement and battery are simulation state, not physical flight
+          input is read-only in fixture and recorded views. Model operations require an
+          authenticated live sandbox. Movement and battery are simulation state, not physical flight
           measurements. Terrain, sky and the FC-01 mast are schematic scenery, not measured
           geography.
         </p>

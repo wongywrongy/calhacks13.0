@@ -34,18 +34,33 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AcquireBackendReducer from "./acquire_backend_reducer";
+import CreateChatOperationReducer from "./create_chat_operation_reducer";
+import EnableFleetChatReducer from "./enable_fleet_chat_reducer";
+import EnqueueBackendRunReducer from "./enqueue_backend_run_reducer";
+import ExecuteFleetChatActionReducer from "./execute_fleet_chat_action_reducer";
+import GrantBackendViewerReducer from "./grant_backend_viewer_reducer";
 import GrantFleetViewReducer from "./grant_fleet_view_reducer";
+import HeartbeatBackendReducer from "./heartbeat_backend_reducer";
+import PlanChatOperationReducer from "./plan_chat_operation_reducer";
 import PublishSnapshotReducer from "./publish_snapshot_reducer";
+import ReleaseBackendReducer from "./release_backend_reducer";
+import SaveBackendSnapshotReducer from "./save_backend_snapshot_reducer";
 import StartFleetReducer from "./start_fleet_reducer";
 import StopFleetReducer from "./stop_fleet_reducer";
+import TransitionBackendRunReducer from "./transition_backend_run_reducer";
+import UpdateChatOperationReducer from "./update_chat_operation_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
 import ArenaSnapshotRow from "./arena_snapshot_table";
 import VisibleAgentsRow from "./visible_agents_table";
+import VisibleBackendEventsRow from "./visible_backend_events_table";
+import VisibleBackendRunsRow from "./visible_backend_runs_table";
 import VisibleDronesRow from "./visible_drones_table";
 import VisibleEvidenceRow from "./visible_evidence_table";
+import VisibleFleetAccessRow from "./visible_fleet_access_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -69,6 +84,20 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, VisibleAgentsRow),
+  visibleBackendEvents: __table({
+    name: 'visible_backend_events',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleBackendEventsRow),
+  visibleBackendRuns: __table({
+    name: 'visible_backend_runs',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleBackendRunsRow),
   visibleDrones: __table({
     name: 'visible_drones',
     indexes: [
@@ -83,14 +112,33 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, VisibleEvidenceRow),
+  visibleFleetAccess: __table({
+    name: 'visible_fleet_access',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleFleetAccessRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("acquire_backend", AcquireBackendReducer),
+  __reducerSchema("create_chat_operation", CreateChatOperationReducer),
+  __reducerSchema("enable_fleet_chat", EnableFleetChatReducer),
+  __reducerSchema("enqueue_backend_run", EnqueueBackendRunReducer),
+  __reducerSchema("execute_fleet_chat_action", ExecuteFleetChatActionReducer),
+  __reducerSchema("grant_backend_viewer", GrantBackendViewerReducer),
   __reducerSchema("grant_fleet_view", GrantFleetViewReducer),
+  __reducerSchema("heartbeat_backend", HeartbeatBackendReducer),
+  __reducerSchema("plan_chat_operation", PlanChatOperationReducer),
   __reducerSchema("publish_snapshot", PublishSnapshotReducer),
+  __reducerSchema("release_backend", ReleaseBackendReducer),
+  __reducerSchema("save_backend_snapshot", SaveBackendSnapshotReducer),
   __reducerSchema("start_fleet", StartFleetReducer),
   __reducerSchema("stop_fleet", StopFleetReducer),
+  __reducerSchema("transition_backend_run", TransitionBackendRunReducer),
+  __reducerSchema("update_chat_operation", UpdateChatOperationReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
@@ -103,10 +151,16 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "arena_snapshot": Omit<typeof tablesSchema.schemaType.tables["arenaSnapshot"], "accessorName"> & { readonly accessorName: "arena_snapshot" };
     /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
     readonly "visible_agents": Omit<typeof tablesSchema.schemaType.tables["visibleAgents"], "accessorName"> & { readonly accessorName: "visible_agents" };
+    /** @deprecated Use `visibleBackendEvents` instead. This alias will be removed in the next major version. */
+    readonly "visible_backend_events": Omit<typeof tablesSchema.schemaType.tables["visibleBackendEvents"], "accessorName"> & { readonly accessorName: "visible_backend_events" };
+    /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
+    readonly "visible_backend_runs": Omit<typeof tablesSchema.schemaType.tables["visibleBackendRuns"], "accessorName"> & { readonly accessorName: "visible_backend_runs" };
     /** @deprecated Use `visibleDrones` instead. This alias will be removed in the next major version. */
     readonly "visible_drones": Omit<typeof tablesSchema.schemaType.tables["visibleDrones"], "accessorName"> & { readonly accessorName: "visible_drones" };
     /** @deprecated Use `visibleEvidence` instead. This alias will be removed in the next major version. */
     readonly "visible_evidence": Omit<typeof tablesSchema.schemaType.tables["visibleEvidence"], "accessorName"> & { readonly accessorName: "visible_evidence" };
+    /** @deprecated Use `visibleFleetAccess` instead. This alias will be removed in the next major version. */
+    readonly "visible_fleet_access": Omit<typeof tablesSchema.schemaType.tables["visibleFleetAccess"], "accessorName"> & { readonly accessorName: "visible_fleet_access" };
   };
 };
 
@@ -127,8 +181,11 @@ const REMOTE_MODULE = {
 const tableAccessorAliases = {
   "arena_snapshot": "arenaSnapshot",
   "visible_agents": "visibleAgents",
+  "visible_backend_events": "visibleBackendEvents",
+  "visible_backend_runs": "visibleBackendRuns",
   "visible_drones": "visibleDrones",
   "visible_evidence": "visibleEvidence",
+  "visible_fleet_access": "visibleFleetAccess",
 } as const;
 
 function __withTableAccessorAliases<T extends object>(target: T, freeze = false): T {
@@ -153,10 +210,16 @@ export type DbView = __DbViewBase & {
   readonly "arena_snapshot": __DbViewBase["arenaSnapshot"];
   /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
   readonly "visible_agents": __DbViewBase["visibleAgents"];
+  /** @deprecated Use `visibleBackendEvents` instead. This alias will be removed in the next major version. */
+  readonly "visible_backend_events": __DbViewBase["visibleBackendEvents"];
+  /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
+  readonly "visible_backend_runs": __DbViewBase["visibleBackendRuns"];
   /** @deprecated Use `visibleDrones` instead. This alias will be removed in the next major version. */
   readonly "visible_drones": __DbViewBase["visibleDrones"];
   /** @deprecated Use `visibleEvidence` instead. This alias will be removed in the next major version. */
   readonly "visible_evidence": __DbViewBase["visibleEvidence"];
+  /** @deprecated Use `visibleFleetAccess` instead. This alias will be removed in the next major version. */
+  readonly "visible_fleet_access": __DbViewBase["visibleFleetAccess"];
 };
 
 type __TablesBase = __QueryBuilder<typeof tablesSchema.schemaType>;
@@ -165,10 +228,16 @@ export type Tables = __TablesBase & {
   readonly "arena_snapshot": __TablesBase["arenaSnapshot"];
   /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
   readonly "visible_agents": __TablesBase["visibleAgents"];
+  /** @deprecated Use `visibleBackendEvents` instead. This alias will be removed in the next major version. */
+  readonly "visible_backend_events": __TablesBase["visibleBackendEvents"];
+  /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
+  readonly "visible_backend_runs": __TablesBase["visibleBackendRuns"];
   /** @deprecated Use `visibleDrones` instead. This alias will be removed in the next major version. */
   readonly "visible_drones": __TablesBase["visibleDrones"];
   /** @deprecated Use `visibleEvidence` instead. This alias will be removed in the next major version. */
   readonly "visible_evidence": __TablesBase["visibleEvidence"];
+  /** @deprecated Use `visibleFleetAccess` instead. This alias will be removed in the next major version. */
+  readonly "visible_fleet_access": __TablesBase["visibleFleetAccess"];
 };
 
 /** The tables available in this remote SpacetimeDB module. Each table reference doubles as a query builder. */
@@ -217,4 +286,3 @@ export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
     return new SubscriptionBuilder(this);
   };
 }
-

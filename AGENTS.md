@@ -4,8 +4,9 @@ Read `docs/TARGET_SPEC.md`, `docs/STEER.md`, and `docs/SECURITY.md`. TARGET_SPEC
 the intended product and acceptance criteria; ARCHITECTURE describes what currently runs.
 TypeScript is used for clients and the practice service; Rust is reserved for SpacetimeDB.
 The runnable experiment is `sandbox/src/`. The drone fleet mode (`arena-live/src/fleet.rs`,
-`docs/FLEET.md`) is a separate simulation whose agents are fixture reducers on independent
-schedules, not LLM decision loops; the contracts below describe the HTTP suite.
+`docs/FLEET.md`) is a separate reducer simulation with both scheduled fixtures and
+model-driven chat operations (`docs/FLEET_CHAT_API.md`). Model operations disable security
+fixtures while movement continues; the role contracts below describe the HTTP suite.
 
 ## Implementation scope
 

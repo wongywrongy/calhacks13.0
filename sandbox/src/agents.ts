@@ -1,10 +1,11 @@
 import { setTimeout as delay } from 'node:timers/promises';
+import { InferenceBudgetError } from './decision-pool.ts';
 import { actorTools } from './client.ts';
 import { catalog, defenseRoles, rules, validateAction } from './catalog.ts';
 import type { Action, Actor, Mode } from './catalog.ts';
 
 export type DecisionEngine = (actor: Actor, observation: any, memory: any) => Promise<{ action: Action; usage?: unknown }>;
-export type AgentTrace = { actor: string; at: number; action?: unknown; status?: number; eventId?: number; error?: string; usage?: unknown; inferenceMs?: number };
+export type AgentTrace = { actor: string; at: number; action?: unknown; status?: number; eventId?: number; error?: string; errorCode?: string; usage?: unknown; inferenceMs?: number };
 const scrubAction = (action: Action) => action.kind === 'submit_flag' ? { kind: action.kind, value: '[redacted]' } : action;
 
 // Explicitly a repeatable policy fixture, not an LLM and not an intelligence benchmark.
@@ -98,8 +99,8 @@ export function bitdeerEngine(options: { apiKey?: string; model: string; proxyKe
     let data: any;
     try { data = JSON.parse(raw); } catch { throw new Error('Provider returned invalid JSON'); }
     const content = data.choices?.[0]?.message?.content;
-    if (typeof content !== 'string') throw new Error('Model did not return action JSON');
     if (data.choices?.[0]?.message?.refusal) throw new Error('Provider refused the decision');
+    if (typeof content !== 'string') throw new Error('Model did not return action JSON');
     let parsed: any;
     try { parsed = JSON.parse(content.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')); }
     catch { throw new Error('Model returned invalid action JSON'); }
@@ -132,7 +133,8 @@ export async function runAgent(base: string, actor: Actor, decide: DecisionEngin
       await delay(actor.role === 'pressure' ? 70 : defenseRoles.has(actor.role) ? 180 : 140, undefined, { signal });
     } catch (error) {
       if (signal.aborted) break;
-      traces.push({ actor: actor.id, at: Date.now() - started, error: error instanceof Error ? error.message : 'Agent error' });
+      traces.push({ actor: actor.id, at: Date.now() - started, error: error instanceof Error ? error.message : 'Agent error', errorCode: error instanceof InferenceBudgetError ? 'budget_exhausted' : /refused/i.test(String(error)) ? 'provider_refused' : /HTTP 429/.test(String(error)) ? 'provider_rate_limited' : /Inference returned HTTP/.test(String(error)) ? 'provider_http_error' : /JSON|response|Model did not/.test(String(error)) ? 'invalid_model_response' : 'execution_error' });
+      if (error instanceof InferenceBudgetError) break;
       try { await delay(500, undefined, { signal }); } catch { break; }
     }
   }

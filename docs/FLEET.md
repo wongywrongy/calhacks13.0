@@ -80,3 +80,13 @@ The camera fits the visible fleet with the actual frustum and aspect ratio (a 48
 A projected Canvas map is available when WebGL cannot initialize. Selection works through the map, status chips or log rows; a press that turns into a drag does not select. Playback pauses and scrubs. Inspecting an evidence row keeps that event pinned in the asset panel across live updates, and live redraws are coalesced to one per animation frame.
 
 Browser checks (2026-10-24, Chromium 1243 via Playwright against `demo:fleet` and the static export): per role, no data from outside its scope (no defense internals, battery or policy for the attacker; no discovery rows or attacker IDs for the defender), chat pull-up and queued commands, status values matching the evidence rows, evidence-row pinning, recorded play/scrub, backend disconnect freezes the last state, WebGL disabled falls back to the Canvas map, and the 390 px viewport has no horizontal overflow. The camera auto-frames the visible fleet, so a 48-drone run and a 256-drone run both fill the map.
+
+## Authenticated model operations
+
+The existing UI also connects to the backend's model-driven chat mode. Its sessions are
+derived from granted SpacetimeDB viewer identities. Coordinator plans, independent
+specialist decisions and action receipts are durable; the existing simulation reducers
+commit takeover, policy and verified recovery. Scheduled security fixtures are disabled
+while movement continues. The 4-second fixture detection delay does not govern model
+defenders. See [FLEET_CHAT_API.md](FLEET_CHAT_API.md) and
+[FLEET_CHAT_VALIDATION.md](FLEET_CHAT_VALIDATION.md).
