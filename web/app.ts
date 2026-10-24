@@ -25,27 +25,39 @@ function render(run: any) {
   $('metadata').textContent = `${run.config.mode.toUpperCase()} · ${(run.elapsedMs / 1000).toFixed(1)}s · ${agents.length} security agents · ${run.actors.filter((a: any) => a.role === 'client').length} clients · ${run.config.loadProfile} load · ${run.id.slice(0,8)}`;
   $('errors').textContent = `${run.summary.agentErrors} decision errors · ${run.infrastructureErrorCount ?? 0} runtime errors`;
   $('download').removeAttribute('disabled');
-  $('teams').replaceChildren(...['red','blue'].map(team => {
-    const card = node('section','', 'team'); card.style.setProperty('--accent',team === 'red' ? '#ee8580' : '#84b8fa');
-    card.append(node('h2', `${team.toUpperCase()} / application namespace`));
-    const asset = run.assets.find((a: any) => a.home === team), m = run.summary.metrics[team];
-    const control = node('div','Current asset control','asset'); control.append(node('strong',`${asset?.controlledBy?.toUpperCase() ?? 'UNKNOWN'} TEAM`)); card.append(control);
-    const stats = node('div','','stats');
-    for (const [label,value] of [['Breaches of this asset',m.verifiedCaptures],['Verified recoveries',m.verifiedReclaims],['Team handoffs',m.completedHandoffs],['Legitimate success',m.legitimateSuccessPct == null ? '—' : `${m.legitimateSuccessPct}%`],['Legitimate requests',m.legitimateRequests],['Latency p95',m.legitimateP95Ms == null ? '—' : `${m.legitimateP95Ms} ms`]]) {
-      const s = node('div','','stat'); s.append(node('span',label),node('strong',value)); stats.append(s);
-    }
-    card.append(stats,node('h3','SECURITY TEAM'));
-    const roster = node('ul','','roster');
-    agents.filter((a: any) => a.team === team).forEach((actor: any) => {
-      const trace = run.agentTraces.findLast((t: any) => t.actor === actor.id), row = node('li','');
-      const action = trace?.error ? 'Decision error' : trace?.action ? `${trace.action.kind} ${trace.action.scenario ?? trace.action.rule ?? ''} · ${trace.status}` : 'Awaiting decision';
-      row.append(node('span',actor.id,'role'),node('span',action,'activity')); roster.append(row);
-    }); card.append(roster); return card;
+  const attacker = (actor: any) => ['scout','deceiver','pressure'].includes(actor.role);
+  const totals = Object.values(run.summary.metrics) as any[];
+  for (const side of ['attack','defense']) {
+    const roster = $(side+'-roster');
+    const members = agents.filter((a: any) => attacker(a) === (side === 'attack'));
+    $(side+'-count').textContent = `${members.length} AGENTS`;
+    roster.replaceChildren(...members.map((actor: any) => {
+      const trace = run.agentTraces.findLast((t: any) => t.actor === actor.id);
+      const row = node('li',''); row.append(node('span',actor.id,'role'),node('small',trace?.error ? 'Decision error' : trace?.action ? `${trace.action.kind} ${trace.action.scenario ?? trace.action.rule ?? ''} · ${trace.status}` : 'Awaiting decision','activity')); return row;
+    }));
+  }
+  $('captures').textContent = String(totals.reduce((n,m)=>n+m.verifiedCaptures,0));
+  $('recoveries').textContent = String(totals.reduce((n,m)=>n+m.verifiedReclaims,0));
+  const requests = totals.reduce((n,m)=>n+m.legitimateRequests,0);
+  $('success').textContent = requests ? `${(100*totals.reduce((n,m)=>n+m.legitimateSucceeded,0)/requests).toFixed(1)}%` : '—';
+  $('handoffs').textContent = String(totals.reduce((n,m)=>n+m.completedHandoffs,0));
+  $('clock').textContent = `${(run.elapsedMs/1000).toFixed(1)}s`;
+  $('mapnodes').replaceChildren(...agents.map((actor: any,i: number) => {
+    const isAttack = attacker(actor), group = agents.filter((a: any)=>attacker(a)===isAttack), index = group.findIndex((a:any)=>a.id===actor.id);
+    const n = node('button','','mapnode '+(isAttack?'attacker':'defender'));
+    n.style.left = `${isAttack ? 12+(index%2)*18 : 70+(index%2)*18}%`; n.style.top = `${15+Math.floor(index/2)*26}%`;
+    n.append(node('span',isAttack?'⌁':'◇','glyph'),node('small',actor.id));
+    n.onclick = () => { const event = run.events.findLast((e:any)=>e.actor===actor.id); if(event) inspect(event); }; return n;
+  }));
+  $('assets').replaceChildren(...run.assets.map((asset: any) => {
+    const breached = asset.controlledBy !== asset.home;
+    const n = node('div','', 'assetnode '+(breached?'breached':'secured'));
+    n.append(node('span',asset.home.toUpperCase()+' NAMESPACE'),node('strong',breached?'COMPROMISED':'HOME CONTROL'),node('small',`Owner: ${asset.controlledBy.toUpperCase()}`)); return n;
   }));
   const showRequests = $('requests') as HTMLInputElement;
   $('events').replaceChildren(...run.events.filter((e: any) => showRequests.checked || !['request','untrusted_telemetry'].includes(e.kind)).slice(-120).reverse().map((e: any) => {
-    const button = node('button',`#${e.id} · ${e.kind.replaceAll('_',' ')}${e.detail.rule ? ' · '+e.detail.rule : ''}`,'event');
-    button.append(node('small',`${(e.at/1000).toFixed(2)}s · ${e.actor} → ${e.target || 'match'}${e.detail.status ? ' · HTTP '+e.detail.status : ''}`));
+    const button = node('button','','event');
+    button.append(node('span',`${(e.at/1000).toFixed(2)}s`),node('span',e.actor),node('strong',e.kind.replaceAll('_',' ').toUpperCase()),node('span',e.detail.rule ?? e.detail.scenario ?? e.target ?? 'match'),node('span',e.detail.status ? `HTTP ${e.detail.status}` : `#${e.id}`));
     button.onclick = () => inspect(e); return button;
   }));
   if (selectedEvent) { const event = run.events.find((e: any) => e.id === selectedEvent); if (event) inspect(event); }
