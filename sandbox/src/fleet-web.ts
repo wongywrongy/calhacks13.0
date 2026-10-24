@@ -25,6 +25,7 @@ export function fleetWeb(options: {
     .update("sudoko-fleet-session:" + options.secret)
     .digest();
   const publicOrigin = env.SUDOKO_PUBLIC_ORIGIN;
+  const demo = env.SUDOKO_DEMO_MODE === "1";
   if (publicOrigin && new URL(publicOrigin).origin !== publicOrigin)
     throw Error("SUDOKO_PUBLIC_ORIGIN must be an origin");
   const encrypt = (value: object) => {
@@ -128,6 +129,11 @@ export function fleetWeb(options: {
       res.end(await readFile(path));
       return true;
     }
+    if (demo && req.method === "GET" && url.pathname === "/signin") {
+      res.writeHead(302, { location: "/" });
+      res.end();
+      return true;
+    }
     if (req.method === "GET" && url.pathname === "/signin") {
       res.setHeader("content-type", "text/html");
       res.setHeader("cache-control", "no-store");
@@ -174,7 +180,20 @@ export function fleetWeb(options: {
       send(res, { status: 200, body: { role, sandbox: fleet.database } });
       return true;
     }
-    const viewer = await session(req);
+    // The hackathon server explicitly grants both demo roles; ordinary sessions remain role-bound.
+    let viewer;
+    if (demo) {
+      const role =
+        url.pathname === "/fleet-config"
+          ? (url.searchParams.get("role") ?? "attacker")
+          : (req.headers["x-sudoko-role"] ?? "attacker");
+      if (role !== "attacker" && role !== "defender")
+        throw new StoreError(403, "Unknown demo role");
+      const token = env[`SUDOKO_DEMO_${role.toUpperCase()}_VIEWER_TOKEN`];
+      if (!token || (await authenticate(token)) !== role)
+        throw new StoreError(503, "Demo role is not configured");
+      viewer = { role, token, sandbox: fleet.database };
+    } else viewer = await session(req);
     if (url.pathname === "/fleet-config" && req.method === "GET") {
       const [fleetState] = await store.query(
         "SELECT * FROM fleet_session WHERE id=0",
@@ -190,6 +209,8 @@ export function fleetWeb(options: {
           role: viewer.role,
           token: viewer.token,
           authenticated: true,
+          demo,
+          switchableRoles: demo ? ["attacker", "defender"] : [viewer.role],
           chat: viewer.role !== "observer",
           epoch: fleetState?.epoch,
           engine: fixtures ? "fixture" : "bitdeer",

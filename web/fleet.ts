@@ -793,7 +793,8 @@ function chat(d: Derived) {
     : op?.state === "planning"
       ? "planning…"
       : "working…";
-  ($("say") as HTMLInputElement).disabled = !!operationChat?.sending;
+  ($("say") as HTMLInputElement).disabled =
+    (modelDriven && !operationChat) || !!operationChat?.sending;
   ($("say") as HTMLInputElement).placeholder = `Message ${agentOf()}`;
   const t = $("transcript"),
     c = chats[role];
@@ -1571,11 +1572,14 @@ function setStatus(text: string, kind: "live" | "stale" | "replay") {
   p.title = text;
 }
 async function workspace(next: Role) {
+  if (next === role && operationChat) return;
   const v = ++version;
   close();
   operationChat?.close();
   operationChat = undefined;
   role = next;
+  chatError = "";
+  ($("say") as HTMLInputElement).value = "";
   selected = 0;
   selectedEvent = 0;
   onlySel = false;
@@ -1618,6 +1622,7 @@ async function workspace(next: Role) {
   live = true;
   $("playback").hidden = true;
   role = config.role;
+  sessionStorage.setItem("sudoko.role", role);
   fleetEpoch = config.epoch;
   modelDriven = !!config.authenticated;
   $("rail-right").hidden = role !== "observer";
@@ -1625,7 +1630,10 @@ async function workspace(next: Role) {
   document
     .querySelectorAll<HTMLButtonElement>("nav button")
     .forEach(
-      (b) => (b.disabled = !!config.authenticated && b.dataset.role !== role),
+      (b) =>
+        (b.disabled =
+          !!config.authenticated &&
+          !(config.switchableRoles ?? [role]).includes(b.dataset.role)),
     );
   if (config.chat) {
     chats[role] = [];
@@ -1651,7 +1659,7 @@ async function workspace(next: Role) {
   }
   if (config.authenticated) {
     $("mode-summary").textContent =
-      "Model operations · SpacetimeDB reducer simulation · more ▴";
+      `${config.demo ? "Hackathon demo · " : ""}Model operations · SpacetimeDB reducer simulation · more ▴`;
     $("mode-description").textContent =
       "Role-bound model operations execute owned simulation reducers. The activity log shows committed evidence. Stop cancels your operation; Status reports measured results. Changed objectives require stopping first. The HTTP practice suite is separate. Terrain and flight are simulated.";
   }
@@ -1660,6 +1668,10 @@ async function workspace(next: Role) {
     .withDatabaseName(config.database)
     .withToken(config.token)
     .onConnect((c) => {
+      if (v !== version) {
+        c.disconnect();
+        return;
+      }
       let queued = false;
       const update = () => {
         if (queued) return;
@@ -1706,7 +1718,9 @@ async function workspace(next: Role) {
           "SELECT * FROM visible_evidence",
         ]);
     })
-    .onConnectError(() => setStatus("Disconnected · state frozen", "stale"))
+    .onConnectError(() => {
+      if (v === version) setStatus("Disconnected · state frozen", "stale");
+    })
     .onDisconnect(() => {
       if (v === version) setStatus("Disconnected · state frozen", "stale");
     })
@@ -1932,6 +1946,9 @@ host.onclick = (event) => {
   const id = nearest(event);
   if (id) pull(id);
 };
-void workspace("defender").catch((e) => {
+const savedRole = sessionStorage.getItem("sudoko.role");
+void workspace(
+  savedRole === "defender" || savedRole === "observer" ? savedRole : "attacker",
+).catch((e) => {
   $("error").textContent = `${e.message} Reload to retry.`;
 });

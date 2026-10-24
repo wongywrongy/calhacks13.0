@@ -54,3 +54,7 @@ Remaining: a passing credentialed full scenario on the final code; reliable mode
 ## Reactive sandbox update
 
 The first attacker objective now activates a persistent shared fleet. Defender-first objectives are rejected without creating or resetting a fleet. The existing browser mechanism test starts from an empty database and exercises this flow. A real-database test waits 61 seconds after attacker execution, checks that movement continues with no new inference calls, then performs opposing operations in the same epoch. Timed fixture playback remains unchanged. This lifecycle change was verified with mocked inference; no additional paid model requests were made.
+
+## Hackathon role switching
+
+The deployed hackathon URL now opens without sign-in. Its existing Attacker/Defender buttons switch scoped subscriptions and separate conversations in one browser tab, preserving the selected role across reloads and leaving the shared fleet unchanged. A fresh-browser demo check uses no tokens or cookies. The full mocked browser scenario passes with login-free switching; ordinary session authorization remains covered by the 27-test regression suite. This deployment intentionally permits anyone with access to its URL to control both sides. No additional paid inference was used for this change.

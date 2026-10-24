@@ -35,6 +35,10 @@ test("conversation reconnect reuses a lost submission key and target; messages a
     globalThis,
     "fetch",
     async (_input: unknown, init?: RequestInit) => {
+      assert.equal(
+        (init?.headers as Record<string, string>)["x-sudoko-role"],
+        role,
+      );
       if (init?.method === "POST") {
         keys.push((init.headers as Record<string, string>)["idempotency-key"]);
         assert.deepEqual(JSON.parse(init.body as string), {

@@ -8,6 +8,7 @@ import { testDatabase } from "../sandbox/test/spacetime-helper.ts";
 import { startService } from "../sandbox/src/service.ts";
 import { CHAT_LIMITS } from "../sandbox/src/fleet-chat.ts";
 const mocked = process.argv.includes("--mock");
+const demo = process.argv.includes("--demo");
 if (!mocked && !process.env.BITDEER_API_KEY)
   throw Error(
     "Set the server-side BITDEER_API_KEY; this check never substitutes fixture inference",
@@ -69,6 +70,7 @@ const operator = randomBytes(32).toString("hex");
 const env = {
   ...process.env,
   ...db.env,
+  SUDOKO_DEMO_MODE: demo ? "1" : "0",
   BITDEER_API_KEY: mocked ? "mock-only" : process.env.BITDEER_API_KEY,
   BITDEER_COORDINATOR_MODEL:
     process.env.BITDEER_COORDINATOR_MODEL || "zai-org/GLM-5.3-Flash",
@@ -89,7 +91,11 @@ const report: any = {
   limits: CHAT_LIMITS,
   operations: [],
 };
-const output = mocked ? "output/fleet-ui-mocked" : "output/fleet-ui-smoke";
+const output = demo
+  ? "output/fleet-demo-mocked"
+  : mocked
+    ? "output/fleet-ui-mocked"
+    : "output/fleet-ui-smoke";
 await mkdir(output, { recursive: true });
 try {
   let fleet: any;
@@ -112,14 +118,19 @@ try {
       method: "POST",
     }).then((r) => r.json());
     await service.store.call("grant_fleet_view", [viewer.identity, role]);
+    (env as NodeJS.ProcessEnv)[
+      `SUDOKO_DEMO_${role.toUpperCase()}_VIEWER_TOKEN`
+    ] = viewer.token;
     const context = await browser.newContext({
       viewport: { width: 1440, height: 1000 },
     });
-    const auth = await context.request.post(service.url + "/api/session", {
-      headers: { origin: service.url },
-      data: { token: viewer.token },
-    });
-    assert.equal(auth.status(), 200);
+    if (!demo) {
+      const auth = await context.request.post(service.url + "/api/session", {
+        headers: { origin: service.url },
+        data: { token: viewer.token },
+      });
+      assert.equal(auth.status(), 200);
+    }
     const page = await context.newPage();
     pages[role] = page;
     page.on("pageerror", (error: any) =>
@@ -134,9 +145,42 @@ try {
       {},
       { timeout: 15000 },
     );
+    if (demo) {
+      await page.locator(`nav button[data-role="${role}"]`).click();
+      await page.waitForFunction(
+        (r: string) =>
+          document.body.dataset.role === r &&
+          document.querySelector("#chat-name")?.textContent ===
+            (r === "attacker" ? "Crimson" : "Sentinel"),
+        role,
+      );
+      assert.equal(await page.locator('#error a[href="/signin"]').count(), 0);
+    }
     assert.equal(
       await page.locator("#chat-name").textContent(),
       role === "attacker" ? "Crimson" : "Sentinel",
+    );
+  }
+  if (demo) {
+    assert.equal(
+      (await original(service.url + "/fleet-config?role=operator")).status,
+      403,
+    );
+    assert.equal(
+      (
+        await original(service.url + "/api/chat/conversation", {
+          headers: { "x-sudoko-role": "operator" },
+        })
+      ).status,
+      403,
+    );
+    assert.equal(
+      (
+        await original(service.url + "/fleet-config?role=attacker", {
+          headers: { origin: "https://untrusted.example" },
+        })
+      ).status,
+      403,
     );
   }
   await pages.defender.locator("#say").fill("Protect the swarm");
@@ -187,6 +231,7 @@ try {
       await delay(500);
       const status = await page.request.get(
         `${service.url}/api/chat/operations/${op.id}`,
+        { headers: { "x-sudoko-role": role } },
       );
       assert.equal(status.status(), 200);
       op = await status.json();
@@ -281,6 +326,7 @@ try {
       {
         headers: {
           origin: service.url,
+          "x-sudoko-role": role,
           "idempotency-key": statusResponse.request().headers()[
             "idempotency-key"
           ],
@@ -311,7 +357,11 @@ try {
     const other = pages[role === "attacker" ? "defender" : "attacker"];
     assert.equal(
       (
-        await other.request.get(`${service.url}/api/chat/operations/${op.id}`)
+        await other.request.get(`${service.url}/api/chat/operations/${op.id}`, {
+          headers: {
+            "x-sudoko-role": role === "attacker" ? "defender" : "attacker",
+          },
+        })
       ).status(),
       404,
     );
@@ -329,6 +379,27 @@ try {
       (await service.store.query("SELECT * FROM fleet_chat_action")).length,
       before,
     );
+  }
+  if (demo) {
+    const page = pages.attacker;
+    for (const role of ["defender", "attacker"]) {
+      await page.locator(`nav button[data-role="${role}"]`).click();
+      await page.waitForFunction(
+        (text: string) =>
+          document.querySelector("#transcript")?.textContent?.includes(text),
+        objectives[role as "attacker" | "defender"],
+      );
+      assert.ok(
+        !(await page.locator("#transcript").textContent()).includes(
+          objectives[role === "attacker" ? "defender" : "attacker"],
+        ),
+      );
+      assert.equal(
+        (await service.store.query("SELECT * FROM fleet_session"))[0].epoch,
+        fleet.epoch,
+      );
+    }
+    report.loginFreeSwitching = true;
   }
   const final = await service.store.query("SELECT * FROM fleet_drone");
   const evidence = await service.store.query("SELECT * FROM fleet_evidence");

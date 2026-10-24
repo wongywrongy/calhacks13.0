@@ -57,6 +57,7 @@ export class OperationChat {
   private storageKey: string;
   private cursor = 0;
   private sandbox: string;
+  private role: string;
   private changed: () => void;
   private failed: (message: string) => void;
   get operation() {
@@ -69,6 +70,7 @@ export class OperationChat {
     failed: (message: string) => void,
   ) {
     this.sandbox = sandbox;
+    this.role = role;
     this.changed = changed;
     this.failed = failed;
     this.storageKey = `sudoko.message:${sandbox}:${role}`;
@@ -104,6 +106,7 @@ export class OperationChat {
         credentials: "same-origin",
         headers: {
           "content-type": "application/json",
+          "x-sudoko-role": this.role,
           "idempotency-key": this.pending.key,
         },
         body: JSON.stringify({ message, sandbox: this.sandbox, target }),
@@ -137,6 +140,7 @@ export class OperationChat {
       while (more && !this.closed) {
         const r = await fetch(`/api/chat/conversation?after=${this.cursor}`, {
           credentials: "same-origin",
+          headers: { "x-sudoko-role": this.role },
         });
         const body = await r.json();
         if (!r.ok)
