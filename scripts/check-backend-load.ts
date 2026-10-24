@@ -1,3 +1,5 @@
+import { testDatabase } from "../sandbox/test/spacetime-helper.ts";
+const db = await testDatabase();
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
@@ -5,9 +7,8 @@ import { startService } from "../sandbox/src/service.ts";
 const token = "bounded-load-check-0000000000000000000";
 const service = await startService({
   operatorToken: token,
-  database: ":memory:",
   maxActive: 4,
-  env: {},
+  env: db.env,
 });
 const call = async (path: string, body?: any, key = "load") => {
   const r = await fetch(service.url + path, {
@@ -96,4 +97,5 @@ try {
   );
 } finally {
   await service.close();
+  await db.close();
 }

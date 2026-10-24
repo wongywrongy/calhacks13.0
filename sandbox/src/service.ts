@@ -6,7 +6,7 @@ import { config } from "./catalog.ts";
 import { projectRun } from "./projection.ts";
 import { readJson, send } from "./server.ts";
 import { DecisionPool } from "./decision-pool.ts";
-import { RunStore } from "./run-store.ts";
+import { RunStore, StoreError } from "./run-store.ts";
 import { spacetimeConfig } from "./spacetime.ts";
 
 class HttpError extends Error {
@@ -79,7 +79,6 @@ function parseRun(input: any) {
 }
 
 export async function startService(options: {
-  database?: string;
   operatorToken: string;
   observerToken?: string;
   port?: number;
@@ -101,65 +100,111 @@ export async function startService(options: {
   const maxActive = integer(options.maxActive ?? 2, 1, 4, "maxActive"),
     maxQueued = integer(options.maxQueued ?? 8, 1, 32, "maxQueued");
   const pool = new DecisionPool(options.inferenceConcurrency ?? 4);
-  const store = new RunStore(options.database ?? "output/service/runs.sqlite");
   const fleet = spacetimeConfig(env);
+  if (!fleet)
+    throw Error(
+      "SpacetimeDB is required: set SPACETIME_URI, SPACETIME_DATABASE and SPACETIME_TOKEN",
+    );
+  const store = new RunStore(fleet);
+  await store.open(maxActive, maxQueued);
   const active = new Map<
     string,
     { abort: AbortController; done: Promise<void> }
   >();
   const pending: string[] = [];
   let closing = false;
+  let mutationTail = Promise.resolve();
+  const lock = async () => {
+    let release!: () => void;
+    const previous = mutationTail;
+    mutationTail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    return release;
+  };
   const configured = () => Boolean(env.BITDEER_API_KEY && env.BITDEER_MODEL);
-  const pump = () => {
-    while (!closing && active.size < maxActive && pending.length) {
-      const id = pending.shift()!,
-        job = store.get(id)!;
-      if (job.state !== "queued") continue;
-      const abort = new AbortController();
-      store.state(id, "running");
-      // Defer execution until the active lease is visible to stop/shutdown.
-      const done = Promise.resolve().then(async () => {
-        try {
-          const result = await runMatch({
-            ...job.config,
-            signal: abort.signal,
-            inferencePool: pool,
-            bitdeer: {
-              apiKey: env.BITDEER_API_KEY,
-              model: env.BITDEER_MODEL ?? "",
-            },
-            onSnapshot: (snapshot: any) => store.save(id, projectRun(snapshot)),
-          });
-          store.save(id, projectRun(result));
-          const errors =
-            result.infrastructureErrors.length || result.summary.agentErrors;
-          store.state(
-            id,
-            abort.signal.aborted
-              ? "cancelled"
-              : errors
-                ? "failed"
-                : "completed",
-            errors
-              ? "Run recorded execution or inference failures; inspect evidence"
-              : null,
-          );
-        } catch {
-          store.state(
-            id,
-            abort.signal.aborted ? "cancelled" : "failed",
-            abort.signal.aborted
-              ? null
-              : "Run execution failed; no fixture substitution was used",
-          );
-        } finally {
-          active.delete(id);
-          pump();
-        }
-      });
-      active.set(id, { abort, done });
+  let pumping = false;
+  const pump = async () => {
+    if (pumping) return;
+    pumping = true;
+    try {
+      while (!closing && active.size < maxActive && pending.length) {
+        const id = pending.shift()!,
+          job = (await store.get(id))!;
+        if (job.state !== "queued") continue;
+        const abort = new AbortController();
+        await store.state(id, "running");
+        // Defer execution until the active lease is visible to stop/shutdown.
+        const done = Promise.resolve().then(async () => {
+          try {
+            const result = await runMatch({
+              ...job.config,
+              signal: abort.signal,
+              inferencePool: pool,
+              bitdeer: {
+                apiKey: env.BITDEER_API_KEY,
+                model: env.BITDEER_MODEL ?? "",
+              },
+              onSnapshot: (snapshot: any) =>
+                store.save(id, projectRun(snapshot)),
+            });
+            await store.save(id, projectRun(result));
+            const errors =
+              result.infrastructureErrors.length || result.summary.agentErrors;
+            await store.state(
+              id,
+              abort.signal.aborted
+                ? "cancelled"
+                : errors
+                  ? "failed"
+                  : "completed",
+              errors
+                ? "Run recorded execution or inference failures; inspect evidence"
+                : null,
+            );
+          } catch {
+            await store
+              .state(
+                id,
+                abort.signal.aborted ? "cancelled" : "failed",
+                abort.signal.aborted
+                  ? null
+                  : "Run execution failed; no fixture substitution was used",
+              )
+              .catch(() => {
+                closing = true;
+              });
+          } finally {
+            active.delete(id);
+            void lock()
+              .then(async (release) => {
+                try {
+                  await pump();
+                } finally {
+                  release();
+                }
+              })
+              .catch(() => {
+                closing = true;
+                for (const w of active.values()) w.abort.abort();
+              });
+          }
+        });
+        active.set(id, { abort, done });
+      }
+    } finally {
+      pumping = false;
     }
   };
+  const heartbeat = setInterval(
+    () =>
+      void store.heartbeat().catch(() => {
+        closing = true;
+        for (const w of active.values()) w.abort.abort();
+      }),
+    5000,
+  );
   const fleetCall = async (name: string, args: unknown[]) => {
     if (!fleet) fail(503, "SpacetimeDB fleet is not configured");
     const r = await fetch(
@@ -178,6 +223,7 @@ export async function startService(options: {
     if (!r.ok) fail(502, `Fleet reducer rejected operation (HTTP ${r.status})`);
   };
   const server = createServer(async (req, res) => {
+    let release: (() => void) | undefined;
     try {
       const url = new URL(req.url ?? "/", "http://localhost");
       if (req.method === "GET" && url.pathname === "/healthz")
@@ -193,6 +239,7 @@ export async function startService(options: {
       // No credentialed cross-origin browser access and no ambient cookie authentication.
       if (req.headers.origin)
         fail(403, "Cross-origin browser requests are not enabled");
+      if (req.method !== "GET") release = await lock();
       if (closing) fail(503, "Service shutting down");
       const body = async () => {
         try {
@@ -261,7 +308,7 @@ export async function startService(options: {
             400,
             "Idempotency-Key header required (1..100 simple characters)",
           );
-        const existing = store.byKey(key as string);
+        const existing = await store.byKey(key as string);
         if (existing) {
           if (JSON.stringify(existing.config) !== JSON.stringify(settings))
             fail(409, "Idempotency key was used with different settings");
@@ -271,13 +318,18 @@ export async function startService(options: {
           fail(503, "Bitdeer configuration required; no fixture fallback");
         if (pending.length >= maxQueued && active.size >= maxActive)
           fail(429, "Run queue full");
-        const job = store.insert(randomUUID(), settings, key as string);
-        pending.push(job.id);
-        pump();
+        const job = await store.insert(randomUUID(), settings, key as string);
+        if (
+          job.state === "queued" &&
+          !pending.includes(job.id) &&
+          !active.has(job.id)
+        )
+          pending.push(job.id);
+        await pump();
         return send(res, {
           status: 202,
           body: {
-            ...store.get(job.id),
+            ...(await store.get(job.id)),
             links: {
               self: `/v1/runs/${job.id}`,
               events: `/v1/runs/${job.id}/events`,
@@ -290,8 +342,8 @@ export async function startService(options: {
         return send(res, {
           status: 200,
           body: {
-            runs: store
-              .list(
+            runs: (
+              await store.list(
                 integer(
                   Number(url.searchParams.get("limit") ?? 20),
                   1,
@@ -307,17 +359,17 @@ export async function startService(options: {
                   "before",
                 ),
               )
-              .map(({ snapshot, ...job }) => ({
-                ...job,
-                hasSnapshot: Boolean(snapshot),
-              })),
+            ).map(({ snapshot, ...job }) => ({
+              ...job,
+              hasSnapshot: Boolean(snapshot),
+            })),
           },
         });
       const match = /^\/v1\/runs\/([a-f0-9-]{36})(?:\/(events|stop))?$/.exec(
         url.pathname,
       );
       if (match) {
-        const job = store.get(match[1]);
+        const job = await store.get(match[1]);
         if (!job) fail(404, "Run not found");
         if (req.method === "GET" && !match[2])
           return send(res, { status: 200, body: job });
@@ -328,7 +380,7 @@ export async function startService(options: {
             Number.MAX_SAFE_INTEGER,
             "after",
           );
-          const events = store.events(
+          const events = await store.events(
             job!.id,
             after,
             integer(
@@ -350,15 +402,29 @@ export async function startService(options: {
         if (req.method === "POST" && match[2] === "stop") {
           const running = active.get(job!.id);
           if (running) {
-            store.state(job!.id, "stopping");
+            await store.state(job!.id, "stopping");
             running.abort.abort();
           } else if (job!.state === "queued") {
             pending.splice(pending.indexOf(job!.id), 1);
-            store.state(job!.id, "cancelled");
+            await store.state(job!.id, "cancelled");
           }
-          return send(res, { status: 200, body: store.get(job!.id) });
+          return send(res, { status: 200, body: await store.get(job!.id) });
         }
         fail(405, "Method not allowed");
+      }
+      if (req.method === "POST" && url.pathname === "/v1/evaluators/grants") {
+        const b = await body();
+        object(b, ["identity"]);
+        if (
+          typeof b.identity !== "string" ||
+          !/^[a-f0-9]{64}$/i.test(b.identity)
+        )
+          fail(400, "Valid existing Spacetime identity required");
+        await fleetCall("grant_backend_viewer", [b.identity]);
+        return send(res, {
+          status: 200,
+          body: { granted: true, scope: "all-http-run-evaluation" },
+        });
       }
       if (req.method === "POST" && url.pathname === "/v1/fleet/start") {
         const b = await body();
@@ -398,12 +464,15 @@ export async function startService(options: {
       fail(404, "Route not found");
     } catch (e) {
       send(res, {
-        status: e instanceof HttpError ? e.status : 502,
+        status:
+          e instanceof HttpError || e instanceof StoreError ? e.status : 502,
         body: {
           error:
             e instanceof HttpError ? e.message : "Service dependency failed",
         },
       });
+    } finally {
+      release?.();
     }
   });
   server.requestTimeout = 15000;
@@ -419,14 +488,17 @@ export async function startService(options: {
     pool,
     async close() {
       closing = true;
-      for (const id of pending.splice(0)) store.state(id, "cancelled");
+      clearInterval(heartbeat);
+      const unlock = await lock();
+      for (const id of pending.splice(0)) await store.state(id, "cancelled");
       const workers = [...active.values()];
+      unlock();
       for (const worker of workers) worker.abort.abort();
       await Promise.all(workers.map((w) => w.done));
       await new Promise<void>((resolve, reject) =>
         server.close((e) => (e ? reject(e) : resolve())),
       );
-      store.close();
+      await store.close();
     },
   };
 }
@@ -437,7 +509,6 @@ if (
   const service = await startService({
     operatorToken: process.env.SUDOKO_OPERATOR_TOKEN ?? "",
     observerToken: process.env.SUDOKO_OBSERVER_TOKEN,
-    database: process.env.SUDOKO_DATABASE,
     port: Number(process.env.PORT ?? 4180),
     host: process.env.SUDOKO_BIND ?? "127.0.0.1",
     maxActive: Number(process.env.SUDOKO_MAX_ACTIVE ?? 2),

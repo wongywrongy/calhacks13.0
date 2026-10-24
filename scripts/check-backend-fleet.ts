@@ -61,7 +61,6 @@ try {
   service = await startService({
     operatorToken: operator,
     observerToken: observer,
-    database: ":memory:",
     env: {
       SPACETIME_URI: uri,
       SPACETIME_DATABASE: database,

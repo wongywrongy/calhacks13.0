@@ -11,7 +11,7 @@ import type { AgentTrace } from './agents.ts';
 import { summarize } from './report.ts';
 import { DecisionPool } from './decision-pool.ts';
 
-export async function runMatch(options: Partial<Config> & { engine?: 'fixture' | 'bitdeer'; remote?: boolean; signal?: AbortSignal; decisions?: number; inferencePool?: DecisionPool; maxModelCalls?: number; bitdeer?: { apiKey?: string; model: string }; onSnapshot?: (snapshot: any) => void } = {}) {
+export async function runMatch(options: Partial<Config> & { engine?: 'fixture' | 'bitdeer'; remote?: boolean; signal?: AbortSignal; decisions?: number; inferencePool?: DecisionPool; maxModelCalls?: number; bitdeer?: { apiKey?: string; model: string }; onSnapshot?: (snapshot: any) => void | Promise<void> } = {}) {
   const settings = config({ durationMs: options.durationMs ?? 12000, attackers: options.attackers ?? 3, defenders: options.defenders ?? 2,
     clients: options.clients ?? 4, mode: options.mode ?? 'hardened', loadProfile: options.loadProfile ?? 'steady' });
   const engine = options.engine ?? 'fixture';
@@ -90,7 +90,7 @@ export async function runMatch(options: Partial<Config> & { engine?: 'fixture' |
       while (!controller.signal.aborted) {
         const state = await call(base, refereeKey, '/control/snapshot', undefined, controller.signal);
         if (state.status !== 200) throw new Error('Cannot observe match');
-        options.onSnapshot!({ ...state.body, engine, model: engine === 'bitdeer' ? (options.bitdeer?.model ?? process.env.BITDEER_MODEL) : null,
+        await options.onSnapshot!({ ...state.body, engine, model: engine === 'bitdeer' ? (options.bitdeer?.model ?? process.env.BITDEER_MODEL) : null,
           decisionBudget, inference: { ...admission.metrics }, agentTraces: traces, probes, summary: summarize(state.body, probes, traces) });
         await delay(500, undefined, { signal: controller.signal });
       }
@@ -104,7 +104,7 @@ export async function runMatch(options: Partial<Config> & { engine?: 'fixture' |
     const completed = { schemaVersion: 1, engine, decisionBudget, model: engine === 'bitdeer' ? (options.bitdeer?.model ?? process.env.BITDEER_MODEL) : null,
       inference: { ...admission.metrics }, scenarioVersion: 'catalog-v2', endedEarly: Date.now() - started < settings.durationMs, infrastructureErrors,
       ...state.body, probes, agentTraces: traces, summary: summarize(state.body, probes, traces) };
-    options.onSnapshot?.(completed);
+    await options.onSnapshot?.(completed);
     return completed;
   } finally {
     stop(); if (timer) clearTimeout(timer);

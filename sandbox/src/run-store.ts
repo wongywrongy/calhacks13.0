@@ -1,6 +1,5 @@
-import { DatabaseSync } from "node:sqlite";
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { randomUUID } from "node:crypto";
+import type { spacetimeConfig } from "./spacetime.ts";
 export type JobState =
   | "queued"
   | "running"
@@ -18,97 +17,152 @@ export type Job = {
   snapshot: any;
   error: string | null;
 };
-export class RunStore {
-  readonly db: DatabaseSync;
-  constructor(path: string) {
-    if (path !== ":memory:")
-      mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
-    this.db = new DatabaseSync(path);
-    this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
-      CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY, state TEXT NOT NULL, created INTEGER NOT NULL, updated INTEGER NOT NULL, config TEXT NOT NULL, snapshot TEXT, error TEXT, request_key TEXT UNIQUE);
-      CREATE TABLE IF NOT EXISTS events(job_id TEXT NOT NULL REFERENCES jobs(id), id INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY(job_id,id));
-      CREATE INDEX IF NOT EXISTS jobs_state_created ON jobs(state,created);`);
-    // A process restart cannot truthfully resume private actor credentials or in-flight actions.
-    this.db
-      .prepare(
-        "UPDATE jobs SET state='interrupted',updated=?,error='Service restarted; create a new run' WHERE state IN ('running','stopping','queued')",
-      )
-      .run(Date.now());
+export class StoreError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
   }
-  private decode(row: any): Job | undefined {
-    return row
+}
+const literal = (s: string) => "'" + s.replaceAll("'", "''") + "'";
+export class RunStore {
+  readonly session = randomUUID();
+  private sequence = new Map<string, number>();
+  private config: NonNullable<ReturnType<typeof spacetimeConfig>>;
+  constructor(config: NonNullable<ReturnType<typeof spacetimeConfig>>) {
+    this.config = config;
+  }
+  async call(name: string, args: unknown[]) {
+    const r = await fetch(
+      `${this.config.uri}/v1/database/${this.config.database}/call/${name}`,
+      {
+        method: "POST",
+        redirect: "error",
+        signal: AbortSignal.timeout(8000),
+        headers: {
+          authorization: `Bearer ${this.config.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(args),
+      },
+    );
+    if (!r.ok) {
+      const message = await r.text();
+      throw new StoreError(
+        message.includes("queue full")
+          ? 429
+          : message.includes("Idempotency conflict")
+            ? 409
+            : 502,
+        "SpacetimeDB rejected " + name,
+      );
+    }
+  }
+  async query(sql: string) {
+    const r = await fetch(
+      `${this.config.uri}/v1/database/${this.config.database}/sql`,
+      {
+        method: "POST",
+        redirect: "error",
+        signal: AbortSignal.timeout(8000),
+        headers: {
+          authorization: `Bearer ${this.config.token}`,
+          "content-type": "text/plain",
+        },
+        body: sql,
+      },
+    );
+    if (!r.ok) throw new StoreError(502, "SpacetimeDB read failed");
+    const data = (await r.json()) as any;
+    return data[0].rows.map((row: any[]) =>
+      Object.fromEntries(
+        row.map((v, i) => [data[0].schema.elements[i].name.some, v]),
+      ),
+    );
+  }
+  async open(maxActive: number, maxQueued: number) {
+    await this.call("acquire_backend", [this.session, maxActive, maxQueued]);
+  }
+  async heartbeat() {
+    await this.call("heartbeat_backend", [this.session]);
+  }
+  private decode(r: any): Job | undefined {
+    return r
       ? {
-          id: row.id,
-          state: row.state,
-          created: row.created,
-          updated: row.updated,
-          config: JSON.parse(row.config),
-          snapshot: row.snapshot ? JSON.parse(row.snapshot) : null,
-          error: row.error,
+          id: r.id,
+          state: r.state,
+          created: r.created,
+          updated: r.updated,
+          config: JSON.parse(r.config),
+          snapshot: r.snapshot ? JSON.parse(r.snapshot) : null,
+          error: r.error || null,
         }
       : undefined;
   }
-  get(id: string) {
+  async get(id: string) {
     return this.decode(
-      this.db.prepare("SELECT * FROM jobs WHERE id=?").get(id),
+      (
+        await this.query(`SELECT * FROM backend_run WHERE id=${literal(id)}`)
+      )[0],
     );
   }
-  byKey(key: string) {
+  async byKey(key: string) {
     return this.decode(
-      this.db.prepare("SELECT * FROM jobs WHERE request_key=?").get(key),
+      (
+        await this.query(
+          `SELECT * FROM backend_run WHERE request_key=${literal(key)}`,
+        )
+      )[0],
     );
   }
-  list(limit = 50, before = Number.MAX_SAFE_INTEGER) {
-    return this.db
-      .prepare(
-        "SELECT * FROM jobs WHERE created<? ORDER BY created DESC,id DESC LIMIT ?",
+  async list(limit = 50, before = Number.MAX_SAFE_INTEGER): Promise<Job[]> {
+    const rows = await this.query(
+      `SELECT * FROM backend_run WHERE created < ${before}`,
+    );
+    return rows
+      .sort(
+        (a: any, b: any) => b.created - a.created || b.id.localeCompare(a.id),
       )
-      .all(before, limit)
-      .map((r) => this.decode(r)!);
+      .slice(0, limit)
+      .map((r: any) => this.decode(r)!);
   }
-  insert(id: string, config: unknown, requestKey: string | null) {
-    const now = Date.now();
-    this.db
-      .prepare(
-        "INSERT INTO jobs(id,state,created,updated,config,request_key) VALUES (?,'queued',?,?,?,?)",
-      )
-      .run(id, now, now, JSON.stringify(config), requestKey);
-    return this.get(id)!;
+  async insert(id: string, config: unknown, key: string) {
+    await this.call("enqueue_backend_run", [
+      this.session,
+      id,
+      key,
+      JSON.stringify(config),
+    ]);
+    return (await this.byKey(key))!;
   }
-  state(id: string, state: JobState, error: string | null = null) {
-    this.db
-      .prepare("UPDATE jobs SET state=?,updated=?,error=? WHERE id=?")
-      .run(state, Date.now(), error, id);
+  async state(id: string, state: JobState, error: string | null = null) {
+    await this.call("transition_backend_run", [
+      this.session,
+      id,
+      state,
+      error ?? "",
+    ]);
   }
-  save(id: string, snapshot: any) {
-    this.db.exec("BEGIN");
-    try {
-      this.db
-        .prepare("UPDATE jobs SET snapshot=?,updated=? WHERE id=?")
-        .run(JSON.stringify(snapshot), Date.now(), id);
-      const insert = this.db.prepare(
-        "INSERT OR IGNORE INTO events(job_id,id,body) VALUES (?,?,?)",
-      );
-      const last = this.db
-        .prepare("SELECT COALESCE(MAX(id),0) AS id FROM events WHERE job_id=?")
-        .get(id) as { id: number };
-      for (const event of snapshot.events.filter((e: any) => e.id > last.id))
-        insert.run(id, event.id, JSON.stringify(event));
-      this.db.exec("COMMIT");
-    } catch (e) {
-      this.db.exec("ROLLBACK");
-      throw e;
-    }
+  async save(id: string, snapshot: any) {
+    const seq = (this.sequence.get(id) ?? 0) + 1;
+    this.sequence.set(id, seq);
+    await this.call("save_backend_snapshot", [
+      this.session,
+      id,
+      seq,
+      JSON.stringify(snapshot),
+    ]);
   }
-  events(id: string, after: number, limit: number) {
-    return this.db
-      .prepare(
-        "SELECT body FROM events WHERE job_id=? AND id>? ORDER BY id LIMIT ?",
-      )
-      .all(id, after, limit)
+  async events(id: string, after: number, limit: number) {
+    const rows = await this.query(
+      `SELECT * FROM backend_event WHERE run_id=${literal(id)} AND event_id > ${after}`,
+    );
+    return rows
+      .sort((a: any, b: any) => a.event_id - b.event_id)
+      .slice(0, limit)
       .map((r: any) => JSON.parse(r.body));
   }
-  close() {
-    this.db.close();
+  async close() {
+    await this.call("release_backend", [this.session]);
   }
 }
