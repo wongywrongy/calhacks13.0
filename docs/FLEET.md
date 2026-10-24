@@ -40,10 +40,23 @@ An unauthorized fixture command exploits a planted missing authorization check a
 
 These are bounded integration checks, not a latency/throughput benchmark or evidence of thousand-agent scale. Supported input caps are 256 drones and 32 agents per team. Runs stop scheduling after 60 seconds.
 
+## Layout and chat
+
+All three role views share one edge-to-edge shell (`design/role-views/*.dc.html` is the visual spec):
+
+1. **Header** (48 px): `SUDOKO / Attack|Defense|Observer` breadcrumb with a context line, live/recorded dot, match clock, recording play/scrub, and the role switcher as flush tabs with a 2 px team-colour underline.
+2. **Status row**: hairline-split label-over-value cells, severity badge first. Defender: compromised n/total with bar and sparkline, last breach, mean time to recover, block rate, unrecovered drone chips. Attacker: seized n of discovered, last takeover, lost back, blocked, held drone chips. Observer: control share blue vs red, first takeover, mean time to recover, block rate, takeovers recovered. Every value is computed from the evidence rows and drone rows that role's subscription returns; the attacker never sees recovery rows, so its sparkline is cumulative takeovers and "lost back" is derived from the visible controller field.
+3. **Main row**: agents rail | Three.js map | right column. The map header holds the legend, the `sim coords · tick` caption, and the camera toggle. Observer shows red rail | map | blue rail with a selected-drone strip above the map. Only compromised and blocked drones pulse; `prefers-reduced-motion` disables it.
+4. **Log**: full-width table (Threats & responses / Operation log / Evidence). The defender log prints "unknown origin" where the view redacts the actor. Clicking a row pins that event and filters the log to its drone; "show all" clears it.
+
+The attacker and defender right columns are a chat with their agent (Crimson / Sentinel). Clicking a drone on the map, a status chip, or a log row posts "Pull up DR-xxx" and inserts an asset card scoped to the role (the attacker card shows battery and policy as redacted). Agent lines come only from real evidence rows: when a new row lands for a pulled-up drone, or for any row with an own-team actor, a one-line summary is posted.
+
+**Queued-command limitation.** No operator-command reducers exist. Action chips (Policy / Isolate / Verify / Recover all; Command / Discover / Hold / Skip hardened) and typed messages are appended to the transcript marked "queued" and nothing acts on them; the UI never invents success text. Adding such reducers must keep the existing identity and role checks in `arena-live/src/fleet.rs`.
+
 ## Rendering and assets
 
 Three.js renders database positions with a reusable quadrotor from Higgsfield 3D Jutsu project `0680b9e1-329c-40ad-aff1-edc52fd7d7a2`, inspected revision 1. `web/assets/swarm-blockout.glb` is a 32 KB procedural blockout, not a photorealistic reconstruction. Drone geometry is shared across clones. Motion comes from measured state, without a background generative video or per-frame generation calls.
 
 A projected Canvas map is available when WebGL cannot initialize. Selection works through the map or an accessible asset list. Playback pauses and scrubs; camera controls change projection. There is no unsolicited camera animation. Inspecting an evidence row keeps that event pinned in the asset panel across live updates, and live redraws are coalesced to one per animation frame.
 
-Browser checks (2026-10-24, Chromium 1243 via Playwright against `demo:fleet` and the static export): role isolation of rosters, evidence and asset details for all three workspaces; selection, evidence click, camera toggle; recorded play/scrub; backend disconnect freezes the last state; WebGL disabled falls back to the Canvas map; 390 px mobile viewport has no horizontal overflow; GPU WebGL rendered on an NVIDIA RTX PRO 4000 through ANGLE (`--use-angle=gl-egl`) matches the SwiftShader render. At the default camera the quadrotor meshes are small relative to the scene; the Canvas fallback draws them at fixed pixel size.
+Browser checks (2026-10-24, Chromium 1243 via Playwright against `demo:fleet` and the static export): per role, no data from outside its scope (no defense internals, battery or policy for the attacker; no discovery rows or attacker IDs for the defender), chat pull-up and queued commands, status values matching the evidence rows, evidence-row pinning, recorded play/scrub, backend disconnect freezes the last state, WebGL disabled falls back to the Canvas map, and the 390 px viewport has no horizontal overflow. The camera auto-frames the visible fleet, so a 48-drone run and a 256-drone run both fill the map.
