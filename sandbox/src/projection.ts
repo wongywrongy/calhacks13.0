@@ -18,7 +18,7 @@ export function projectRun(run: any) {
     ...pick(e, ['id', 'at', 'kind', 'actor', 'team', 'target']), matchId: safeText(run.id),
     detail: { ...pick(e.detail, fields[e.kind]), ...(e.kind === 'rule_change' ? { before: policy(e.detail.before), after: policy(e.detail.after) } : {}) },
   }));
-  const traces = (run.agentTraces ?? []).map((t: any) => ({ ...pick(t, ['actor', 'at', 'status', 'eventId', 'inferenceMs']),
+  const traces = (run.agentTraces ?? []).map((t: any) => ({ ...pick(t, ['actor', 'at', 'status', 'eventId', 'inferenceMs', 'errorCode']),
     ...(t.error ? { error: 'Decision failed; inspect private runner diagnostics' } : {}),
     ...(t.action ? { action: pick(t.action, ['kind', 'scenario', 'rule', 'version', 'evidenceId', 'taskId']) } : {}),
     ...(t.usage ? { usage: pick(t.usage, ['prompt_tokens', 'completion_tokens', 'total_tokens']) } : {}),
@@ -30,6 +30,7 @@ export function projectRun(run: any) {
     config: pick(run.config, ['durationMs', 'attackers', 'defenders', 'clients', 'mode', 'loadProfile']),
     actors: (run.actors ?? []).map((a: any) => pick(a, ['id', 'team', 'role'])),
     assets: (run.assets ?? []).map((a: any) => pick(a, ['id', 'home', 'controlledBy', 'round'])),
+    inference: pick(run.inference, ['attempted', 'completed', 'failed', 'budgetRejected', 'maxCalls']),
     events, agentTraces: traces, probes, summary: summarize({ events }, probes, traces),
     infrastructureErrorCount: (run.infrastructureErrors ?? []).length || Number(run.infrastructureErrorCount) || 0,
   };

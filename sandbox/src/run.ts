@@ -9,13 +9,16 @@ import type { Actor, Config } from './catalog.ts';
 import { bitdeerEngine, fixtureEngine, runAgent } from './agents.ts';
 import type { AgentTrace } from './agents.ts';
 import { summarize } from './report.ts';
+import { DecisionPool } from './decision-pool.ts';
 
-export async function runMatch(options: Partial<Config> & { engine?: 'fixture' | 'bitdeer'; remote?: boolean; signal?: AbortSignal; decisions?: number; onSnapshot?: (snapshot: any) => void } = {}) {
+export async function runMatch(options: Partial<Config> & { engine?: 'fixture' | 'bitdeer'; remote?: boolean; signal?: AbortSignal; decisions?: number; inferencePool?: DecisionPool; maxModelCalls?: number; bitdeer?: { apiKey?: string; model: string }; onSnapshot?: (snapshot: any) => void } = {}) {
   const settings = config({ durationMs: options.durationMs ?? 12000, attackers: options.attackers ?? 3, defenders: options.defenders ?? 2,
     clients: options.clients ?? 4, mode: options.mode ?? 'hardened', loadProfile: options.loadProfile ?? 'steady' });
   const engine = options.engine ?? 'fixture';
   const decisionBudget = options.decisions ?? (engine === 'bitdeer' ? 20 : 120);
   if (!Number.isInteger(decisionBudget) || decisionBudget < 1 || decisionBudget > 120) throw new Error('Decision budget must be 1..120');
+  const maxModelCalls = options.maxModelCalls ?? 120;
+  if (!Number.isInteger(maxModelCalls) || maxModelCalls < 1 || maxModelCalls > 1000) throw Error('Model call budget must be 1..1000');
   const owned = options.remote ? null : await startServer();
   const base = assertPracticeUrl(owned?.url ?? 'http://practice:8080');
   const refereeKey = owned?.refereeKey ?? process.env.SUDOKO_REFEREE_KEY;
@@ -29,8 +32,10 @@ export async function runMatch(options: Partial<Config> & { engine?: 'fixture' |
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     // Fail before starting a run if model configuration is missing. Never fall back to fixtures.
-    const decide = engine === 'bitdeer' ? bitdeerEngine({ apiKey: process.env.BITDEER_API_KEY, model: process.env.BITDEER_MODEL ?? '',
+    const rawDecide = engine === 'bitdeer' ? bitdeerEngine({ apiKey: options.bitdeer?.apiKey ?? process.env.BITDEER_API_KEY, model: options.bitdeer?.model ?? process.env.BITDEER_MODEL ?? '',
       proxyKey: options.remote ? process.env.INFERENCE_PROXY_KEY : undefined, signal: controller.signal }) : fixtureEngine(settings.mode);
+    const admission = (options.inferencePool ?? new DecisionPool()).wrap(rawDecide, controller.signal, maxModelCalls);
+    const decide = engine === 'bitdeer' ? admission.decide : rawDecide;
     if (options.signal?.aborted) throw new Error('Run cancelled');
     const opened = await call(base, refereeKey, '/control/start', settings);
     if (opened.status !== 201) throw new Error(`Cannot start match: HTTP ${opened.status}`);
@@ -85,8 +90,8 @@ export async function runMatch(options: Partial<Config> & { engine?: 'fixture' |
       while (!controller.signal.aborted) {
         const state = await call(base, refereeKey, '/control/snapshot', undefined, controller.signal);
         if (state.status !== 200) throw new Error('Cannot observe match');
-        options.onSnapshot!({ ...state.body, engine, model: engine === 'bitdeer' ? process.env.BITDEER_MODEL : null,
-          decisionBudget, agentTraces: traces, probes, summary: summarize(state.body, probes, traces) });
+        options.onSnapshot!({ ...state.body, engine, model: engine === 'bitdeer' ? (options.bitdeer?.model ?? process.env.BITDEER_MODEL) : null,
+          decisionBudget, inference: { ...admission.metrics }, agentTraces: traces, probes, summary: summarize(state.body, probes, traces) });
         await delay(500, undefined, { signal: controller.signal });
       }
     })()));
@@ -96,8 +101,8 @@ export async function runMatch(options: Partial<Config> & { engine?: 'fixture' |
     await delay(220);
     const state = await call(base, refereeKey, '/control/snapshot');
     if (state.status !== 200) throw new Error('Cannot read final snapshot');
-    const completed = { schemaVersion: 1, engine, decisionBudget, model: engine === 'bitdeer' ? process.env.BITDEER_MODEL : null,
-      scenarioVersion: 'catalog-v2', endedEarly: Date.now() - started < settings.durationMs, infrastructureErrors,
+    const completed = { schemaVersion: 1, engine, decisionBudget, model: engine === 'bitdeer' ? (options.bitdeer?.model ?? process.env.BITDEER_MODEL) : null,
+      inference: { ...admission.metrics }, scenarioVersion: 'catalog-v2', endedEarly: Date.now() - started < settings.durationMs, infrastructureErrors,
       ...state.body, probes, agentTraces: traces, summary: summarize(state.body, probes, traces) };
     options.onSnapshot?.(completed);
     return completed;
