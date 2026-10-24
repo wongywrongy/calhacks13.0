@@ -112,7 +112,7 @@ function formationOf(drones: Drone[]) {
       zs = colZ.get((d.id - 1) % 16);
     const e: [number, number, number] = [sx + ox, sy + oy, zs ? median(zs) : zAll];
     expected.set(d.id, e);
-    deviation.set(d.id, Math.hypot(d.x - e[0], d.y - e[1], d.z - e[2]));
+    deviation.set(d.id, Math.hypot(d.x - e[0], d.y - e[1]));
   }
   return { expected, deviation };
 }
