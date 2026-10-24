@@ -316,8 +316,14 @@ try {
           }
           res.setHeader("content-type", "application/json");
           res.setHeader("cache-control", "no-store");
+          // Browsers connect to SpacetimeDB directly; a reverse proxy can hand out its own address.
           res.end(
-            JSON.stringify({ uri, database, role, token: viewers[role].token }),
+            JSON.stringify({
+              uri: process.env.FLEET_PUBLIC_URI ?? uri,
+              database,
+              role,
+              token: viewers[role].token,
+            }),
           );
           return;
         }
