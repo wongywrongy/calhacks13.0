@@ -1,5 +1,9 @@
 # SudoKO
 
+Live fleet: **https://sudo-ko.us**. Production uses the existing Bitdeer-backed chat and
+SpacetimeDB backend; setup and verified deployment evidence are in
+[VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md).
+
 A cybersecurity simulation sandbox with independently operating attacker agents,
 defender agents and drones. The repository contains two separate, both-supported
 implementations plus labelled historical prototypes.
@@ -26,7 +30,7 @@ SPACETIME_BINARY=/path/to/spacetimedb-standalone npm run demo:fleet   # verify, 
 npm run export:fleet                                                   # static recorded replay
 ```
 
-The hosted preview is a measured recording, not a running backend. Role isolation is
+The exported static preview is a measured recording, not a running backend. Role isolation is
 enforced by identity-scoped database views, not by hiding replay data. Details, limits
 and verification evidence: [docs/FLEET.md](docs/FLEET.md).
 
@@ -188,7 +192,8 @@ The static preview does not execute new attacks or connect to a live backend.
 `npm run typecheck`, `npm test`, `npm run sandbox:validate`, `npm run spacetime:build`,
 `npm run build:fleet`, and `SPACETIME_BINARY=… npm run test:fleet`. Regenerate
 `web/module_bindings` with `npm run spacetime:bindings` whenever `arena-live` changes.
-Docker isolation and live Bitdeer inference remain separate unverified gates.
+Docker isolation remains a separate unverified gate. Credentialed fleet-chat verification
+is recorded in [VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md).
 
 ## Model-driven fleet chat
 
