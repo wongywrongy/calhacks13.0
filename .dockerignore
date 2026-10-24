@@ -1,0 +1,6 @@
+.git
+.env
+.sandbox.env
+output
+node_modules
+arena/target

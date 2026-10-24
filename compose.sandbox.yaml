@@ -1,0 +1,67 @@
+services:
+  practice:
+    build:
+      context: .
+      dockerfile: sandbox/Dockerfile
+    environment:
+      SUDOKO_REFEREE_KEY: ${SUDOKO_REFEREE_KEY:?Run npm run sandbox:configure}
+      SUDOKO_CONTAINER: "1"
+    networks: [arena]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 192m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+  runner:
+    build:
+      context: .
+      dockerfile: sandbox/Dockerfile
+    command: [node, sandbox/src/run.ts, --remote, --compare, --output, /results]
+    environment:
+      SUDOKO_REFEREE_KEY: ${SUDOKO_REFEREE_KEY:?Run npm run sandbox:configure}
+      SUDOKO_ENGINE: ${SUDOKO_ENGINE:-fixture}
+      BITDEER_MODEL: ${BITDEER_MODEL:-}
+      INFERENCE_PROXY_KEY: ${INFERENCE_PROXY_KEY:?Run npm run sandbox:configure}
+    depends_on:
+      practice:
+        condition: service_healthy
+    networks: [arena]
+    read_only: true
+    tmpfs: [/tmp]
+    volumes: [sandbox_results:/results]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 1.0
+  inference:
+    profiles: [llm]
+    build:
+      context: .
+      dockerfile: sandbox/Dockerfile
+    command: [node, sandbox/src/inference-proxy.ts]
+    environment:
+      INFERENCE_PROXY_KEY: ${INFERENCE_PROXY_KEY:?Run npm run sandbox:configure}
+      BITDEER_API_KEY: ${BITDEER_API_KEY:-}
+      BITDEER_MODEL: ${BITDEER_MODEL:-}
+    networks: [arena, inference_egress]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.5
+networks:
+  arena:
+    internal: true
+  inference_egress: {}
+volumes:
+  sandbox_results: {}

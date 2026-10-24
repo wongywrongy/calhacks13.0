@@ -1,5 +1,9 @@
 # SudoKO arena (SpacetimeDB module)
 
+> **Historical prototype.** This was the initial module on `main`. No npm script builds or
+> deploys it, its flags are public and its reducers are unauthenticated, so it is not a
+> security authority. The current module is `arena-live/` (see `docs/FLEET.md`).
+
 The single source of truth: tables + reducers. The referee and the four agents are thin
 clients that call these reducers; the dashboard subscribes to the tables. Build this and
 get the deterministic test green **before** wiring up any agent.
