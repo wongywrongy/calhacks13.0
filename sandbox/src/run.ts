@@ -12,7 +12,7 @@ import { summarize } from './report.ts';
 
 export async function runMatch(options: Partial<Config> & { engine?: 'fixture' | 'bitdeer'; remote?: boolean; signal?: AbortSignal } = {}) {
   const settings = config({ durationMs: options.durationMs ?? 12000, attackers: options.attackers ?? 3, defenders: options.defenders ?? 2,
-    clients: options.clients ?? 4, mode: options.mode ?? 'hardened' });
+    clients: options.clients ?? 4, mode: options.mode ?? 'hardened', loadProfile: options.loadProfile ?? 'steady' });
   const engine = options.engine ?? 'fixture';
   const owned = options.remote ? null : await startServer();
   const base = assertPracticeUrl(owned?.url ?? 'http://practice:8080');
@@ -38,9 +38,13 @@ export async function runMatch(options: Partial<Config> & { engine?: 'fixture' |
     timer = setTimeout(stop, settings.durationMs);
     const normal = async (actor: Actor, index: number) => {
       await delay(index * 29, undefined, { signal: controller.signal });
+      let iteration = 0;
       while (!controller.signal.aborted) {
-        await call(base, actor.token, `/v1/${actor.team}/status`, undefined, controller.signal);
-        await delay(140, undefined, { signal: controller.signal });
+        const endpoint = ['status', 'artifact', 'update'][iteration++ % 3];
+        await call(base, actor.token, `/v1/${actor.team}/${endpoint}`, endpoint === 'update' ? { operation: 'heartbeat' } : undefined, controller.signal);
+        const fraction = (Date.now() - started) / settings.durationMs;
+        const burst = settings.loadProfile === 'burst' && fraction >= .25 && fraction < .65;
+        await delay(burst ? 110 : 180, undefined, { signal: controller.signal });
       }
     };
     const referee = async () => {
@@ -54,6 +58,12 @@ export async function runMatch(options: Partial<Config> & { engine?: 'fixture' |
           const attack = await call(base, actor.token, `/v1/${target}/artifact`, undefined, controller.signal);
           const client = actors.find(a => a.role === 'client' && a.team === target)!;
           const good = await call(base, client.token, `/v1/${target}/status`, undefined, controller.signal);
+          if (attack.status === 403 && good.status === 200) {
+            const clients = actors.filter(a => a.role === 'client' && a.team === target);
+            const read = await call(base, (clients[1] ?? clients[0]).token, `/v1/${target}/artifact`, undefined, controller.signal);
+            const update = await call(base, (clients[2] ?? clients[0]).token, `/v1/${target}/update`, { operation: 'heartbeat' }, controller.signal);
+            await call(base, refereeKey, '/control/reclaim', { target, attackEventId: attack.body.eventId, normalEventId: good.body.eventId, readEventId: read.body.eventId, updateEventId: update.body.eventId }, controller.signal);
+          }
           probes.push({ at: Date.now() - started, target, isolation: attack.status === 403 ? 'blocked' : attack.status === 200 ? 'exposed' : 'inconclusive',
             normal: good.status === 200 ? 'available' : 'unavailable', attackStatus: attack.status, legitimateStatus: good.status,
             attackPolicyVersion: attack.body.policyVersion, legitimatePolicyVersion: good.body.policyVersion });
@@ -76,7 +86,7 @@ export async function runMatch(options: Partial<Config> & { engine?: 'fixture' |
     const state = await call(base, refereeKey, '/control/snapshot');
     if (state.status !== 200) throw new Error('Cannot read final snapshot');
     return { schemaVersion: 1, engine, model: engine === 'bitdeer' ? process.env.BITDEER_MODEL : null,
-      scenarioVersion: 'catalog-v1', endedEarly: Date.now() - started < settings.durationMs, infrastructureErrors,
+      scenarioVersion: 'catalog-v2', endedEarly: Date.now() - started < settings.durationMs, infrastructureErrors,
       ...state.body, probes, agentTraces: traces, summary: summarize(state.body, probes, traces) };
   } finally {
     stop(); if (timer) clearTimeout(timer);
@@ -107,7 +117,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       console.log(`Starting ${mode}: ${engine} decisions; real HTTP service; ${durationMs / 1000}s`);
       const run = await runMatch({ mode, engine: engine as 'fixture' | 'bitdeer', durationMs,
         attackers: Number(value('--attackers', '3')), defenders: Number(value('--defenders', '2')), clients: Number(value('--clients', '4')),
-        remote: args.includes('--remote'), signal: controller.signal });
+        loadProfile: value('--load-profile', 'steady') as Config['loadProfile'], remote: args.includes('--remote'), signal: controller.signal });
       const file = join(output, `${mode}-${run.id}.json`);
       await writeFile(file, JSON.stringify(run, null, 2));
       console.log(JSON.stringify({ file, engine, actors: run.actors.length, ...run.summary }, null, 2));

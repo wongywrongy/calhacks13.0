@@ -14,7 +14,9 @@ Implement actual application weaknesses, typed scenario variations, cooperative 
 handoffs, bounded service pressure, defensive changes and independent verification. Do not
 substitute a scripted battle, a chat-only exchange or a single actor per side.
 
-The first slice is meaningful multi-agent choice and coordination: extend the typed catalog
+The runtime now implements the initial choice/coordination slice and ordered HTTP validation.
+Continue with larger per-asset state, live projection.
+The implemented initial slice was: extend the typed catalog
 within the same service, add bounded team task/evidence sharing, and demonstrate a handoff
 and a version-conflict retry in tests. Preserve distinct credentials, scoped observations,
 request budgets, private random artifacts and measured outcomes. Keep fixture/model modes

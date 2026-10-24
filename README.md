@@ -16,6 +16,7 @@ Node 24 or later; no npm dependencies are required.
 
 ```bash
 npm test
+npm run sandbox:validate
 npm run sandbox:compare
 # Counts are per team: 16 security agents + 12 clients + 2 probes.
 npm run sandbox -- --compare --seconds 8 --attackers 6 --defenders 2 --clients 6
@@ -90,3 +91,22 @@ the board timeline, with private artifacts and referee permissions kept protecte
 See [architecture](docs/ARCHITECTURE.md), [agent contracts](AGENTS.md),
 [catalog](practice-app/catalog/README.md), [security](docs/SECURITY.md), and
 [validation](docs/SANDBOX_VALIDATION.md).
+
+## Backend validation and stress
+
+`npm run sandbox:validate` proves a real tenant-boundary leak, verified capture, teammate
+reproduction, patch effectiveness, untrusted-telemetry authorization, preserved normal
+workflows, verified reclaim and stolen-token revocation. It repeats both modes three
+times; any unexpected HTTP outcome fails the command. Evidence is redacted and saved to
+`output/validation/evidence.json`. These ordered fixtures validate functionality, not AI.
+
+For concurrent workload measurement:
+
+```bash
+npm run sandbox -- --compare --seconds 8 --attackers 6 --defenders 2 --clients 6 --load-profile burst
+```
+
+This runs 16 security actors, 12 normal clients and two probes, with steady, burst and
+recovery phases. Attackers can select any catalog case and share team-private tasks.
+Reports include measured handoffs, captures, reclaims and per-phase legitimate outcomes.
+There is one contested asset per namespace today. The larger fleet board is still pending.

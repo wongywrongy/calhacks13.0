@@ -148,3 +148,47 @@ test('multi-agent run produces measured requests, independent probes, concurrent
   assert.equal(new Set(run.agentTraces.map((t: any) => t.actor)).size, 10);
   assert(!/FLAG_[a-f0-9]{48}/.test(JSON.stringify(run)));
 });
+
+test('team handoffs enforce team privacy, atomic claims, and actual follow-up requests', async t => {
+  const s = await fixture(t), scout = s.pick('red', 'scout'), mate = s.pick('red', 'deceiver');
+  const a = actorTools(s.url, scout), b = actorTools(s.url, mate);
+  const evidence = await a.act({ kind: 'request', scenario: 'WK-01' });
+  const published = await a.act({ kind: 'publish_task', scenario: 'WK-03', evidenceId: evidence.body.eventId });
+  assert.equal(published.status, 201);
+  const taskId = published.body.task.id;
+  assert.deepEqual((await actorTools(s.url, s.pick('blue', 'scout')).observe()).body.tasks, []);
+  assert.equal((await actorTools(s.url, s.pick('blue', 'scout')).act({ kind: 'claim_task', taskId })).status, 404);
+  const claims = await Promise.all([b.act({ kind: 'claim_task', taskId }), b.act({ kind: 'claim_task', taskId })]);
+  assert.deepEqual(claims.map(c => c.status).sort(), [200, 409]);
+  assert.equal((await b.act({ kind: 'complete_task', taskId })).status, 400);
+  await b.act({ kind: 'request', scenario: 'WK-03' });
+  assert.equal((await b.act({ kind: 'complete_task', taskId })).status, 200);
+});
+
+test('referee recovery requires measured same-version probes and revokes the stolen token', async t => {
+  const s = await fixture(t), attacker = s.pick('red', 'scout');
+  const a = actorTools(s.url, attacker);
+  const leak = await a.act({ kind: 'request', scenario: 'WK-01' });
+  await a.act({ kind: 'submit_flag', value: leak.body.artifact });
+  assert.equal((await call(s.url, attacker.token, '/control/reclaim', { target: 'blue' })).status, 403);
+  assert.equal((await call(s.url, s.refereeKey, '/control/reclaim', { target: 'blue' })).status, 400);
+  await actorTools(s.url, s.pick('blue', 'policy')).act({ kind: 'write_rule', rule: 'tenant-isolation', version: 0, evidenceId: leak.body.eventId });
+  const probe = await call(s.url, s.pick('red', 'probe').token, '/v1/blue/artifact');
+  const normal = await call(s.url, s.pick('blue', 'client').token, '/v1/blue/status');
+  const read = await call(s.url, s.pick('blue', 'client').token, '/v1/blue/artifact');
+  const update = await call(s.url, s.pick('blue', 'client').token, '/v1/blue/update', { operation: 'heartbeat' });
+  const reclaimed = await call(s.url, s.refereeKey, '/control/reclaim', { target: 'blue', attackEventId: probe.body.eventId, normalEventId: normal.body.eventId, readEventId: read.body.eventId, updateEventId: update.body.eventId });
+  assert.equal(reclaimed.status, 200);
+  assert.equal((await a.act({ kind: 'submit_flag', value: leak.body.artifact })).status, 400);
+  const snapshot = await call(s.url, s.refereeKey, '/control/snapshot');
+  assert.equal(snapshot.body.assets.find((asset: any) => asset.id === 'blue').controlledBy, 'blue');
+});
+
+
+test('ordered breach and remediation have repeatable HTTP outcomes in both modes', async () => {
+  const { validateScenario } = await import('../src/validate.ts');
+  for (const mode of ['baseline', 'hardened'] as const) {
+    const first = await validateScenario(mode), second = await validateScenario(mode);
+    assert.deepEqual(first.checks, second.checks);
+  }
+});

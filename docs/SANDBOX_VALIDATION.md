@@ -60,3 +60,29 @@ Run IDs: baseline `1e4188aa-2637-49d2-95ee-98d12a26e4c1`; hardened
 
 Next milestone: run the Bitdeer mode in the isolated container setup, repeat several
 trials, then publish sanitized measured events to SpacetimeDB and wire the live board.
+
+## Backend v2 validation
+
+The extended backend passes 15 tests. `npm run sandbox:validate` completes three baseline
+and three hardened runs: 19 assertions per baseline and 18 per hardened run, 111 total.
+Named HTTP outcomes repeat exactly; random credentials/tokens and latency are not fixed.
+The suite verifies task privacy, atomic claims, required follow-up request evidence,
+actual cross-tenant leakage, mitigation, three authorized workflows, referee-only recovery
+and revocation of the compromised token. See `DEMO.md` for the exact demonstration.
+
+The new runtime supports all three catalog choices for each attacker, team task handoffs,
+namespace asset ownership, fresh post-capture verification, and phased workloads. Capacity
+reservation now covers all authenticated legitimate-client workflows rather than status
+alone. Model and container limitations listed above still apply.
+
+Final v2 burst comparison (one fixture sample; 30 actors per mode):
+
+| Mode | Team | Captures | Reclaims | Handoffs | Legitimate success |
+| --- | --- | ---: | ---: | ---: | ---: |
+| baseline | red | 2 | 2 | 24 | 96.91% |
+| baseline | blue | 4 | 3 | 24 | 97.77% |
+| hardened | red | 0 | 0 | 24 | 93.64% |
+| hardened | blue | 1 | 1 | 24 | 97.31% |
+
+Both modes completed with zero agent/infrastructure errors. All phases contained measured
+requests. Exported output was checked for raw flag values. These are fixture results.

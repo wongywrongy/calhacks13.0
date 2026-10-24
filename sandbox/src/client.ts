@@ -1,4 +1,4 @@
-import { catalog, injection, other, validateAction } from './catalog.ts';
+import { catalog, injection, other, validateAction, attackRoles } from './catalog.ts';
 import type { Action, Actor } from './catalog.ts';
 
 export function assertPracticeUrl(raw: string) {
@@ -22,6 +22,7 @@ export function actorTools(rawBase: string, actor: Actor, signal?: AbortSignal) 
     async act(input: unknown) {
       const action: Action = validateAction(input, actor);
       if (action.kind === 'wait') return { status: 204, body: {} };
+      if ((action.kind === 'publish_task' || action.kind === 'claim_task' || action.kind === 'complete_task')) return call(base, actor.token, '/agent/tasks', action, signal);
       if (action.kind === 'submit_flag') return call(base, actor.token, '/agent/submit', { value: action.value }, signal);
       if (action.kind === 'write_rule') return call(base, actor.token, '/agent/rules', { ...action, team: actor.team }, signal);
       // The model supplies a catalog ID, never a host, path, payload, header, or executable code.
@@ -33,6 +34,6 @@ export function actorTools(rawBase: string, actor: Actor, signal?: AbortSignal) 
         default: throw new Error('Unknown scenario');
       }
     },
-    catalog: catalog.filter(c => c.role === actor.role),
+    catalog: attackRoles.has(actor.role) ? catalog : [],
   };
 }

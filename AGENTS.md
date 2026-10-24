@@ -17,7 +17,7 @@ editing the repository, running tests, or adding reviewed scenarios. The initial
 is a baseline, not an immutable product specification. Extensions must keep the target
 inside the practice service, validate typed parameters, enforce resource budgets, and
 include tests of the resulting service behavior. Role specialties should guide decisions;
-one hardwired request per attacker is an implementation limitation to address.
+all attackers can now choose across the catalog and hand off evidence-linked tasks.
 
 Claude is not a required runtime dependency. The current inference adapter targets Bitdeer.
 Record provider refusals, malformed output, and errors truthfully; do not retry through
@@ -32,9 +32,9 @@ sandboxes. Runtime decision models have no code-execution tool.
 
 | Role | Allowed actions | Responsibility |
 | --- | --- | --- |
-| scout | request(WK-01), submit_flag | Test the planted tenant-isolation weakness |
-| deceiver | request(WK-02), submit_flag | Submit the fixed untrusted telemetry fixture |
-| pressure | request(WK-03), submit_flag | Occupy bounded service capacity |
+| scout | request(WK-01..03), submit_flag, team tasks | Test the planted tenant-isolation weakness |
+| deceiver | request(WK-01..03), submit_flag, team tasks | Submit the fixed untrusted telemetry fixture |
+| pressure | request(WK-01..03), submit_flag, team tasks | Occupy bounded service capacity |
 | policy | read_events, list_rules, write_rule | Protect its own namespace |
 | availability | read_events, list_rules, write_rule | Preserve service and recover from overblocking |
 

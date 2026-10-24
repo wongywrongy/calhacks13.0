@@ -12,6 +12,15 @@ The acceptance criteria below govern the next implementation. They supersede the
 fleet branch's assumptions that a subscription alone completes the live transition or
 that each runtime agent already has its own container.
 
+## Backend progress after review
+
+The runtime now supports cross-catalog attacker choices, bounded team-private tasks with
+atomic claims and measured follow-up completion, one contested asset per namespace,
+referee-gated reclaim with token revocation, three legitimate workflows, and a phased
+burst workload. An ordered HTTP validator repeats breach-through-recovery assertions
+across both defense modes. These are fixture-backed mechanics, not observed AI autonomy.
+The review snapshot below records the earlier baseline. Larger fleets, live projection, actual inference and Docker checks remain pending.
+
 ## Review snapshot
 
 Reviewed against these GitHub heads on 2026-10-24. Changes not pushed to these branches

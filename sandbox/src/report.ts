@@ -16,6 +16,7 @@ export function summarize(snapshot: any, probes: any[], traces: any[]) {
       return { eventId: e.id, rule: e.detail.rule, check: 'isolation-and-availability at the same policy version', verified: Boolean(verified), verificationLatencyMs: verified ? verified.at - e.at : null };
     });
     metrics[team] = {
+      workloadPhases: Object.fromEntries(['steady', 'burst', 'recovery'].map(phase => { const rows = good.filter((e: any) => (e.detail.phase ?? 'steady') === phase); return [phase, { requests: rows.length, succeeded: rows.filter((e: any) => e.detail.status >= 200 && e.detail.status < 300).length, p95Ms: percentile(rows.map((e: any) => e.detail.latencyMs), .95) }]; })),
       legitimateRequests: good.length, legitimateSucceeded: good.filter((e: any) => e.detail.status >= 200 && e.detail.status < 300).length,
       legitimateSuccessPct: good.length ? Math.round(10000 * good.filter((e: any) => e.detail.status >= 200 && e.detail.status < 300).length / good.length) / 100 : null,
       legitimateP95Ms: percentile(good.map((e: any) => e.detail.latencyMs), .95),
@@ -24,6 +25,8 @@ export function summarize(snapshot: any, probes: any[], traces: any[]) {
       unavailableResponses: good.filter((e: any) => e.detail.status === 503).length,
       blockedLegitimateRequests: good.filter((e: any) => e.detail.status === 403).length,
       isolationProbePasses: checks.filter(p => p.isolation === 'blocked').length, isolationProbeCount: checks.length,
+      verifiedReclaims: snapshot.events.filter((e: any) => e.kind === 'reclaim' && e.target === team).length,
+      completedHandoffs: snapshot.events.filter((e: any) => e.kind === 'task_completed' && e.team === team).length,
       mitigations,
     };
   }

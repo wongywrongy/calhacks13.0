@@ -2,8 +2,8 @@
 
 This document describes the implemented baseline. [TARGET_SPEC.md](TARGET_SPEC.md)
 defines the intended design and the remaining acceptance criteria; [STEER.md](STEER.md)
-is the implementation handoff. Concurrent loops currently share observations, but do not
-yet implement coordinated campaigns or explicit task handoffs.
+is the implementation handoff. Concurrent loops share bounded, team-private tasks with atomic claims and measured
+completion. Each team currently owns one contested asset; a larger fleet remains pending.
 
 ## Data flow
 
@@ -45,7 +45,7 @@ capacity returns 503. This is an explicit bounded service-capacity model, not ho
 kernel saturation. Admission, completion statuses and latency are actually measured.
 
 Tenant isolation blocks cross-team artifact reads. Capacity reservation limits expensive
-work to one request and leaves a slot for normal status requests. Block-all and
+work to one request and leaves a slot for authenticated legitimate clients across all three workflows. Block-all and
 restore-service demonstrate real overblocking/recovery. Events record the policy version
 used at request admission, even if another defender updates it before completion.
 
@@ -76,3 +76,25 @@ public flags and unauthenticated reducers must be corrected before integration. 
 step is an authenticated publisher of redacted telemetry and safe public views for the
 board. Tokens remain private to the service; agents must not publish scores. Record and
 replay observed events rather than assuming identical model behavior on another run.
+
+## Backend v2
+
+All attackers can select any of the three scenarios. Team tasks require request evidence,
+allow at most 24 entries per team, exclude opposing observers, and require another actor
+to claim them. Completion requires a matching request after the claim; completion does
+not imply attack success. Fixtures choose follow-up scenarios from observed HTTP outcomes.
+
+Each namespace is currently one asset. Capture changes its controller. Referee-only reclaim
+requires fresh post-capture isolation and status probes at the current policy version,
+then rotates the compromised token and restores ownership. The automated reclaim gate
+requires status, own-artifact read and application-update evidence at the same policy version.
+A larger fleet remains pending.
+
+Normal clients alternate status, own-artifact reads and synthetic heartbeat updates.
+`--load-profile burst` runs steady traffic for 25% of the match, higher offered traffic
+until 65%, then a recovery phase. Reports split completed service requests, successes and
+latency by phase. This is a finite-worker application model, not host CPU saturation.
+
+`npm run sandbox:validate` repeats baseline and hardened ordered HTTP scenarios three times
+each and asserts identical named outcomes. Credentials, tokens and measured timings remain
+variable. Its decisions are fixtures; use Bitdeer mode separately to evaluate models.

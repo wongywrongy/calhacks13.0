@@ -2,12 +2,15 @@
   "name": "sudoko-sandbox",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "node --test sandbox/test/*.test.ts",
     "sandbox": "node sandbox/src/run.ts",
     "sandbox:compare": "node sandbox/src/run.ts --compare",
     "sandbox:serve": "node sandbox/src/server.ts",
-    "sandbox:configure": "node sandbox/src/configure.ts"
+    "sandbox:configure": "node sandbox/src/configure.ts",
+    "sandbox:validate": "node sandbox/src/validate.ts"
   }
 }
