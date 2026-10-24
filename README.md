@@ -56,6 +56,8 @@ docker compose up        # arena, service+guard, referee, 4 agents
 # dashboard connects to the arena separately (other workstream)
 ```
 
+**Mock match (no LLM):** `spacetime start` → `cd arena && spacetime publish sudoko-arena` → `cd driver && npm install && npm start` → open `web/index.html` (details in `driver/README.md`).
+
 ## Build order (first, unblock everyone)
 
 1. **arena + referee** — schema live; referee plants one flag, probes it, writes one score. (A)

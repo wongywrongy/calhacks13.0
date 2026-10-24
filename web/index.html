@@ -180,8 +180,9 @@ select{font-family:inherit;font-size:13px;color:var(--fg);background:var(--panel
 
 <script>
 "use strict";
-// --- deterministic match timeline. Swap for a SpacetimeDB subscription later:
-// on each arena event row, call apply(row) + render(); the view below is source-agnostic.
+// --- built-in match timeline: the MOCK_MODE fallback when the arena is unreachable.
+// Live mode (bottom of file) rebuilds the same entries from arena rows and feeds apply()/render().
+// driver/src/main.ts plays this exact script through the arena — keep the two in sync.
 const TIMELINE = [
   {t:'0:00', round:1, kind:'rotate', msg:'Round 1 — flags planted'},
   {t:'0:06', round:1, team:'red',  kind:'steal',   kls:'SQLI-01', msg:'red STOLE blue flag — SQLI-01'},
@@ -209,11 +210,11 @@ const init = () => ({ i:-1, round:0, clock:'0:00', breaches:0, patches:0, ended:
   red:{steals:0,sla:100,off:'standing by',def:'standing by',con:[]},
   blue:{steals:0,sla:100,off:'standing by',def:'standing by',con:[]},
   feed:[] });
-let S = init(), timer=null;
+let S = init(), timer=null, quiet=false; // quiet: replaying already-seen entries, no motion
 
 // ---- motion ----
 function firePulse(dir){ // 'LR' red attacks blue store, 'RL' blue attacks red store
-  if(reduced) return;
+  if(reduced||quiet) return;
   const ch = $('channel'); const w = ch.clientWidth;
   const p = document.createElement('div');
   p.className = 'pulse ' + (dir==='LR'?'red':'blue');
@@ -225,9 +226,9 @@ function firePulse(dir){ // 'LR' red attacks blue store, 'RL' blue attacks red s
     {duration:680, easing:'cubic-bezier(.22,1,.36,1)'});
   a.onfinish = () => p.remove();
 }
-function flash(node){ if(reduced) return;
+function flash(node){ if(reduced||quiet) return;
   node.animate([{transform:'scale(1)'},{transform:'scale(1.06)'},{transform:'scale(1)'}],{duration:420,easing:'ease-out'}); }
-function shield(storeSel){ if(reduced) return;
+function shield(storeSel){ if(reduced||quiet) return;
   const host = document.querySelector(storeSel); const r = document.createElement('div'); r.className='ring';
   host.querySelector('.node').appendChild(r);
   const a = r.animate([{transform:'translate(-50%,-50%) scale(.7)',opacity:.6},{transform:'translate(-50%,-50%) scale(1.35)',opacity:0}],
@@ -301,7 +302,85 @@ $('play').onclick=()=> timer?stop():play();
 $('step').onclick=()=>{ stop(); tick(); };
 $('reset').onclick=reset;
 $('speed').onchange=()=>{ if(timer) play(); };
+
+// ---- live mode: subscribe to the sudoko-arena SpacetimeDB module ----
+// ?mock forces the built-in timeline; it is also the fallback when the arena is unreachable.
+// ?arena=<http uri>&db=<name> point at a different local instance.
+const Q = new URLSearchParams(location.search);
+const ARENA = Q.get('arena') || 'http://127.0.0.1:3000', DB = Q.get('db') || 'sudoko-arena';
+let MOCK_MODE = Q.has('mock');
+// shortcut: SDK comes from a pinned CDN build; vendor it into web/ for a no-egress venue.
+const SDK = 'https://cdn.jsdelivr.net/npm/spacetimedb@2.13.0/+esm';
+const ctrls = document.querySelector('.ctrls');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => '&#'+c.charCodeAt(0)+';'); // rows are agent-written; render() uses innerHTML
+const mmss = us => { const s = Number(us/1000000n); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+const seen = new Set(); let primed = false;
+
+function goMock(why){ if(MOCK_MODE && why) return; MOCK_MODE=true; if(why) console.warn('[arena] '+why+' — using built-in timeline');
+  ctrls.style.display=''; reset(); }
+
+// Rebuild S from the subscribed rows of the latest match, then render(). Numbers come from
+// team; narration (which class, the feed line) from event.detail_json written by the driver/agents;
+// rounds from flag; the end from the final-round score_tick (the arena has no end_match reducer).
+function sync(db){
+  if(MOCK_MODE) return; // fell back (e.g. connect timed out) — don't fight the local timeline
+  const m =[...db.gameMatch.iter()].reduce((a,b) => !a || b.id > a.id ? b : a, null);
+  S = init();
+  if(!m){ render(); $('hint').textContent='Live · waiting for a match — run the mock driver'; return; }
+  const t0 = m.startedAt.microsSinceUnixEpoch, at = ts => ts.microsSinceUnixEpoch, E = [], rounds = new Map();
+  for(const f of db.flag.iter()) if(at(f.plantedAt)>=t0 && !rounds.has(f.round)) rounds.set(f.round, at(f.plantedAt));
+  for(const [round,us] of rounds) E.push({key:`${m.id}r${round}`, us, round, kind:'rotate',
+    msg: round===1 ? 'Round 1 — flags planted' : `Round ${round} — fresh flags`});
+  for(const ev of db.event.iter()){ if(at(ev.ts)<t0) continue;
+    let d = {}; try{ d = JSON.parse(ev.detailJson) || {}; }catch{}
+    E.push({key:`e${ev.id}`, us:at(ev.ts), round:+d.round||undefined, team: d.team==='red'||d.team==='blue' ? d.team : undefined,
+      kind: d.step || ev.kind, kls: esc(d.kls), msg: esc(d.msg || `${ev.actor} ${ev.kind} → ${ev.target}`)}); }
+  const T = {}; for(const tm of db.team.iter()) T[tm.id]=tm;
+  for(const s of db.scoreTick.iter()) if(at(s.ts)>=t0 && s.round>=ROUNDS){
+    E.push({key:`${m.id}end`, us:at(s.ts), kind:'end', msg:`Match complete — RED ${s.redFlags} · BLUE ${s.blueFlags}`}); break; }
+  E.sort((a,b) => a.us<b.us ? -1 : a.us>b.us ? 1 : 0);
+  for(const e of E){ quiet = !primed || seen.has(e.key); seen.add(e.key); e.t = mmss(e.us-t0); S.i++; apply(e); S.feed[0].fresh = !quiet; }
+  quiet = false; primed = true;
+  for(const k of ['red','blue']) if(T[k]){ S[k].steals=T[k].flagsStolen; S[k].sla=T[k].slaPct; }
+  // rule rows carry no timestamp, so patches come from team.rules_version (reset by start_match)
+  S.patches = (T.red?.rulesVersion||0) + (T.blue?.rulesVersion||0);
+  render();
+  if(S.i<0) $('hint').textContent='Live · match started — waiting for the first round';
+}
+
+async function goLive(){
+  const { schema, table, t, reducers, procedures, DbConnectionBuilder, DbConnectionImpl } = await import(SDK);
+  // Mirror of arena/src/lib.rs (same as driver/src/module_bindings). The schema is fixed; read-only here.
+  const tables = schema({
+    gameMatch: table({name:'game_match'}, t.row({ id:t.u64().primaryKey(), round:t.u32(), status:t.string(), startedAt:t.timestamp().name('started_at') })),
+    team: table({name:'team'}, t.row({ id:t.string().primaryKey(), flagsStolen:t.u32().name('flags_stolen'), slaPct:t.u32().name('sla_pct'), rulesVersion:t.u32().name('rules_version') })),
+    flag: table({name:'flag'}, t.row({ id:t.u64().primaryKey(), owner:t.string(), round:t.u32(), value:t.string(), status:t.string(), stolenBy:t.string().name('stolen_by'), plantedAt:t.timestamp().name('planted_at') })),
+    rule: table({name:'rule'}, t.row({ id:t.u64().primaryKey(), owner:t.string(), matchJson:t.string().name('match_json'), action:t.string(), version:t.u32() })),
+    event: table({name:'event'}, t.row({ id:t.u64().primaryKey(), ts:t.timestamp(), kind:t.string(), actor:t.string(), target:t.string(), detailJson:t.string().name('detail_json') })),
+    scoreTick: table({name:'score_tick'}, t.row({ id:t.u64().primaryKey(), round:t.u32(), ts:t.timestamp(), redFlags:t.u32().name('red_flags'), blueFlags:t.u32().name('blue_flags'), redSla:t.u32().name('red_sla'), blueSla:t.u32().name('blue_sla') })),
+  });
+  const MODULE = { versionInfo:{cliVersion:'2.13.0'}, tables:tables.schemaType.tables, reducers:reducers().reducersType.reducers, ...procedures() };
+  await new Promise((ok, fail) => {
+    const to = setTimeout(() => fail(new Error('connect timeout')), 4000);
+    new DbConnectionBuilder(MODULE, cfg => new DbConnectionImpl(cfg))
+      .withUri(ARENA).withDatabaseName(DB)
+      .onConnect(conn => conn.subscriptionBuilder()
+        .onApplied(() => { clearTimeout(to); ok();
+          let pending = false; const later = () => { if(!pending){ pending=true; requestAnimationFrame(() => { pending=false; sync(conn.db); }); } };
+          for(const name of ['gameMatch','team','flag','rule','event','scoreTick'])
+            for(const on of ['onInsert','onUpdate','onDelete']) conn.db[name][on](later);
+          sync(conn.db); })
+        .onError((_c, e) => fail(e))
+        .subscribe(['game_match','team','flag','rule','event','score_tick'].map(n => `SELECT * FROM ${n}`)))
+      .onConnectError((_c, e) => fail(e))
+      .onDisconnect(() => goMock('arena disconnected'))
+      .build();
+  });
+}
+
 reset();
+if(!MOCK_MODE){ ctrls.style.display='none'; $('hint').textContent='Connecting to the arena…';
+  goLive().catch(e => goMock('arena unreachable ('+(e?.message||e)+')')); }
 </script>
 </body>
 </html>
