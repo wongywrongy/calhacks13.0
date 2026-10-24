@@ -1,5 +1,9 @@
 # Implementation handoff
 
+> **Historical planning document.** Written before fleet mode existed; its "fleet branch"
+> cautions refer to `feat/drone-swarm-control`, not to `arena-live/src/fleet.rs`. Current
+> entry points are in `README.md`; the fleet implementation is in `FLEET.md`.
+
 Use this brief for Claude, Codex, or a human contributor. `TARGET_SPEC.md` is the intended
 design; `ARCHITECTURE.md` is the current implementation; `SANDBOX_VALIDATION.md` is existing
 evidence. Runtime agents' restricted tools do not prevent a coding assistant from editing

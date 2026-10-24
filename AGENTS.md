@@ -3,7 +3,9 @@
 Read `docs/TARGET_SPEC.md`, `docs/STEER.md`, and `docs/SECURITY.md`. TARGET_SPEC defines
 the intended product and acceptance criteria; ARCHITECTURE describes what currently runs.
 TypeScript is used for clients and the practice service; Rust is reserved for SpacetimeDB.
-The runnable experiment is `sandbox/src/`.
+The runnable experiment is `sandbox/src/`. The drone fleet mode (`arena-live/src/fleet.rs`,
+`docs/FLEET.md`) is a separate simulation whose agents are fixture reducers on independent
+schedules, not LLM decision loops; the contracts below describe the HTTP suite.
 
 ## Implementation scope
 

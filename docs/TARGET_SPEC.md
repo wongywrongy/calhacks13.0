@@ -8,6 +8,9 @@ assets, with no real aircraft or hardware integration.
 
 This is the intended design, not a claim that every item is built. `ARCHITECTURE.md`
 describes the executable baseline and `SANDBOX_VALIDATION.md` records its test evidence.
+This specification governs the HTTP scenario suite. The separate drone fleet simulation
+(`FLEET.md`) implements multi-drone workspaces in SpacetimeDB reducers and is validated
+on its own terms; it does not satisfy or replace the HTTP acceptance items below.
 The acceptance criteria below govern the next implementation. They supersede the earlier
 fleet branch's assumptions that a subscription alone completes the live transition or
 that each runtime agent already has its own container.

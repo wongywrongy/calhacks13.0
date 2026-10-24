@@ -1,21 +1,43 @@
-> **Current drone-swarm workspace:** see [Fleet implementation and verification](docs/FLEET.md) and [design audit](docs/DESIGN_AUDIT.md). Run `npm run demo:fleet` with a local SpacetimeDB binary. The fleet mode and the existing HTTP scenarios have separate validation scopes.
-
 # SudoKO
 
-A controlled security arena with concurrent attackers, defenders, normal clients and an
-independent referee. The runnable experiment is in `sandbox/`. Requests actually reach
-an HTTP service; synthetic artifacts leak before isolation is applied; bounded expensive
-requests compete with normal traffic for worker capacity.
+A cybersecurity simulation sandbox with independently operating attacker agents,
+defender agents and drones. The repository contains two separate, both-supported
+implementations plus labelled historical prototypes.
 
-The [target specification](docs/TARGET_SPEC.md) separates the intended multi-agent product
-from this working baseline. The [implementation handoff](docs/STEER.md) gives the next
-builder a concrete scope. The new measured-event board in `web/live.html` is integrated with the runtime.
-The older fleet-themed board remains separate.
+| Mode | Entry point | What it is |
+| --- | --- | --- |
+| **Fleet mode (current presentation)** | `npm run demo:fleet` → http://127.0.0.1:4174 | Drone-swarm simulation in SpacetimeDB (`arena-live/src/fleet.rs`, `web/fleet.html`). Three genuinely separate workspaces: attacker, defender, observer. See [docs/FLEET.md](docs/FLEET.md) and the [design audit](docs/DESIGN_AUDIT.md). |
+| **HTTP security scenario suite** | `npm test`, `npm run sandbox:validate`, board via `npm run demo` → http://127.0.0.1:4173 | Measured HTTP attacks against the synthetic practice service in `sandbox/`. Its board (`web/live.html`) is a two-namespace operations view for that suite, not the swarm workspace. |
+| Historical prototypes | none | `arena/` (initial SpacetimeDB module) and `web/index.html` (mock timeline). Not run by any script, not a security authority. `docs/STEER.md` and `docs/PRESENTATION_READY.md` are planning documents from before fleet mode. |
 
-Follow the [presentation readiness plan](docs/PRESENTATION_READY.md) for the remaining
-delivery order, release checks, sponsor priorities and three-minute demo script.
+Fleet command checks run inside database reducers; the HTTP suite makes real HTTP
+requests. Both use fixture decisions unless a Bitdeer model is configured for the HTTP
+suite. Neither is a real drone or flight-controller test.
 
-## Run
+## Fleet mode
+
+Requires Node 24, a Rust toolchain with `wasm32-unknown-unknown`, and SpacetimeDB 2.13.
+
+```bash
+npm ci
+npm run spacetime:build
+SPACETIME_BINARY=/path/to/spacetimedb-standalone npm run test:fleet   # 128 drones / 32 agents integration check
+SPACETIME_BINARY=/path/to/spacetimedb-standalone npm run demo:fleet   # verify, then serve on :4174
+npm run export:fleet                                                   # static recorded replay
+```
+
+The hosted preview is a measured recording, not a running backend. Role isolation is
+enforced by identity-scoped database views, not by hiding replay data. Details, limits
+and verification evidence: [docs/FLEET.md](docs/FLEET.md).
+
+## HTTP security scenario suite
+
+The runnable experiment is in `sandbox/`. Requests actually reach an HTTP service;
+synthetic artifacts leak before isolation is applied; bounded expensive requests compete
+with normal traffic for worker capacity. The [target specification](docs/TARGET_SPEC.md)
+separates the intended multi-agent product from this working baseline.
+
+### Run
 
 Node 24 or later. Run `npm ci` for the board and development checks; the core
 HTTP fixture runner uses Node built-ins.
@@ -40,7 +62,7 @@ mechanics, not the susceptibility of real models.
 JSON results in `output/sandbox/` include measured outcomes, redacted events, decisions,
 rule versions and referee checks. Open `web/report.html` and choose a result to inspect it.
 
-## Bitdeer decisions
+### Bitdeer decisions
 
 Set `BITDEER_API_KEY` and `BITDEER_MODEL` in your shell, then run:
 
@@ -53,7 +75,7 @@ catalog action at a time. They cannot choose a URL, new payload, executable code
 privileged referee operation. Provider failures and malformed output are recorded as
 errors; there is no silent fixture fallback. Credentials never appear in traces.
 
-## Container isolation
+### Container isolation
 
 Local mode binds to loopback and is for development. For container network/resource limits:
 
@@ -78,7 +100,7 @@ SUDOKO_ENGINE=bitdeer docker compose --env-file .sandbox.env -f compose.sandbox.
 Only the inference proxy has an external network. Its upstream route, model, concurrency,
 response-size check and token ceiling are fixed; it is not a general HTTP proxy.
 
-## Scope and remaining integration
+### Scope and remaining integration
 
 Implemented: actual HTTP interactions, private random artifacts, verified captures,
 concurrent specialists, rule-write conflicts, bounded capacity pressure, background traffic,
@@ -90,15 +112,15 @@ The Bitdeer adapter needs a credentialed run before claims about AI behavior. Co
 verification on a Docker host; local tests do not prove container network isolation.
 
 `arena/` and `web/index.html` are the earlier SpacetimeDB/display prototype. This harness
-**does not trust those reducers**, and its results are not yet streamed to that board.
-The next integration is publishing redacted measured events into SpacetimeDB and replacing
-the board timeline, with private artifacts and referee permissions kept protected.
+**does not trust those reducers**. Redacted snapshots of this suite can be published to
+the `arena-live` module (`npm run demo:spacetime`); the drone fleet simulation in the same
+module is a separate implementation with its own validation (see Fleet mode above).
 
 See [architecture](docs/ARCHITECTURE.md), [agent contracts](AGENTS.md),
 [catalog](practice-app/catalog/README.md), [security](docs/SECURITY.md), and
 [validation](docs/SANDBOX_VALIDATION.md).
 
-## Backend validation and stress
+### Backend validation and stress
 
 `npm run sandbox:validate` proves a real tenant-boundary leak, verified capture, teammate
 reproduction, patch effectiveness, untrusted-telemetry authorization, preserved normal
@@ -115,9 +137,10 @@ npm run sandbox -- --compare --seconds 8 --attackers 6 --defenders 2 --clients 6
 This runs 16 security actors, 12 normal clients and two probes, with steady, burst and
 recovery phases. Attackers can select any catalog case and share team-private tasks.
 Reports include measured handoffs, captures, reclaims and per-phase legitimate outcomes.
-There is one contested asset per namespace today. The larger fleet board is still pending.
+There is one contested asset per namespace in this suite; the multi-drone fleet is the
+separate fleet mode above.
 
-## Presentation demo
+### HTTP suite board (`npm run demo`)
 
 ```bash
 npm ci
@@ -125,8 +148,10 @@ npm run demo -- --autorun
 # Open http://127.0.0.1:4173; Enter in the terminal starts another comparison.
 ```
 
-This runs baseline then hardened tests with ten concurrent security actors and
-normal application clients. The board shows real requests, asset control, service
+This serves `web/live.html`, the HTTP suite's operations board. It shows both
+namespaces with an attacker/defender perspective toggle; it is not the role-isolated
+swarm workspace of fleet mode. It runs baseline then hardened tests with ten concurrent
+security actors and normal application clients, showing real requests, asset control, service
 success, team handoffs, and evidence-linked captures/recoveries. Fixture decisions
 are explicitly labelled. Completed runs can be imported, exported, scrubbed and
 played back. The board HTTP service is read-only and listens on loopback.
@@ -157,5 +182,10 @@ node scripts/export-demo.ts output/demo-site
 ```
 
 The static preview does not execute new attacks or connect to a live backend.
-Full local checks: `npm run typecheck`, `npm test`, `npm run sandbox:validate`.
+
+## Full local checks
+
+`npm run typecheck`, `npm test`, `npm run sandbox:validate`, `npm run spacetime:build`,
+`npm run build:fleet`, and `SPACETIME_BINARY=… npm run test:fleet`. Regenerate
+`web/module_bindings` with `npm run spacetime:bindings` whenever `arena-live` changes.
 Docker isolation and live Bitdeer inference remain separate unverified gates.

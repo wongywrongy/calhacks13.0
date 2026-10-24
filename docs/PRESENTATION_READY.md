@@ -1,5 +1,9 @@
 # SudoKO presentation readiness plan
 
+> **Historical planning document** (baseline commit `8667003`). Its "do not expand into a
+> larger fleet" scope and checkpoint schedule predate fleet mode and are not current
+> requirements. See `README.md` for entry points and `FLEET.md` for the swarm workspace.
+
 Planning baseline: backend commit `8667003`, draft PR #4. Current implementation has
 15 passing tests and 111 ordered HTTP assertions. Real inference, live board integration,
 and Docker execution are not yet verified. This plan narrows the hackathon delivery;

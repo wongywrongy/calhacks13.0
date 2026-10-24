@@ -52,5 +52,6 @@ when it worsens; the desired story is not an assertion about a concurrent run's 
 The two commands above use fixtures. To evaluate model choices, configure Bitdeer and run
 `npm run sandbox -- --engine bitdeer --seconds 45 --load-profile burst`. Report the provider,
 model, action traces, failures, and observed outcomes. Provider failures remain errors.
-Do not describe ordered fixture handoffs as autonomous model discovery. Docker isolation,
-actual inference and the live fleet/SpacetimeDB display still require separate verification.
+Do not describe ordered fixture handoffs as autonomous model discovery. Docker isolation
+and actual inference still require separate verification. The drone fleet workspace is a
+separate simulation with its own checks (`FLEET.md`); it is not evidence for this suite.

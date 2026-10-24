@@ -12,6 +12,7 @@ let role: Role = "defender",
   recording: any,
   frame: any,
   selected = 0,
+  selectedEvent = 0,
   playing = false,
   index = 0,
   close = () => {},
@@ -219,7 +220,10 @@ function inspect() {
         };
   $("detail").textContent = JSON.stringify(visible, null, 2);
   const events = frame.events.filter((e: any) => e.drone === d.id),
-    last = events.at(-1);
+    last = events.at(-1),
+    chosen = events.find((e: any) => e.id === selectedEvent);
+  // Re-rendered on every frame so a live update cannot wipe the inspected event.
+  if (chosen) $("detail").append(text("div", JSON.stringify(chosen, null, 2)));
   $("assessment").textContent =
     role === "attacker"
       ? last?.status === 403
@@ -348,6 +352,7 @@ function render(next: any) {
     ...events.map((e: any) => {
       const b = text("button", "");
       b.className = "event";
+      b.setAttribute("aria-pressed", String(e.id === selectedEvent));
       b.append(
         text("span", `#${e.id}`),
         text("span", `DR-${e.drone}`),
@@ -356,8 +361,8 @@ function render(next: any) {
       );
       b.onclick = () => {
         selected = e.drone;
+        selectedEvent = e.id;
         render(frame);
-        $("detail").append(text("div", JSON.stringify(e, null, 2)));
       };
       return b;
     }),
@@ -370,6 +375,7 @@ async function workspace(next: Role) {
   close();
   role = next;
   selected = 0;
+  selectedEvent = 0;
   playing = false;
   $("error").textContent = renderer
     ? ""
@@ -408,7 +414,8 @@ async function workspace(next: Role) {
       const update = () => {
         if (queued) return;
         queued = true;
-        queueMicrotask(() => {
+        // One redraw per animation frame; each reducer transaction arrives as its own message.
+        requestAnimationFrame(() => {
           queued = false;
           if (v !== version) return;
           lastReceived = Date.now();
