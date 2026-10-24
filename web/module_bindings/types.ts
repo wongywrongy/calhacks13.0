@@ -77,6 +77,13 @@ export const Evidence = __t.object("Evidence", {
 });
 export type Evidence = __Infer<typeof Evidence>;
 
+export const Hold = __t.object("Hold", {
+  drone: __t.u32(),
+  epoch: __t.u64(),
+  since: __t.i64(),
+});
+export type Hold = __Infer<typeof Hold>;
+
 export const Principal = __t.object("Principal", {
   identity: __t.identity(),
   role: __t.string(),
