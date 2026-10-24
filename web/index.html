@@ -73,17 +73,17 @@ select{font-family:inherit;font-size:13px;color:var(--fg);background:var(--panel
   font-size:9.5px;letter-spacing:.16em;margin-top:2px}
 .ctrlr svg{display:block}
 
-/* drone swarm */
-.swarm{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;padding:14px 16px}
-.drone{width:92px;height:86px;border-radius:14px;border:1.5px solid var(--line);background:#0E121B;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;position:relative;
+/* drone swarm — dense grid */
+.swarm{display:grid;grid-template-columns:repeat(10,1fr);gap:7px;padding:12px 18px}
+@media(max-width:980px){.swarm{grid-template-columns:repeat(6,1fr)}}
+.drone{aspect-ratio:1/0.84;border-radius:9px;border:1.3px solid var(--line);background:#0E121B;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative;
   transition:background .4s,border-color .4s,box-shadow .4s}
-.drone .rotors{opacity:.5;transition:opacity .4s}
-.drone .cs{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;letter-spacing:.05em;color:var(--dim);transition:color .4s}
-.drone .state{font-size:8.5px;letter-spacing:.14em;color:var(--faint);transition:color .4s}
-.drone.red{background:rgba(255,77,94,.10);border-color:#E0726F;box-shadow:0 0 30px rgba(255,77,94,.16)}
+.drone .rotors{width:22px;height:15px;opacity:.45;transition:opacity .4s}
+.drone .cs{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.02em;color:var(--faint);transition:color .4s}
+.drone.red{background:rgba(255,77,94,.11);border-color:#E0726F;box-shadow:0 0 16px rgba(255,77,94,.16)}
 .drone.red .cs{color:#FF8A95} .drone.red .rotors path,.drone.red .rotors circle{stroke:var(--red)!important}
-.drone.blue{background:rgba(77,140,255,.10);border-color:#6AA0FF;box-shadow:0 0 30px rgba(77,140,255,.16)}
+.drone.blue{background:rgba(77,140,255,.11);border-color:#6AA0FF;box-shadow:0 0 16px rgba(77,140,255,.16)}
 .drone.blue .cs{color:#8FB6FF} .drone.blue .rotors path,.drone.blue .rotors circle{stroke:var(--blue)!important}
 .drone.red .rotors,.drone.blue .rotors{opacity:1}
 
@@ -105,7 +105,7 @@ select{font-family:inherit;font-size:13px;color:var(--fg);background:var(--panel
 .pulse{position:absolute;width:11px;height:11px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:5}
 .pulse.red{background:var(--red);box-shadow:0 0 14px 3px rgba(255,77,94,.7)}
 .pulse.blue{background:var(--blue);box-shadow:0 0 14px 3px rgba(77,140,255,.7)}
-.ring{position:absolute;inset:0;border-radius:14px;pointer-events:none;border:2px solid var(--green)}
+.ring{position:absolute;inset:0;border-radius:9px;pointer-events:none;border:2px solid var(--green)}
 
 /* feed */
 .feed{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin-top:14px}
@@ -211,20 +211,21 @@ select{font-family:inherit;font-size:13px;color:var(--fg);background:var(--panel
 // control bar reads current possession straight from state — it is not pre-authored.
 // ---------------------------------------------------------------------------------------
 const TIMELINE = [
-  {t:'0:00', round:1, kind:'deploy',  n:5,                       msg:'Swarm online — 5 drones, controller neutral'},
-  {t:'0:05', round:1, team:'red',  kind:'seize',   cs:'DR-01', kls:'SQLI-01', msg:'red SEIZED DR-01 — SQLI-01'},
-  {t:'0:10', round:1, team:'red',  kind:'seize',   cs:'DR-02', kls:'IDOR-03', msg:'red SEIZED DR-02 — IDOR-03'},
-  {t:'0:16', round:1, team:'blue', kind:'patch',   kls:'SQLI-01', msg:'blue HARDENED controller — SQLI-01 re-test PASS'},
-  {t:'0:21', round:1, team:'blue', kind:'reclaim', cs:'DR-01', msg:'blue RECLAIMED DR-01'},
-  {t:'0:28', round:2, kind:'wave',                               msg:'Wave 2 — command tokens rotated'},
-  {t:'0:33', round:2, team:'blue', kind:'seize',   cs:'DR-03', kls:'XSS-02',  msg:'blue SEIZED DR-03 — XSS-02'},
-  {t:'0:39', round:2, team:'red',  kind:'patchbad',kls:'IDOR-03', msg:'red HARDENED DR-02 → SLA dip (rule too broad)'},
-  {t:'0:45', round:2, team:'blue', kind:'blocked', cs:'DR-02', kls:'IDOR-03', msg:'blue tried DR-02 → BLOCKED'},
-  {t:'0:51', round:2, team:'red',  kind:'recover',                msg:'red tightened rule → SLA recovered'},
-  {t:'0:58', round:3, kind:'wave',                               msg:'Wave 3 — command tokens rotated'},
-  {t:'1:03', round:3, team:'red',  kind:'seize',   cs:'DR-04', kls:'SSRF-04', msg:'red SEIZED DR-04 — SSRF-04'},
-  {t:'1:09', round:3, team:'red',  kind:'seize',   cs:'DR-05', kls:'SSRF-04', msg:'red SEIZED DR-05 — SSRF-04'},
-  {t:'1:15', round:3, kind:'end',                                msg:'Match complete — control RED 3 · BLUE 2'},
+  {t:'0:00', round:1, kind:'deploy',  n:30,                                 msg:'Swarm online — 30 drones, controller neutral'},
+  {t:'0:05', round:1, team:'red',  kind:'seize',   cs:'DR-01..DR-08', kls:'SQLI-01', msg:'red SEIZED 8 drones — SQLI-01'},
+  {t:'0:11', round:1, team:'red',  kind:'seize',   cs:'DR-09..DR-13', kls:'IDOR-03', msg:'red SEIZED 5 drones — IDOR-03'},
+  {t:'0:17', round:1, team:'blue', kind:'patch',   kls:'SQLI-01',             msg:'blue HARDENED controller — SQLI-01 re-test PASS'},
+  {t:'0:23', round:1, team:'blue', kind:'reclaim', cs:'DR-01..DR-06',         msg:'blue RECLAIMED 6 drones'},
+  {t:'0:30', round:2, kind:'wave',                                           msg:'Wave 2 — command tokens rotated'},
+  {t:'0:35', round:2, team:'blue', kind:'seize',   cs:'DR-14..DR-22', kls:'XSS-02',  msg:'blue SEIZED 9 drones — XSS-02'},
+  {t:'0:41', round:2, team:'red',  kind:'patchbad',kls:'IDOR-03',             msg:'red HARDENED DR-09..13 → SLA dip (rule too broad)'},
+  {t:'0:47', round:2, team:'blue', kind:'blocked', cs:'DR-09',        kls:'IDOR-03', msg:'blue tried DR-09 → BLOCKED'},
+  {t:'0:53', round:2, team:'red',  kind:'recover',                           msg:'red tightened rule → SLA recovered'},
+  {t:'0:59', round:2, team:'red',  kind:'reclaim', cs:'DR-14..DR-18',         msg:'red RECLAIMED 5 drones'},
+  {t:'1:06', round:3, kind:'wave',                                           msg:'Wave 3 — command tokens rotated'},
+  {t:'1:11', round:3, team:'red',  kind:'seize',   cs:'DR-23..DR-28', kls:'SSRF-04', msg:'red SEIZED 6 drones — SSRF-04'},
+  {t:'1:17', round:3, team:'blue', kind:'reclaim', cs:'DR-25..DR-26',         msg:'blue RECLAIMED 2 drones'},
+  {t:'1:23', round:3, kind:'end',                                            msg:'Match complete — fleet contested'},
 ];
 const ROUNDS = 3;
 const $ = id => document.getElementById(id);
@@ -262,6 +263,17 @@ function shield(cs){ if(reduced) return; const c=chipEl(cs); if(!c) return;
 
 function setDrone(cs, by){ const d=S.drones.find(x=>x.cs===cs); if(d) d.by=by; }
 function count(by){ return S.drones.filter(d=>d.by===by).length; }
+// cs may be a single callsign, an array, or a "DR-03..DR-10" range string
+function asList(cs){
+  if(Array.isArray(cs)) return cs;
+  if(typeof cs==='string' && cs.includes('..')){
+    const [a,b]=cs.split('..'), lo=+a.slice(3), hi=+b.slice(3), out=[];
+    for(let i=lo;i<=hi;i++) out.push('DR-'+String(i).padStart(2,'0'));
+    return out;
+  }
+  return [cs];
+}
+function flashAll(list){ list.forEach(flash); }
 
 function apply(e){
   S.clock=e.t; if(e.round) S.round=e.round;
@@ -273,12 +285,14 @@ function apply(e){
       break;
     case 'wave': break; // tokens rotate; control persists
     case 'seize':{
-      setDrone(e.cs, e.team); S[e.team].seizes++; S.seizes++;
-      S[e.team].off=`seized ${e.cs} (${e.kls})`;
-      firePulse(e.team, e.cs); flash(e.cs); break; }
+      const list=asList(e.cs); list.forEach(cs=>setDrone(cs, e.team)); flashAll(list);
+      S[e.team].seizes+=list.length; S.seizes+=list.length;
+      S[e.team].off = list.length>1 ? `seized ${list.length} drones (${e.kls})` : `seized ${list[0]} (${e.kls})`;
+      firePulse(e.team, list[0]); break; }
     case 'reclaim':{
-      setDrone(e.cs, e.team); S[e.team].def=`reclaimed ${e.cs}`;
-      firePulse(e.team, e.cs); shield(e.cs); break; }
+      const list=asList(e.cs); list.forEach(cs=>setDrone(cs, e.team)); list.forEach(shield);
+      S[e.team].def = list.length>1 ? `reclaimed ${list.length} drones` : `reclaimed ${list[0]}`;
+      firePulse(e.team, list[0]); break; }
     case 'patch':{ S.patches++; S[e.team].def=`hardened ${e.kls}`; break; }
     case 'patchbad':{ S.patches++; S[e.team].def=`hardened ${e.kls} (SLA dip)`;
       S[e.team].sla=Math.max(0,S[e.team].sla-15); break; }
@@ -303,8 +317,8 @@ const DRONE_SVG = '<svg class="rotors" width="40" height="26" viewBox="0 0 40 26
 function buildSwarm(){
   const s=$('swarm'); s.innerHTML='';
   S.drones.forEach(d=>{
-    const el=document.createElement('div'); el.className='drone '+d.by; el.id='d-'+d.cs;
-    el.innerHTML=DRONE_SVG+`<span class="cs">${d.cs}</span><span class="state" data-st>NEUTRAL</span>`;
+    const el=document.createElement('div'); el.className='drone '+d.by; el.id='d-'+d.cs; el.title=d.cs;
+    el.innerHTML=DRONE_SVG+`<span class="cs">${d.cs}</span>`;
     s.appendChild(el);
   });
 }
@@ -322,9 +336,7 @@ function render(){
   // swarm: rebuild on count change (deploy), else update in place so flips animate
   const s=$('swarm');
   if(s.childElementCount!==S.drones.length) buildSwarm();
-  S.drones.forEach(d=>{ const el=$('d-'+d.cs); if(!el) return;
-    el.className='drone '+d.by;
-    el.querySelector('[data-st]').textContent = d.by==='neutral'?'NEUTRAL':(d.by==='red'?'RED CTRL':'BLUE CTRL'); });
+  S.drones.forEach(d=>{ const el=$('d-'+d.cs); if(!el) return; el.className='drone '+d.by; });
 
   // control bar from live possession
   const total=S.drones.length||1, r=count('red'), b=count('blue'), n=total-r-b;
