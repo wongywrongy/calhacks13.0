@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "sandbox/src/**/*.ts",
+    "sandbox/test/**/*.ts",
+    "web/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "web/dist"
+  ]
+}

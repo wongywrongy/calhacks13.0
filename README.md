@@ -7,15 +7,16 @@ requests compete with normal traffic for worker capacity.
 
 The [target specification](docs/TARGET_SPEC.md) separates the intended multi-agent product
 from this working baseline. The [implementation handoff](docs/STEER.md) gives the next
-builder a concrete scope. The current fleet-themed board and runtime are not yet one
-integrated live demo.
+builder a concrete scope. The new measured-event board in `web/live.html` is integrated with the runtime.
+The older fleet-themed board remains separate.
 
 Follow the [presentation readiness plan](docs/PRESENTATION_READY.md) for the remaining
 delivery order, release checks, sponsor priorities and three-minute demo script.
 
 ## Run
 
-Node 24 or later; no npm dependencies are required.
+Node 24 or later. Run `npm ci` for the board and development checks; the core
+HTTP fixture runner uses Node built-ins.
 
 ```bash
 npm test
@@ -113,3 +114,46 @@ This runs 16 security actors, 12 normal clients and two probes, with steady, bur
 recovery phases. Attackers can select any catalog case and share team-private tasks.
 Reports include measured handoffs, captures, reclaims and per-phase legitimate outcomes.
 There is one contested asset per namespace today. The larger fleet board is still pending.
+
+## Presentation demo
+
+```bash
+npm ci
+npm run demo -- --autorun
+# Open http://127.0.0.1:4173; Enter in the terminal starts another comparison.
+```
+
+This runs baseline then hardened tests with ten concurrent security actors and
+normal application clients. The board shows real requests, asset control, service
+success, team handoffs, and evidence-linked captures/recoveries. Fixture decisions
+are explicitly labelled. Completed runs can be imported, exported, scrubbed and
+played back. The board HTTP service is read-only and listens on loopback.
+
+For actual model decisions, configure `BITDEER_API_KEY` and `BITDEER_MODEL`, then
+run `npm run demo -- --engine bitdeer --autorun`. Missing credentials fail rather
+than silently switching to fixtures. Live inference has not yet been verified.
+
+For SpacetimeDB 2.13.0, build `arena-live` with a Rust toolchain and the
+`wasm32-unknown-unknown` target using `npm run spacetime:build`. Start a local
+SpacetimeDB instance on port 3000, run `npm run spacetime:prepare`, then
+`npm run demo:spacetime -- --autorun`. Preparation creates a new database and
+writes a local ignored `.demo.env` with publisher credentials. Only its owner can
+publish snapshots; viewers subscribe to a redacted public table. Do not deploy
+the older `arena/` module as the authoritative backend.
+
+`npm run test:spacetime` checks a running local instance (default port 3011).
+Alternatively set `SPACETIME_BINARY` to a standalone executable to let the test
+start its own ephemeral server. The test requires the compiled Wasm, installed
+Playwright Chromium, and verifies two browser subscriptions, refresh, unauthorized
+writes, stale updates, match reset, redaction, replay and responsive layout.
+
+To export the same UI with real recorded fixture evidence for static hosting:
+
+```bash
+npm run build:board
+node scripts/export-demo.ts output/demo-site
+```
+
+The static preview does not execute new attacks or connect to a live backend.
+Full local checks: `npm run typecheck`, `npm test`, `npm run sandbox:validate`.
+Docker isolation and live Bitdeer inference remain separate unverified gates.

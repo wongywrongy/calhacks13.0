@@ -11,6 +11,23 @@
     "sandbox:compare": "node sandbox/src/run.ts --compare",
     "sandbox:serve": "node sandbox/src/server.ts",
     "sandbox:configure": "node sandbox/src/configure.ts",
-    "sandbox:validate": "node sandbox/src/validate.ts"
+    "sandbox:validate": "node sandbox/src/validate.ts",
+    "typecheck": "tsc",
+    "build:board": "esbuild web/app.ts --bundle --format=esm --outfile=web/dist/app.js",
+    "demo": "npm run build:board && node sandbox/src/demo.ts",
+    "spacetime:build": "cargo build --manifest-path arena-live/Cargo.toml --target wasm32-unknown-unknown --release",
+    "spacetime:bindings": "spacetime generate --lang typescript --bin-path arena-live/target/wasm32-unknown-unknown/release/sudoko_live.wasm --out-dir web/module_bindings -y",
+    "spacetime:prepare": "node scripts/prepare-spacetime.ts",
+    "test:spacetime": "npm run build:board && node scripts/check-spacetime.ts",
+    "demo:spacetime": "npm run build:board && node --env-file=.demo.env sandbox/src/demo.ts"
+  },
+  "dependencies": {
+    "spacetimedb": "2.13.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^24.19.2",
+    "esbuild": "^0.25.12",
+    "typescript": "^5.9.3"
   }
 }

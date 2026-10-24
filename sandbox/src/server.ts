@@ -152,8 +152,8 @@ export class Match {
       case 'restore-service': current.denyAll = false; break;
     }
     current.version++;
-    this.emit('rule_change', actor, actor.team, { rule: input.rule, evidenceId: evidence.id, before, after: { ...current } });
-    return result(200, { policy: current });
+    const event = this.emit('rule_change', actor, actor.team, { rule: input.rule, evidenceId: evidence.id, before, after: { ...current } });
+    return result(200, { policy: current, eventId: event.id });
   }
   capture(actor: Actor, value: unknown): Result {
     if (!attackRoles.has(actor.role)) return result(403, { error: 'Attacker required' });
@@ -162,8 +162,9 @@ export class Match {
     if (this.captured.has(identity)) return result(409, { error: 'Already captured this round' });
     this.captured.add(identity);
     this.control[owner] = actor.team;
-    this.emit('capture', actor, owner, { round: this.round, verifiedBy: 'private token equality' });
-    return result(200, { captured: true });
+    const source = this.events.findLast(e => e.kind === 'request' && e.actor === actor.id && e.target === owner && e.detail.secretReleased);
+    const event = this.emit('capture', actor, owner, { round: this.round, verifiedBy: 'private token equality', sourceRequestId: source?.id });
+    return result(200, { captured: true, eventId: event.id });
   }
   async request(actor: Actor, path: string, method: string, body: any): Promise<Result> {
     const match = /^\/v1\/(red|blue)\/(status|artifact|telemetry|report|update)$/.exec(path);

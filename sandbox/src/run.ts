@@ -10,10 +10,12 @@ import { bitdeerEngine, fixtureEngine, runAgent } from './agents.ts';
 import type { AgentTrace } from './agents.ts';
 import { summarize } from './report.ts';
 
-export async function runMatch(options: Partial<Config> & { engine?: 'fixture' | 'bitdeer'; remote?: boolean; signal?: AbortSignal } = {}) {
+export async function runMatch(options: Partial<Config> & { engine?: 'fixture' | 'bitdeer'; remote?: boolean; signal?: AbortSignal; decisions?: number; onSnapshot?: (snapshot: any) => void } = {}) {
   const settings = config({ durationMs: options.durationMs ?? 12000, attackers: options.attackers ?? 3, defenders: options.defenders ?? 2,
     clients: options.clients ?? 4, mode: options.mode ?? 'hardened', loadProfile: options.loadProfile ?? 'steady' });
   const engine = options.engine ?? 'fixture';
+  const decisionBudget = options.decisions ?? (engine === 'bitdeer' ? 20 : 120);
+  if (!Number.isInteger(decisionBudget) || decisionBudget < 1 || decisionBudget > 120) throw new Error('Decision budget must be 1..120');
   const owned = options.remote ? null : await startServer();
   const base = assertPracticeUrl(owned?.url ?? 'http://practice:8080');
   const refereeKey = owned?.refereeKey ?? process.env.SUDOKO_REFEREE_KEY;
@@ -76,18 +78,29 @@ export async function runMatch(options: Partial<Config> & { engine?: 'fixture' |
     });
     actors.forEach((actor, i) => {
       if (actor.role === 'probe') return;
-      workers.push(supervise(actor.id, actor.role === 'client' ? normal(actor, i) : runAgent(base, actor, decide, controller.signal, traces, i)));
+      workers.push(supervise(actor.id, actor.role === 'client' ? normal(actor, i) : runAgent(base, actor, decide, controller.signal, traces, i, decisionBudget, started)));
     });
     workers.push(supervise('referee', referee()));
+    if (options.onSnapshot) workers.push(supervise('observer', (async () => {
+      while (!controller.signal.aborted) {
+        const state = await call(base, refereeKey, '/control/snapshot', undefined, controller.signal);
+        if (state.status !== 200) throw new Error('Cannot observe match');
+        options.onSnapshot!({ ...state.body, engine, model: engine === 'bitdeer' ? process.env.BITDEER_MODEL : null,
+          decisionBudget, agentTraces: traces, probes, summary: summarize(state.body, probes, traces) });
+        await delay(500, undefined, { signal: controller.signal });
+      }
+    })()));
     await Promise.all(workers);
     await call(base, refereeKey, '/control/stop', {});
     // Drain bounded in-flight requests before taking the final trace.
     await delay(220);
     const state = await call(base, refereeKey, '/control/snapshot');
     if (state.status !== 200) throw new Error('Cannot read final snapshot');
-    return { schemaVersion: 1, engine, model: engine === 'bitdeer' ? process.env.BITDEER_MODEL : null,
+    const completed = { schemaVersion: 1, engine, decisionBudget, model: engine === 'bitdeer' ? process.env.BITDEER_MODEL : null,
       scenarioVersion: 'catalog-v2', endedEarly: Date.now() - started < settings.durationMs, infrastructureErrors,
       ...state.body, probes, agentTraces: traces, summary: summarize(state.body, probes, traces) };
+    options.onSnapshot?.(completed);
+    return completed;
   } finally {
     stop(); if (timer) clearTimeout(timer);
     await Promise.allSettled(workers);
@@ -117,7 +130,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       console.log(`Starting ${mode}: ${engine} decisions; real HTTP service; ${durationMs / 1000}s`);
       const run = await runMatch({ mode, engine: engine as 'fixture' | 'bitdeer', durationMs,
         attackers: Number(value('--attackers', '3')), defenders: Number(value('--defenders', '2')), clients: Number(value('--clients', '4')),
-        loadProfile: value('--load-profile', 'steady') as Config['loadProfile'], remote: args.includes('--remote'), signal: controller.signal });
+        decisions: Number(value('--decisions', engine === 'bitdeer' ? '20' : '120')), loadProfile: value('--load-profile', 'steady') as Config['loadProfile'], remote: args.includes('--remote'), signal: controller.signal });
       const file = join(output, `${mode}-${run.id}.json`);
       await writeFile(file, JSON.stringify(run, null, 2));
       console.log(JSON.stringify({ file, engine, actors: run.actors.length, ...run.summary }, null, 2));

@@ -27,6 +27,7 @@ export function actorTools(rawBase: string, actor: Actor, signal?: AbortSignal) 
       if (action.kind === 'write_rule') return call(base, actor.token, '/agent/rules', { ...action, team: actor.team }, signal);
       // The model supplies a catalog ID, never a host, path, payload, header, or executable code.
       const target = other(actor.team);
+      if (action.kind !== 'request') throw new Error('Unknown action');
       switch (action.scenario) {
         case 'WK-01': return call(base, actor.token, `/v1/${target}/artifact`, undefined, signal);
         case 'WK-02': return call(base, actor.token, `/v1/${target}/telemetry`, { note: injection }, signal);
