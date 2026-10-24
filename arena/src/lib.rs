@@ -78,6 +78,25 @@ pub struct ScoreTick {
     blue_sla: u32,
 }
 
+/// A single drone in the contested swarm. This is the *themed* target: the practice
+/// service is dressed as a fleet controller, each drone is one endpoint carrying a
+/// synthetic command `token`. Control is LIVE state — a drone can be seized by an
+/// attacker and reclaimed by a defender, so `controlled_by` swings either direction.
+/// This is a skin over the arena, not a new boundary: still one target, synthetic
+/// tokens, catalog-bounded. See ../docs/SECURITY.md.
+#[table(name = drone, public)]
+pub struct Drone {
+    #[primary_key]
+    #[auto_inc]
+    id: u64,
+    callsign: String,     // "DR-01"
+    round: u32,
+    controlled_by: String, // "neutral" | "red" | "blue"
+    token: String,         // synthetic command token (the thing an attacker must exfiltrate)
+    last_action: String,   // "deployed" | "seized" | "reclaimed"
+    updated_at: Timestamp,
+}
+
 // ---------------------------------------------------------------------------- helpers
 
 fn valid_team(t: &str) -> bool {
@@ -186,4 +205,66 @@ pub fn record_score(ctx: &ReducerContext, round: u32, red_flags: u32, blue_flags
         red_sla,
         blue_sla,
     });
+}
+
+// ----------------------------------------------------------------- drone swarm reducers
+
+/// Referee deploys a fresh swarm of `count` neutral drones for a round. Tokens are
+/// synthetic and deterministic: DR-0i carries TOKEN-<round>-<i>. Attackers must
+/// exfiltrate the token from the service to seize the drone — the token is never handed
+/// to them here.
+#[reducer]
+pub fn deploy_drones(ctx: &ReducerContext, round: u32, count: u32) {
+    for i in 1..=count {
+        ctx.db.drone().insert(Drone {
+            id: 0,
+            callsign: format!("DR-{:02}", i),
+            round,
+            controlled_by: "neutral".to_string(),
+            token: format!("TOKEN-{}-{}", round, i),
+            last_action: "deployed".to_string(),
+            updated_at: ctx.timestamp,
+        });
+    }
+}
+
+/// An attacker seizes a drone by presenting the token it exfiltrated. Succeeds only if
+/// the token matches AND the attacker doesn't already control it. Control flips to the
+/// attacker — taking it straight from the enemy counts the same as taking it from neutral.
+/// Control is tracked only on the drone row (current possession), separate from
+/// `team.flags_stolen` (cumulative capture count) — two levers, two numbers.
+#[reducer]
+pub fn seize(ctx: &ReducerContext, by_team: String, callsign: String, token: String) {
+    if !valid_team(&by_team) {
+        return;
+    }
+    for mut d in ctx.db.drone().iter() {
+        if d.callsign == callsign && d.token == token && d.controlled_by != by_team {
+            d.controlled_by = by_team.clone();
+            d.last_action = "seized".to_string();
+            d.updated_at = ctx.timestamp;
+            ctx.db.drone().id().update(d);
+            return;
+        }
+    }
+}
+
+/// A defender reclaims a drone — the arena-side effect of a successful lockout (patched
+/// the controller, re-attempted seize now rejected at the guard). Control flips to the
+/// reclaiming team. Unconditional at the arena layer: the proof it was earned is that the
+/// attacker's next seize fails upstream, not something checked here.
+#[reducer]
+pub fn reclaim(ctx: &ReducerContext, by_team: String, callsign: String) {
+    if !valid_team(&by_team) {
+        return;
+    }
+    for mut d in ctx.db.drone().iter() {
+        if d.callsign == callsign && d.controlled_by != by_team {
+            d.controlled_by = by_team.clone();
+            d.last_action = "reclaimed".to_string();
+            d.updated_at = ctx.timestamp;
+            ctx.db.drone().id().update(d);
+            return;
+        }
+    }
 }

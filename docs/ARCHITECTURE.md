@@ -48,6 +48,15 @@ to tables.
 | `rule`        | id, owner, match_json, action (`block`/`allow`/`sanitize`), version    | defenders (own namespace only) |
 | `event`       | id, ts, kind (`request`/`capture`/`rule_change`/`sla`), actor, target, detail_json | service, referee |
 | `score_tick`  | round, ts, red_flags, blue_flags, red_sla, blue_sla                    | referee           |
+| `drone`       | id, callsign, round, controlled_by (`neutral`/`red`/`blue`), token, last_action | referee (deploy), attackers (seize), defenders (reclaim) |
+
+The `drone` table is the themed target: the practice service dressed as a **fleet
+controller**, each drone one endpoint carrying a synthetic command token. `controlled_by` is
+**live possession** (swings either way), tracked separately from `team.flags_stolen`
+(cumulative captures) — the control bar reads the former. A skin over the arena, same
+boundaries (see `../docs/STEER.md` and `SECURITY.md`). Reducers: `deploy_drones(round, count)`,
+`seize(by_team, callsign, token)` (token must match → control flips to attacker),
+`reclaim(by_team, callsign)` (defender lockout → control flips back).
 
 Reducers (minimum):
 `start_match`, `plant_flags`, `submit_flag(by_team, value)`, `write_rule(team, …)`, `record_event`,

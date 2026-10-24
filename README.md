@@ -12,6 +12,11 @@ arena. Frontend is a separate workstream and out of scope here.
 
 ## Scope
 
+**Demo theme:** the practice service is dressed as a **fleet controller** and the target is a
+**contested swarm of drones** — attackers *seize* drones (exfiltrate a synthetic token),
+defenders *reclaim* them, and a left-right **control bar** shows possession swinging. A skin
+over the arena, not a new boundary. See `docs/STEER.md`.
+
 **In scope (backend):**
 - One practice **service** with two flag stores and an event stream.
 - A **guard** layer with two rule namespaces (one writable per team).
