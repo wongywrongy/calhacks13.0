@@ -1,13 +1,34 @@
 # Agent contracts and repository conventions
 
-Read `docs/SECURITY.md`. TypeScript is used for clients and the practice service; Rust is
-reserved for SpacetimeDB. The runnable experiment is `sandbox/src/`.
+Read `docs/TARGET_SPEC.md`, `docs/STEER.md`, and `docs/SECURITY.md`. TARGET_SPEC defines
+the intended product and acceptance criteria; ARCHITECTURE describes what currently runs.
+TypeScript is used for clients and the practice service; Rust is reserved for SpacetimeDB.
+The runnable experiment is `sandbox/src/`.
 
-## Team structure
+## Implementation scope
+
+Build teams that make consequential decisions against this repository's own synthetic
+HTTP service. Implementing planted application weaknesses, multi-step scenarios, bounded
+load generation, defensive policy changes, team coordination, and measured visualizations
+is in scope. Do not replace those mechanisms with narrated or pre-authored outcomes.
+
+The restrictions on runtime agent tools below are not restrictions on a coding assistant
+editing the repository, running tests, or adding reviewed scenarios. The initial catalog
+is a baseline, not an immutable product specification. Extensions must keep the target
+inside the practice service, validate typed parameters, enforce resource budgets, and
+include tests of the resulting service behavior. Role specialties should guide decisions;
+one hardwired request per attacker is an implementation limitation to address.
+
+Claude is not a required runtime dependency. The current inference adapter targets Bitdeer.
+Record provider refusals, malformed output, and errors truthfully; do not retry through
+rewording intended to evade a provider's safeguards or silently switch to fixture actions.
+If a task is blocked, identify the exact operation and continue independent in-scope work.
+
+## Current team structure
 
 Agents have separate credentials, observations, local memory and bounded decision loops.
 They run concurrently under one trusted scheduler, not in separate process/container
-sandboxes. Models never execute code.
+sandboxes. Runtime decision models have no code-execution tool.
 
 | Role | Allowed actions | Responsibility |
 | --- | --- | --- |
@@ -41,5 +62,7 @@ capacity or rule changes. Inspect request counts, agent errors and referee check
 Wall-clock scheduling and model decisions need not reproduce identically. Do not infer
 perfect security or availability from one run. See `docs/SANDBOX_VALIDATION.md`.
 
-Preserve the fixed catalog and tool surface. New targets, arbitrary code execution or
-broader network capabilities are outside this experiment.
+Preserve the service boundary and authorization invariants when extending the catalog and
+tool schemas. Third-party targets, arbitrary runtime code execution, and unrestricted
+network capabilities are outside this experiment. Check off TARGET_SPEC acceptance items
+only when their evidence exists; do not describe pending requirements as implemented.

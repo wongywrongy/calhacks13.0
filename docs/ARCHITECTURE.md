@@ -1,5 +1,10 @@
 # Runnable multi-agent experiment
 
+This document describes the implemented baseline. [TARGET_SPEC.md](TARGET_SPEC.md)
+defines the intended design and the remaining acceptance criteria; [STEER.md](STEER.md)
+is the implementation handoff. Concurrent loops currently share observations, but do not
+yet implement coordinated campaigns or explicit task handoffs.
+
 ## Data flow
 
 The trusted runner starts a match with its referee credential. The practice service creates

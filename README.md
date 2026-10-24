@@ -5,6 +5,11 @@ independent referee. The runnable experiment is in `sandbox/`. Requests actually
 an HTTP service; synthetic artifacts leak before isolation is applied; bounded expensive
 requests compete with normal traffic for worker capacity.
 
+The [target specification](docs/TARGET_SPEC.md) separates the intended multi-agent product
+from this working baseline. The [implementation handoff](docs/STEER.md) gives the next
+builder a concrete scope. The current fleet-themed board and runtime are not yet one
+integrated live demo.
+
 ## Run
 
 Node 24 or later; no npm dependencies are required.

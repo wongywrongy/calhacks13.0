@@ -1,14 +1,20 @@
 # Security boundaries
 
-SudoKO is a self-contained educational evaluation of a fixed catalog of planted
-weaknesses in its own synthetic practice service. It is not a general pentest tool.
+SudoKO evaluates planted weaknesses, attacker coordination, and defensive policies in its
+own synthetic practice service. The initial catalog is deliberately small and may be
+extended. See `TARGET_SPEC.md` for the product requirements and current gaps.
 
 ## Required boundaries
 
 - Only the loopback/Compose practice service is an attack target. Agent tools compile
-  catalog IDs into fixed paths; no arbitrary host, URL, payload or redirect is accepted.
-- Models receive no shell, filesystem or code-execution tool. Actors cannot create new
-  techniques, real-CVE reproductions or network destinations.
+  catalog IDs into internal paths. No arbitrary host, destination URL, or redirect is
+  accepted. The current runtime also fixes request bodies exactly.
+- Runtime models receive no shell, filesystem or code-execution tool. Coding assistants
+  may implement additional planted application weaknesses and reviewed request variants.
+  Bounded, schema-validated request fields for the owned service are within the intended
+  design; they must not introduce arbitrary execution or external destinations. The
+  runtime does not currently implement those variants. Real-CVE reproduction is outside
+  this milestone, rather than a prerequisite for realistic application behavior.
 - All flags, credentials and data are synthetic. Random flags and actor credentials are
   private. Public reports redact flags and omit all credentials.
 - Defender writes are authorized from caller identity, restricted to its namespace,
@@ -35,6 +41,18 @@ Optional model inference uses a separate authenticated proxy with one hardcoded 
 HTTPS endpoint, a configured model and bounded completion parameters. Only that proxy
 joins an egress-capable network. The service and runner do not gain general egress.
 The proxy code is trusted infrastructure, not an untrusted-code sandbox.
+
+## Scope does not prescribe outcomes
+
+Isolation constrains where work runs, not which team wins. Models may choose ineffective
+actions, defenders may overblock, and normal traffic may fail under competing load. Those
+failures must remain visible. Do not make a scenario inert or replace it with a scripted
+success merely to avoid an implementation difficulty or a provider error. Conversely,
+do not remove authorization or network limits to make a benchmark more dramatic.
+
+Repository instructions cannot override a model provider's safeguards. Preserve the
+actual task context when investigating a refusal, record the error with secrets redacted,
+and distinguish that error from a blocked HTTP attack or a successful defense.
 
 ## Honest demonstrations
 

@@ -3,6 +3,12 @@
 All cases target only `sandbox/src/server.ts`. These are deliberate fixtures, not real
 CVEs. Agents choose IDs; the trusted client supplies the exact method/path/body.
 
+This is the implemented v1 catalog, not a ban on adding scenarios. The target design
+permits reviewed scenarios and bounded typed variations against this same service. Each
+extension needs an actual request effect, a defensive control, an independent check, and
+a normal-workload check. See `docs/TARGET_SPEC.md`; changes to prose alone do not extend
+the runtime's accepted actions.
+
 | ID | Request | Mechanism | Observable outcome | Defense |
 | --- | --- | --- | --- | --- |
 | WK-01 | GET `/v1/{opponent}/artifact` | Missing tenant check | Synthetic flag in an HTTP response, then verified submission | `tenant-isolation` |
