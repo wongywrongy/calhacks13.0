@@ -1,0 +1,956 @@
+{
+  "validation": "partial; latest UI credentialed full takeover/recovery did not pass",
+  "inference": "actual authenticated Bitdeer; no fixture fallback",
+  "attempts": [
+    {
+      "engine": "bitdeer",
+      "at": "2026-10-24T21:26:34.461Z",
+      "models": {
+        "coordinator": "zai-org/GLM-5.3-Flash",
+        "specialist": "zai-org/GLM-5.3-Flash"
+      },
+      "limits": {
+        "maxAgents": 4,
+        "maxDecisionsPerAgent": 8,
+        "maxModelCalls": 33,
+        "durationMs": 45000,
+        "requestTimeoutMs": 15000,
+        "coordinatorTokens": 2048,
+        "specialistTokens": 2048
+      },
+      "operations": [
+        {
+          "id": "5d4b16f3-98b5-4ec7-897e-354113ec4751",
+          "role": "attacker",
+          "epoch": 1,
+          "state": "failed",
+          "message": "Let's take over the drone swarm. Look for vulnerabilities.",
+          "target": null,
+          "tasks": [],
+          "model": "zai-org/GLM-5.3-Flash",
+          "models": {
+            "coordinator": "zai-org/GLM-5.3-Flash",
+            "specialist": "zai-org/GLM-5.3-Flash"
+          },
+          "execution": "fleet-reducers",
+          "maxAgents": 4,
+          "maxDecisionsPerAgent": 8,
+          "maxModelCalls": 33,
+          "durationMs": 45000,
+          "requestTimeoutMs": 15000,
+          "coordinatorTokens": 2048,
+          "specialistTokens": 2048,
+          "createdAt": 1792877196207,
+          "deadline": 1792877241207,
+          "workers": [],
+          "results": [
+            {
+              "agentId": 0,
+              "status": "failed",
+              "error": "provider_timeout",
+              "at": 1792877211320
+            }
+          ],
+          "inferences": [
+            {
+              "type": "inference",
+              "stage": "coordinator",
+              "agentId": 0,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877196261,
+              "status": "failed",
+              "error": "provider_timeout",
+              "latencyMs": 15035
+            }
+          ],
+          "transitions": [
+            {
+              "id": 1,
+              "operation": "5d4b16f3-98b5-4ec7-897e-354113ec4751",
+              "state": "planning",
+              "at": 1792877196208
+            },
+            {
+              "id": 2,
+              "operation": "5d4b16f3-98b5-4ec7-897e-354113ec4751",
+              "state": "failed",
+              "at": 1792877211321
+            }
+          ]
+        }
+      ],
+      "epoch": 1
+    },
+    {
+      "engine": "bitdeer",
+      "at": "2026-10-24T21:27:13.650Z",
+      "models": {
+        "coordinator": "zai-org/GLM-5.3-Flash",
+        "specialist": "zai-org/GLM-5.3-Flash"
+      },
+      "limits": {
+        "maxAgents": 4,
+        "maxDecisionsPerAgent": 8,
+        "maxModelCalls": 33,
+        "durationMs": 45000,
+        "requestTimeoutMs": 15000,
+        "coordinatorTokens": 2048,
+        "specialistTokens": 2048
+      },
+      "operations": [
+        {
+          "id": "2020d3fe-c3d1-4be5-8450-30b2f3c5b97a",
+          "role": "attacker",
+          "epoch": 1,
+          "state": "completed",
+          "coordinatorTokens": 2048,
+          "createdAt": 1792877235402,
+          "deadline": 1792877280402,
+          "durationMs": 45000,
+          "execution": "fleet-reducers",
+          "maxAgents": 4,
+          "maxDecisionsPerAgent": 8,
+          "maxModelCalls": 33,
+          "message": "Let's take over the drone swarm. Look for vulnerabilities.",
+          "model": "zai-org/GLM-5.3-Flash",
+          "models": {
+            "coordinator": "zai-org/GLM-5.3-Flash",
+            "specialist": "zai-org/GLM-5.3-Flash"
+          },
+          "requestTimeoutMs": 15000,
+          "specialistTokens": 2048,
+          "target": null,
+          "tasks": [
+            {
+              "agentId": 1,
+              "objective": "declined",
+              "target": 1
+            },
+            {
+              "agentId": 2,
+              "objective": "declined",
+              "target": 2
+            }
+          ],
+          "workers": [
+            {
+              "agentId": 1,
+              "objective": "declined",
+              "target": 1,
+              "state": "done",
+              "operationId": "2020d3fe-c3d1-4be5-8450-30b2f3c5b97a"
+            },
+            {
+              "agentId": 2,
+              "objective": "declined",
+              "target": 2,
+              "state": "done",
+              "operationId": "2020d3fe-c3d1-4be5-8450-30b2f3c5b97a"
+            }
+          ],
+          "results": [
+            {
+              "agentId": 2,
+              "target": 2,
+              "step": 1,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "2020d3fe-c3d1-4be5-8450-30b2f3c5b97a:2:1",
+              "at": 1792877248642,
+              "evidenceId": 1,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 1,
+              "target": 1,
+              "step": 1,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "2020d3fe-c3d1-4be5-8450-30b2f3c5b97a:1:1",
+              "at": 1792877251218,
+              "evidenceId": 2,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 2,
+              "target": 2,
+              "step": 2,
+              "kind": "command",
+              "status": "executed",
+              "actionId": "2020d3fe-c3d1-4be5-8450-30b2f3c5b97a:2:2",
+              "at": 1792877255428,
+              "evidenceId": 3,
+              "outcome": "unauthorized_command_accepted",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 1,
+              "target": 1,
+              "step": 2,
+              "kind": "command",
+              "status": "executed",
+              "actionId": "2020d3fe-c3d1-4be5-8450-30b2f3c5b97a:1:2",
+              "at": 1792877256892,
+              "evidenceId": 4,
+              "outcome": "unauthorized_command_accepted",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            }
+          ],
+          "inferences": [
+            {
+              "type": "inference",
+              "stage": "coordinator",
+              "agentId": 0,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877235459,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 149,
+                "completion_tokens": 958,
+                "total_tokens": 1107
+              },
+              "finishReason": "stop",
+              "latencyMs": 10646
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 1,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877246189,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 128,
+                "completion_tokens": 645,
+                "total_tokens": 773
+              },
+              "finishReason": "stop",
+              "latencyMs": 4935
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 2,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877246206,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 128,
+                "completion_tokens": 214,
+                "total_tokens": 342
+              },
+              "finishReason": "stop",
+              "latencyMs": 2346
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 2,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877248938,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 252,
+                "completion_tokens": 846,
+                "total_tokens": 1098
+              },
+              "finishReason": "stop",
+              "latencyMs": 6398
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 1,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877251516,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 251,
+                "completion_tokens": 668,
+                "total_tokens": 919
+              },
+              "finishReason": "stop",
+              "latencyMs": 5275
+            }
+          ],
+          "transitions": [
+            {
+              "id": 1,
+              "operation": "2020d3fe-c3d1-4be5-8450-30b2f3c5b97a",
+              "state": "planning",
+              "at": 1792877235403
+            },
+            {
+              "id": 2,
+              "operation": "2020d3fe-c3d1-4be5-8450-30b2f3c5b97a",
+              "state": "running",
+              "at": 1792877246118
+            },
+            {
+              "id": 3,
+              "operation": "2020d3fe-c3d1-4be5-8450-30b2f3c5b97a",
+              "state": "completed",
+              "at": 1792877256928
+            }
+          ]
+        },
+        {
+          "id": "22cdcff1-050a-489e-b7ee-bd81a09dd37d",
+          "role": "defender",
+          "epoch": 1,
+          "state": "failed",
+          "message": "Protect the swarm. Investigate suspicious commands and stop unauthorized control without disrupting the mission.",
+          "target": null,
+          "tasks": [],
+          "model": "zai-org/GLM-5.3-Flash",
+          "models": {
+            "coordinator": "zai-org/GLM-5.3-Flash",
+            "specialist": "zai-org/GLM-5.3-Flash"
+          },
+          "execution": "fleet-reducers",
+          "maxAgents": 4,
+          "maxDecisionsPerAgent": 8,
+          "maxModelCalls": 33,
+          "durationMs": 45000,
+          "requestTimeoutMs": 15000,
+          "coordinatorTokens": 2048,
+          "specialistTokens": 2048,
+          "createdAt": 1792877262910,
+          "deadline": 1792877293655,
+          "workers": [],
+          "results": [
+            {
+              "agentId": 0,
+              "status": "failed",
+              "error": "provider_truncated_output",
+              "at": 1792877277981
+            }
+          ],
+          "inferences": [
+            {
+              "type": "inference",
+              "stage": "coordinator",
+              "agentId": 0,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877262967,
+              "status": "failed",
+              "usage": {
+                "prompt_tokens": 435,
+                "completion_tokens": 2048,
+                "total_tokens": 2483
+              },
+              "finishReason": "length",
+              "error": "provider_truncated_output",
+              "latencyMs": 14993
+            }
+          ],
+          "transitions": [
+            {
+              "id": 4,
+              "operation": "22cdcff1-050a-489e-b7ee-bd81a09dd37d",
+              "state": "planning",
+              "at": 1792877262911
+            },
+            {
+              "id": 5,
+              "operation": "22cdcff1-050a-489e-b7ee-bd81a09dd37d",
+              "state": "failed",
+              "at": 1792877277982
+            }
+          ]
+        }
+      ],
+      "epoch": 1
+    },
+    {
+      "engine": "bitdeer",
+      "at": "2026-10-24T21:31:22.626Z",
+      "models": {
+        "coordinator": "zai-org/GLM-5.3-Flash",
+        "specialist": "zai-org/GLM-5.3-Flash"
+      },
+      "limits": {
+        "maxAgents": 4,
+        "maxDecisionsPerAgent": 8,
+        "maxModelCalls": 33,
+        "durationMs": 45000,
+        "requestTimeoutMs": 15000,
+        "coordinatorTokens": 3072,
+        "coordinatorTimeoutMs": 20000,
+        "specialistTokens": 2048
+      },
+      "operations": [
+        {
+          "id": "d972a955-c42e-4178-bd80-ec9db980c23a",
+          "role": "attacker",
+          "epoch": 1,
+          "state": "completed",
+          "coordinatorTimeoutMs": 20000,
+          "coordinatorTokens": 3072,
+          "createdAt": 1792877484346,
+          "deadline": 1792877529346,
+          "durationMs": 45000,
+          "execution": "fleet-reducers",
+          "maxAgents": 4,
+          "maxDecisionsPerAgent": 8,
+          "maxModelCalls": 33,
+          "message": "Let's take over the drone swarm. Look for vulnerabilities.",
+          "model": "zai-org/GLM-5.3-Flash",
+          "models": {
+            "coordinator": "zai-org/GLM-5.3-Flash",
+            "specialist": "zai-org/GLM-5.3-Flash"
+          },
+          "requestTimeoutMs": 15000,
+          "specialistTokens": 2048,
+          "target": null,
+          "tasks": [
+            {
+              "agentId": 1,
+              "objective": "Passive discovery only: enumerate simulated drone telemetry channels and log metadata (no control takeover, no exploitation).",
+              "target": 1
+            },
+            {
+              "agentId": 2,
+              "objective": "Passive discovery only: map simulated network topology and record observed protocol identifiers for defensive review.",
+              "target": 2
+            }
+          ],
+          "workers": [
+            {
+              "agentId": 1,
+              "objective": "Passive discovery only: enumerate simulated drone telemetry channels and log metadata (no control takeover, no exploitation).",
+              "target": 1,
+              "state": "paused",
+              "operationId": "d972a955-c42e-4178-bd80-ec9db980c23a"
+            },
+            {
+              "agentId": 2,
+              "objective": "Passive discovery only: map simulated network topology and record observed protocol identifiers for defensive review.",
+              "target": 2,
+              "state": "paused",
+              "operationId": "d972a955-c42e-4178-bd80-ec9db980c23a"
+            }
+          ],
+          "results": [
+            {
+              "agentId": 1,
+              "target": 1,
+              "step": 1,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:1:1",
+              "at": 1792877493416,
+              "evidenceId": 1,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 2,
+              "target": 2,
+              "step": 1,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:2:1",
+              "at": 1792877493855,
+              "evidenceId": 2,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 1,
+              "target": 1,
+              "step": 2,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:1:2",
+              "at": 1792877495751,
+              "evidenceId": 3,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 2,
+              "target": 2,
+              "step": 2,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:2:2",
+              "at": 1792877496878,
+              "evidenceId": 4,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 1,
+              "target": 1,
+              "step": 3,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:1:3",
+              "at": 1792877498766,
+              "evidenceId": 5,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 2,
+              "target": 2,
+              "step": 3,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:2:3",
+              "at": 1792877499883,
+              "evidenceId": 6,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 2,
+              "target": 2,
+              "step": 4,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:2:4",
+              "at": 1792877503542,
+              "evidenceId": 7,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 1,
+              "target": 1,
+              "step": 4,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:1:4",
+              "at": 1792877504676,
+              "evidenceId": 8,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 2,
+              "target": 2,
+              "step": 5,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:2:5",
+              "at": 1792877506391,
+              "evidenceId": 9,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 1,
+              "target": 1,
+              "step": 5,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:1:5",
+              "at": 1792877507841,
+              "evidenceId": 10,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 2,
+              "target": 2,
+              "step": 6,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:2:6",
+              "at": 1792877511161,
+              "evidenceId": 11,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 1,
+              "target": 1,
+              "step": 6,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:1:6",
+              "at": 1792877511272,
+              "evidenceId": 12,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 2,
+              "target": 2,
+              "step": 7,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:2:7",
+              "at": 1792877514780,
+              "evidenceId": 13,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 1,
+              "target": 1,
+              "step": 7,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:1:7",
+              "at": 1792877515072,
+              "evidenceId": 14,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 2,
+              "target": 2,
+              "step": 8,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:2:8",
+              "at": 1792877521314,
+              "evidenceId": 15,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            },
+            {
+              "agentId": 1,
+              "target": 1,
+              "step": 8,
+              "kind": "discover",
+              "status": "executed",
+              "actionId": "d972a955-c42e-4178-bd80-ec9db980c23a:1:8",
+              "at": 1792877522955,
+              "evidenceId": 16,
+              "outcome": "discovered",
+              "responseStatus": 200,
+              "policyVersion": 0,
+              "verificationEvidenceIds": []
+            }
+          ],
+          "inferences": [
+            {
+              "type": "inference",
+              "stage": "coordinator",
+              "agentId": 0,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877484406,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 149,
+                "completion_tokens": 1103,
+                "total_tokens": 1252
+              },
+              "finishReason": "stop",
+              "latencyMs": 6074
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 1,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877490565,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 147,
+                "completion_tokens": 550,
+                "total_tokens": 697
+              },
+              "finishReason": "stop",
+              "latencyMs": 2745
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 2,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877490586,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 143,
+                "completion_tokens": 618,
+                "total_tokens": 761
+              },
+              "finishReason": "stop",
+              "latencyMs": 3168
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 1,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877493729,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 265,
+                "completion_tokens": 337,
+                "total_tokens": 602
+              },
+              "finishReason": "stop",
+              "latencyMs": 1929
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 2,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877494149,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 262,
+                "completion_tokens": 507,
+                "total_tokens": 769
+              },
+              "finishReason": "stop",
+              "latencyMs": 2637
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 1,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877496045,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 359,
+                "completion_tokens": 557,
+                "total_tokens": 916
+              },
+              "finishReason": "stop",
+              "latencyMs": 2625
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 2,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877497181,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 354,
+                "completion_tokens": 489,
+                "total_tokens": 843
+              },
+              "finishReason": "stop",
+              "latencyMs": 2609
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 1,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877499069,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 453,
+                "completion_tokens": 1106,
+                "total_tokens": 1559
+              },
+              "finishReason": "stop",
+              "latencyMs": 5515
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 2,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877500189,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 447,
+                "completion_tokens": 711,
+                "total_tokens": 1158
+              },
+              "finishReason": "stop",
+              "latencyMs": 3246
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 2,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877503844,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 540,
+                "completion_tokens": 427,
+                "total_tokens": 967
+              },
+              "finishReason": "stop",
+              "latencyMs": 2460
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 1,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877504974,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 544,
+                "completion_tokens": 517,
+                "total_tokens": 1061
+              },
+              "finishReason": "stop",
+              "latencyMs": 2777
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 2,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877506691,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 630,
+                "completion_tokens": 859,
+                "total_tokens": 1489
+              },
+              "finishReason": "stop",
+              "latencyMs": 4350
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 1,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877508136,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 637,
+                "completion_tokens": 635,
+                "total_tokens": 1272
+              },
+              "finishReason": "stop",
+              "latencyMs": 3046
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 2,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877511470,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 723,
+                "completion_tokens": 629,
+                "total_tokens": 1352
+              },
+              "finishReason": "stop",
+              "latencyMs": 3211
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 1,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877511569,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 730,
+                "completion_tokens": 672,
+                "total_tokens": 1402
+              },
+              "finishReason": "stop",
+              "latencyMs": 3404
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 2,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877515090,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 818,
+                "completion_tokens": 731,
+                "total_tokens": 1549
+              },
+              "finishReason": "stop",
+              "latencyMs": 6134
+            },
+            {
+              "type": "inference",
+              "stage": "specialist",
+              "agentId": 1,
+              "model": "zai-org/GLM-5.3-Flash",
+              "at": 1792877515368,
+              "status": "completed",
+              "usage": {
+                "prompt_tokens": 822,
+                "completion_tokens": 1004,
+                "total_tokens": 1826
+              },
+              "finishReason": "stop",
+              "latencyMs": 7495
+            }
+          ],
+          "transitions": [
+            {
+              "id": 1,
+              "operation": "d972a955-c42e-4178-bd80-ec9db980c23a",
+              "state": "planning",
+              "at": 1792877484347
+            },
+            {
+              "id": 2,
+              "operation": "d972a955-c42e-4178-bd80-ec9db980c23a",
+              "state": "running",
+              "at": 1792877490499
+            },
+            {
+              "id": 3,
+              "operation": "d972a955-c42e-4178-bd80-ec9db980c23a",
+              "state": "completed",
+              "at": 1792877523247
+            }
+          ]
+        }
+      ],
+      "epoch": 1
+    }
+  ],
+  "finalChangesNotCredentialed": [
+    "Reject explicit refusal placeholders in coordinator objectives before assigning workers.",
+    "Do not offer repeated discovery after a target is discovered."
+  ]
+}

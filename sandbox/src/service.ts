@@ -108,13 +108,33 @@ export async function startService(options: {
     throw Error(
       "SpacetimeDB is required: set SPACETIME_URI, SPACETIME_DATABASE and SPACETIME_TOKEN",
     );
-  const roleTokens = { attacker: env.SUDOKO_ATTACKER_TOKEN, defender: env.SUDOKO_DEFENDER_TOKEN };
-  const credentials = [options.operatorToken, options.observerToken, ...Object.values(roleTokens)].filter(Boolean) as string[];
-  if (credentials.some(t => t.length < 32) || new Set(credentials).size !== credentials.length) throw Error("Service credentials must be distinct and at least 32 characters");
-  if (env.SUDOKO_SESSION_SECRET && env.SUDOKO_SESSION_SECRET.length<32) throw Error("Session secret must be at least 32 characters");
+  const roleTokens = {
+    attacker: env.SUDOKO_ATTACKER_TOKEN,
+    defender: env.SUDOKO_DEFENDER_TOKEN,
+  };
+  const credentials = [
+    options.operatorToken,
+    options.observerToken,
+    ...Object.values(roleTokens),
+  ].filter(Boolean) as string[];
+  if (
+    credentials.some((t) => t.length < 32) ||
+    new Set(credentials).size !== credentials.length
+  )
+    throw Error(
+      "Service credentials must be distinct and at least 32 characters",
+    );
+  if (env.SUDOKO_SESSION_SECRET && env.SUDOKO_SESSION_SECRET.length < 32)
+    throw Error("Session secret must be at least 32 characters");
   const store = new RunStore(fleet);
   const chat = new FleetChat(store, pool, env);
-  const browser = fleetWeb({fleet,chat,store,secret:env.SUDOKO_SESSION_SECRET || options.operatorToken,env});
+  const browser = fleetWeb({
+    fleet,
+    chat,
+    store,
+    secret: env.SUDOKO_SESSION_SECRET || options.operatorToken,
+    env,
+  });
   await store.open(maxActive, maxQueued);
   const active = new Map<
     string,
@@ -238,30 +258,74 @@ export async function startService(options: {
       const url = new URL(req.url ?? "/", "http://localhost");
       if (req.method === "GET" && url.pathname === "/healthz")
         return send(res, { status: 200, body: { status: "ok" } });
-      if (closing && (url.pathname.startsWith("/api/") || url.pathname === "/fleet-config")) fail(503,"Service shutting down");
-      if (await browser(req,res,url)) return;
+      if (
+        closing &&
+        (url.pathname.startsWith("/api/") || url.pathname === "/fleet-config")
+      )
+        fail(503, "Service shutting down");
+      if (await browser(req, res, url)) return;
       const credential = req.headers.authorization?.startsWith("Bearer ")
         ? req.headers.authorization.slice(7)
         : "";
       const operator = equal(credential, options.operatorToken);
       const observer =
         options.observerToken && equal(credential, options.observerToken);
-      const chatRole = (Object.keys(roleTokens) as ChatRole[]).find(r => roleTokens[r] && equal(credential, roleTokens[r]!));
+      const chatRole = (Object.keys(roleTokens) as ChatRole[]).find(
+        (r) => roleTokens[r] && equal(credential, roleTokens[r]!),
+      );
       if (url.pathname.startsWith("/v1/chat/")) {
         if (!chatRole) fail(403, "Role-specific chat credential required");
         if (req.headers.origin) fail(403, "Use the same-origin server proxy");
         if (closing) fail(503, "Service shutting down");
-        if (req.method === "POST" && url.pathname === "/v1/chat/operations") {
+        if (req.method === "GET" && url.pathname === "/v1/chat/conversation")
+          return send(res, {
+            status: 200,
+            body: await chat.conversation(
+              chatRole!,
+              Number(url.searchParams.get("after") ?? 0),
+            ),
+          });
+        if (
+          req.method === "POST" &&
+          ["/v1/chat/operations", "/v1/chat/messages"].includes(url.pathname)
+        ) {
           let b: any;
-          try { b = await readJson(req); } catch { fail(400, "Invalid JSON"); }
-          object(b, ["message"]);
+          try {
+            b = await readJson(req);
+          } catch {
+            fail(400, "Invalid JSON");
+          }
+          object(b, ["message", "target"]);
           if (typeof b.message !== "string") fail(400, "Message required");
-          const operation = await chat.start(chatRole!, b.message, String(req.headers["idempotency-key"] ?? ""));
+          const operation = await (url.pathname.endsWith("/messages")
+            ? chat.message(
+                chatRole!,
+                b.message,
+                String(req.headers["idempotency-key"] ?? ""),
+                b.target,
+              )
+            : chat.start(
+                chatRole!,
+                b.message,
+                String(req.headers["idempotency-key"] ?? ""),
+                b.target,
+              ));
           return send(res, { status: 202, body: operation });
         }
-        const route = /^\/v1\/chat\/operations\/([a-f0-9-]{36})(?:\/(stop))?$/.exec(url.pathname);
-        if (route && req.method === "GET" && !route[2]) return send(res, {status:200,body:await chat.get(route[1],chatRole!)});
-        if (route && req.method === "POST" && route[2] === "stop") return send(res, {status:200,body:await chat.stop(route[1],chatRole!)});
+        const route =
+          /^\/v1\/chat\/operations\/([a-f0-9-]{36})(?:\/(stop))?$/.exec(
+            url.pathname,
+          );
+        if (route && req.method === "GET" && !route[2])
+          return send(res, {
+            status: 200,
+            body: await chat.get(route[1], chatRole!),
+          });
+        if (route && req.method === "POST" && route[2] === "stop")
+          return send(res, {
+            status: 200,
+            body: await chat.stop(route[1], chatRole!),
+          });
         fail(404, "Chat route not found");
       }
       if (!operator && !observer) fail(401, "Bearer credential required");
@@ -300,7 +364,11 @@ export async function startService(options: {
               maxModelCalls: 1000,
             },
             inference: pool.status(),
-            chat: { models:chatModels(env), limits:CHAT_LIMITS, configured:Boolean(env.BITDEER_API_KEY) },
+            chat: {
+              models: chatModels(env),
+              limits: CHAT_LIMITS,
+              configured: Boolean(env.BITDEER_API_KEY),
+            },
             runs: { active: active.size, queued: pending.length },
           },
         });
@@ -458,7 +526,8 @@ export async function startService(options: {
         });
       }
       if (req.method === "POST" && url.pathname === "/v1/fleet/start") {
-        if (chat.busy) fail(409, "Stop chat operations before resetting the fleet");
+        if (chat.busy)
+          fail(409, "Stop chat operations before resetting the fleet");
         const b = await body();
         object(b, ["drones", "attackers", "defenders", "hardened"]);
         if (typeof b.hardened !== "boolean")
@@ -501,7 +570,9 @@ export async function startService(options: {
           e instanceof HttpError || e instanceof StoreError ? e.status : 502,
         body: {
           error:
-            e instanceof HttpError || e instanceof StoreError ? e.message : "Service dependency failed",
+            e instanceof HttpError || e instanceof StoreError
+              ? e.message
+              : "Service dependency failed",
         },
       });
     } finally {

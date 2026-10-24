@@ -199,11 +199,26 @@ export function fleetWeb(options: {
     }
     if (viewer.role === "observer")
       throw new StoreError(403, "Observer sessions cannot deploy agents");
-    if (url.pathname === "/api/chat/operations" && req.method === "POST") {
+    if (url.pathname === "/api/chat/conversation" && req.method === "GET") {
+      send(res, {
+        status: 200,
+        body: await chat.conversation(
+          viewer.role,
+          Number(url.searchParams.get("after") ?? 0),
+        ),
+      });
+      return true;
+    }
+    if (
+      ["/api/chat/operations", "/api/chat/messages"].includes(url.pathname) &&
+      req.method === "POST"
+    ) {
       const b: any = await body(req);
       if (
         !b ||
-        Object.keys(b).length !== 2 ||
+        Object.keys(b).some(
+          (k) => !["message", "sandbox", "target"].includes(k),
+        ) ||
         typeof b.message !== "string" ||
         b.sandbox !== viewer.sandbox
       )
@@ -211,11 +226,10 @@ export function fleetWeb(options: {
           400,
           "Message and authenticated sandbox required; role is server-derived",
         );
-      const operation = await chat.start(
-        viewer.role,
-        b.message,
-        String(req.headers["idempotency-key"] ?? ""),
-      );
+      const key = String(req.headers["idempotency-key"] ?? "");
+      const operation = await (url.pathname.endsWith("/messages")
+        ? chat.message(viewer.role, b.message, key, b.target)
+        : chat.start(viewer.role, b.message, key, b.target));
       send(res, { status: 202, body: operation });
       return true;
     }

@@ -21,6 +21,7 @@ await build({
 });
 const original = globalThis.fetch;
 const modelInputs: any[] = [];
+let providerMode = "normal";
 if (mocked)
   globalThis.fetch = async (input: any, init?: any) => {
     if (
@@ -31,14 +32,18 @@ if (mocked)
       system = JSON.parse(body.messages[0].content),
       context = JSON.parse(body.messages[1].content);
     modelInputs.push({ system, context });
-    await delay(100, undefined, { signal: init.signal });
+    if (providerMode === "blocked")
+      await delay(30000, undefined, { signal: init.signal });
+    else await delay(100, undefined, { signal: init.signal });
+    if (providerMode === "rate-limit")
+      return new Response("{}", { status: 429 });
     const value = system.agents
       ? {
           tasks: system.agents
             .slice(0, 2)
             .map((agentId: number, i: number) => ({
               agentId,
-              target: i + 1,
+              target: context.selectedTarget ?? i + 1,
               objective: "Inspect assigned drone <img src=x onerror=alert(1)>",
             })),
         }
@@ -84,7 +89,7 @@ const report: any = {
   limits: CHAT_LIMITS,
   operations: [],
 };
-const output = mocked ? "output/fleet-chat-mocked" : "output/fleet-chat-smoke";
+const output = mocked ? "output/fleet-ui-mocked" : "output/fleet-ui-smoke";
 await mkdir(output, { recursive: true });
 try {
   const started = await original(service.url + "/v1/fleet/start", {
@@ -128,18 +133,21 @@ try {
     assert.equal(auth.status(), 200);
     const page = await context.newPage();
     pages[role] = page;
+    page.on("pageerror", (error: any) =>
+      console.error("Browser error:", error.message),
+    );
     page.on("dialog", () => {
       throw Error("Model text executed as HTML");
     });
     await page.goto(service.url);
     await page.waitForFunction(
-      () => document.querySelector("#status")?.textContent?.startsWith("Live"),
+      () => document.querySelector("#live")?.textContent?.startsWith("Live"),
       {},
       { timeout: 15000 },
     );
     assert.equal(
-      await page.locator("#role-name").textContent(),
-      role === "attacker" ? "Attack" : "Defense",
+      await page.locator("#chat-name").textContent(),
+      role === "attacker" ? "Crimson" : "Sentinel",
     );
   }
   const objectives = {
@@ -152,13 +160,14 @@ try {
     await page.locator("#say").fill(objectives[role]);
     const response = page.waitForResponse(
       (r: any) =>
-        r.url().endsWith("/api/chat/operations") &&
+        r.url().endsWith("/api/chat/messages") &&
         r.request().method() === "POST",
     );
     await page.locator("#say").press("Enter");
     const start = await response;
-    let op = await start.json();
-    assert.equal(start.status(), 202, op.error);
+    const conversation = await start.json();
+    let op = conversation.operations?.at(-1);
+    assert.equal(start.status(), 202, conversation.error);
     assert.equal(op.epoch, fleet.epoch);
     for (
       let i = 0;
@@ -188,21 +197,104 @@ try {
       `Expected measured ${outcome}`,
     );
     await page.waitForFunction(
-      (id: string) =>
-        document.querySelector("#transcript")?.textContent?.includes(id),
-      op.id,
-    );
-    await page.waitForFunction(
-      (expected: string) =>
-        document.querySelector("#transcript")?.textContent?.includes(expected),
-      outcome,
-    );
-    await page.waitForFunction(
       (state: string) =>
-        document
-          .querySelector("#transcript")
-          ?.textContent?.includes("· " + state + " ·"),
+        document.querySelector("#chat-sub")?.textContent === state,
       op.state,
+    );
+    assert.match(
+      await page.locator("#transcript").textContent(),
+      /Validated assignments/,
+    );
+    assert.match(
+      await page.locator("#transcript").textContent(),
+      /Operation completed/,
+    );
+    assert.ok(
+      !(await page.locator("#transcript").textContent()).includes("evidence #"),
+    );
+    for (const r of op.results.filter((r: any) => r.evidenceId)) {
+      assert.ok(
+        await page
+          .locator(
+            `#log [data-evidence-ids="${[r.evidenceId, ...r.verificationEvidenceIds].join(",")}"]`,
+          )
+          .count(),
+      );
+    }
+    for (const w of op.workers) {
+      const card = page.locator(`.agent[data-agent-id="${w.agentId}"]`);
+      assert.equal(await card.getAttribute("data-state"), w.state);
+      await card.click();
+      assert.equal(await page.locator("#modal-state").textContent(), w.state);
+      assert.ok(
+        (await page.locator("#modal-text").textContent()).includes(w.objective),
+      );
+      assert.equal(
+        await page
+          .locator(
+            `#modal-log [data-agent-id]:not([data-agent-id="${w.agentId}"])`,
+          )
+          .count(),
+        0,
+      );
+      await page.locator("#modal-close").click();
+    }
+    const bubbles = await page.locator("#transcript [data-message-id]").count();
+    await page.evaluate(() => {
+      (window as any).__firstBubble = document.querySelector(
+        "#transcript [data-message-id]",
+      );
+    });
+    const contextReceipt = op.results.find((r: any) => r.evidenceId);
+    await page
+      .locator(
+        `#log [data-evidence-ids="${[contextReceipt.evidenceId, ...contextReceipt.verificationEvidenceIds].join(",")}"]`,
+      )
+      .click();
+    assert.ok(
+      (await page.locator("#context-slot").textContent()).includes(
+        `DR-${String(contextReceipt.target).padStart(3, "0")}`,
+      ),
+    );
+    await page.locator("#say").fill("Status");
+    const statusReply = page.waitForResponse((r: any) =>
+      r.url().endsWith("/api/chat/messages"),
+    );
+    await page.locator("#say").press("Enter");
+    const statusResponse = await statusReply;
+    assert.equal(
+      statusResponse.request().postDataJSON().target,
+      contextReceipt.target,
+    );
+    const duplicate = await page.request.post(
+      service.url + "/api/chat/messages",
+      {
+        headers: {
+          origin: service.url,
+          "idempotency-key": statusResponse.request().headers()[
+            "idempotency-key"
+          ],
+        },
+        data: statusResponse.request().postDataJSON(),
+      },
+    );
+    assert.equal(duplicate.status(), 202);
+    assert.equal(
+      (await duplicate.json()).messages.filter((m: any) => m.text === "Status")
+        .length,
+      1,
+    );
+    await page.waitForFunction(
+      (n: number) =>
+        document.querySelectorAll("#transcript [data-message-id]").length > n,
+      bubbles,
+    );
+    assert.ok(
+      await page.evaluate(
+        () =>
+          (window as any).__firstBubble ===
+          document.querySelector("#transcript [data-message-id]"),
+      ),
     );
     assert.equal(await page.locator("#transcript img").count(), 0);
     await page.screenshot({ path: output + `/${role}.png` });
@@ -218,10 +310,11 @@ try {
     ).length;
     await page.reload();
     await page.waitForFunction(
-      (id: string) =>
-        document.querySelector("#transcript")?.textContent?.includes(id),
-      op.id,
+      (objective: string) =>
+        document.querySelector("#transcript")?.textContent?.includes(objective),
+      objectives[role],
     );
+    assert.match(await page.locator("#transcript").textContent(), /Status/);
     assert.equal(
       (await service.store.query("SELECT * FROM fleet_chat_action")).length,
       before,
@@ -267,6 +360,79 @@ try {
   report.evidence = evidence;
   report.finalDrones = final;
   report.inferencePool = service.pool.status();
+  if (mocked) {
+    const page = pages.attacker;
+    const send = async (message: string) => {
+      await page.locator("#say").fill(message);
+      const response = page.waitForResponse((r: any) =>
+        r.url().endsWith("/api/chat/messages"),
+      );
+      await page.locator("#say").press("Enter");
+      const r = await response;
+      assert.equal(r.status(), 202);
+      return r.json();
+    };
+    for (let i = 0; i < 5; i++) await send("Status");
+    await page
+      .locator("#transcript")
+      .evaluate((node: HTMLElement) => (node.scrollTop = 0));
+    const oldCount = await page
+      .locator("#transcript [data-message-id]")
+      .count();
+    await send("Status");
+    await page.waitForFunction(
+      (n: number) =>
+        document.querySelectorAll("#transcript [data-message-id]").length > n,
+      oldCount,
+    );
+    assert.equal(
+      await page
+        .locator("#transcript")
+        .evaluate((node: HTMLElement) => node.scrollTop),
+      0,
+    );
+    const before = (
+      await service.store.query("SELECT * FROM fleet_chat_action")
+    ).length;
+    providerMode = "blocked";
+    const running = await send("Inspect again");
+    const pending = running.operations.at(-1);
+    assert.equal(pending.state, "planning");
+    const changed = await send("Change the objective");
+    assert.ok(
+      changed.messages.some((m: any) =>
+        m.text.startsWith("No new instruction was applied"),
+      ),
+    );
+    const stopped = await send("Stop");
+    assert.equal(
+      stopped.operations.find((o: any) => o.id === pending.id).state,
+      "cancelled",
+    );
+    await page.waitForFunction(
+      () => document.querySelector("#chat-sub")?.textContent === "cancelled",
+    );
+    providerMode = "rate-limit";
+    await send("Inspect with provider failure");
+    await page.waitForFunction(
+      () => document.querySelector("#chat-sub")?.textContent === "failed",
+    );
+    assert.match(
+      await page.locator("#transcript").textContent(),
+      /provider_rate_limit/,
+    );
+    assert.ok(await page.locator('#log [data-status="failed"]').count());
+    assert.equal(
+      (await service.store.query("SELECT * FROM fleet_chat_action")).length,
+      before,
+    );
+    assert.equal(
+      (await service.store.query("SELECT * FROM agent_schedule")).length,
+      0,
+    );
+    await page.screenshot({ path: output + "/provider-failure.png" });
+    report.mockedFailureAndStopVerified = true;
+  }
   report.passed = true;
   report.totalCalls = report.operations.reduce(
     (n: number, o: any) => n + o.inferences.length,
@@ -299,6 +465,18 @@ try {
       2,
     ),
   );
+} catch (error) {
+  for (const context of browser?.contexts() ?? [])
+    for (const page of context.pages()) {
+      await page
+        .screenshot({
+          path:
+            output +
+            `/failed-${await page.locator("#chat-name").textContent()}.png`,
+        })
+        .catch(() => {});
+    }
+  throw error;
 } finally {
   await writeFile(output + "/evidence.json", JSON.stringify(report, null, 2));
   await browser?.close();

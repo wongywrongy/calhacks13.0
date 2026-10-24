@@ -60,7 +60,7 @@ test(
             .slice(0, 2)
             .map((agentId: number, i: number) => ({
               agentId,
-              target: i + 1,
+              target: context.selectedTarget ?? i + 1,
               objective: "Assess assigned drone",
             })),
         };
@@ -75,6 +75,10 @@ test(
                 ? "verify"
                 : "isolate",
         };
+      if (mode === "declined-plan" && system.agents)
+        value.tasks.forEach((task: any) => (task.objective = "declined"));
+      if (mode === "repeat-discovery" && !system.agents)
+        value = { kind: "discover" };
       if (mode === "out-of-scope" && !system.agents)
         value = { kind: "shell", url: "https://example.com" };
       return Response.json({
@@ -237,6 +241,38 @@ test(
           .status,
         403,
       );
+      for (const target of [0, 257, "1", null]) {
+        assert.equal(
+          (
+            await browser(
+              "/api/chat/messages",
+              "attacker",
+              {
+                message: "Inspect",
+                sandbox: db.env.SPACETIME_DATABASE,
+                target,
+              },
+              "invalid-target",
+            )
+          ).status,
+          400,
+        );
+      }
+      assert.equal(
+        (
+          await browser(
+            "/api/chat/messages",
+            "attacker",
+            {
+              message: "Inspect hidden target",
+              sandbox: db.env.SPACETIME_DATABASE,
+              target: 4,
+            },
+            "hidden-target",
+          )
+        ).status,
+        403,
+      );
       const message =
         "Let's take over the drone swarm. Look for vulnerabilities.";
       const [op, duplicate] = await Promise.all([
@@ -387,6 +423,108 @@ test(
           .filter((i) => !i.system.agents)
           .every((i) => i.model === "test-specialist"),
       );
+      const beforeStatus = calls;
+      const statusBody = {
+        message: "Status",
+        target: 1,
+        sandbox: db.env.SPACETIME_DATABASE,
+      };
+      const [statusReply, statusDuplicate] = await Promise.all([
+        browser("/api/chat/messages", "attacker", statusBody, "status-key"),
+        browser("/api/chat/messages", "attacker", statusBody, "status-key"),
+      ]);
+      assert.equal(statusReply.status, 202);
+      assert.equal(statusDuplicate.status, 202);
+      assert.equal(calls, beforeStatus);
+      assert.equal(
+        statusReply.body.messages.filter((m: any) => m.text === "Status")
+          .length,
+        1,
+      );
+      assert.ok(
+        statusReply.body.messages.some((m: any) =>
+          m.text.startsWith("Your operation is completed"),
+        ),
+      );
+      assert.equal(
+        (
+          await browser(
+            "/api/chat/messages",
+            "attacker",
+            { ...statusBody, target: 2 },
+            "status-key",
+          )
+        ).status,
+        409,
+      );
+      const ownConversation = await browser(
+        "/api/chat/conversation",
+        "defender",
+      );
+      assert.ok(
+        ownConversation.body.messages.every((m: any) => m.role === "defender"),
+      );
+      assert.ok(!JSON.stringify(ownConversation.body).includes(message));
+      const cursor = statusReply.body.after;
+      assert.equal(
+        (await browser("/api/chat/conversation?after=" + cursor, "attacker"))
+          .body.messages.length,
+        0,
+      );
+      mode = "normal";
+      const scoped = await browser(
+        "/api/chat/messages",
+        "attacker",
+        {
+          message: "Probe the selected drone",
+          target: 1,
+          sandbox: db.env.SPACETIME_DATABASE,
+        },
+        "scoped",
+      );
+      assert.equal(scoped.status, 202);
+      const scopedOperation = scoped.body.operations.at(-1);
+      const scopedDone = await poll(
+        scopedOperation.id,
+        attacker,
+        (o) => o.state === "completed",
+      );
+      assert.ok(scopedDone.tasks.every((task: any) => task.target === 1));
+      assert.ok(scopedDone.results.every((r: any) => r.target === 1));
+      assert.ok(scopedDone.workers.every((w: any) => w.state === "done"));
+      // Reducers independently enforce the selected context even for trusted Node calls.
+      const scopedId = randomUUID();
+      await service.store.call("create_chat_operation", [
+        service.store.session,
+        scopedId,
+        "db-scoped",
+        "attacker",
+        fleet.epoch,
+        JSON.stringify({
+          message: "Selected context",
+          target: 1,
+          tasks: [],
+          maxDecisionsPerAgent: 8,
+          maxModelCalls: 33,
+          deadline: Date.now() + 10000,
+        }),
+      ]);
+      await assert.rejects(
+        service.store.call("plan_chat_operation", [
+          service.store.session,
+          scopedId,
+          JSON.stringify([
+            { agentId: 1, target: 1, objective: "Inspect" },
+            { agentId: 2, target: 2, objective: "Inspect" },
+          ]),
+        ]),
+      );
+      await service.store.call("update_chat_operation", [
+        service.store.session,
+        scopedId,
+        "cancelled",
+        "[]",
+      ]);
       // Reducers independently reject role/scope/version/epoch/sequence violations.
       const settings = {
         message: "Reducer validation",
@@ -478,21 +616,28 @@ test(
         },
       );
       assert.ok(!unauthorized.ok);
-      const privateRows = await original(
-        db.env.SPACETIME_URI +
-          "/v1/database/" +
-          db.env.SPACETIME_DATABASE +
-          "/sql",
-        {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${cfg.body.token}`,
-            "content-type": "text/plain",
+      for (const table of [
+        "backend_chat",
+        "backend_chat_message",
+        "backend_chat_transition",
+        "fleet_chat_action",
+      ]) {
+        const privateRows = await original(
+          db.env.SPACETIME_URI +
+            "/v1/database/" +
+            db.env.SPACETIME_DATABASE +
+            "/sql",
+          {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${cfg.body.token}`,
+              "content-type": "text/plain",
+            },
+            body: "SELECT * FROM " + table,
           },
-          body: "SELECT * FROM backend_chat",
-        },
-      );
-      assert.ok(!privateRows.ok);
+        );
+        assert.ok(!privateRows.ok);
+      }
       await service.store.call("execute_fleet_chat_action", [
         service.store.session,
         manual,
@@ -587,12 +732,35 @@ test(
         "cancel-planning",
       );
       assert.equal(pending.status, 202);
-      const stopped = await browser(
-        `/api/chat/operations/${pending.body.id}/stop`,
+      const changed = await browser(
+        "/api/chat/messages",
         "attacker",
-        {},
+        { message: "Change objective", sandbox: db.env.SPACETIME_DATABASE },
+        "changed",
       );
-      assert.equal(stopped.body.state, "cancelled");
+      assert.equal(changed.status, 202);
+      assert.ok(
+        changed.body.messages.some((m: any) =>
+          m.text.startsWith("No new instruction was applied"),
+        ),
+      );
+      const stopped = await browser(
+        "/api/chat/messages",
+        "attacker",
+        { message: "Stop", sandbox: db.env.SPACETIME_DATABASE },
+        "stop-message",
+      );
+      assert.equal(stopped.status, 202);
+      assert.equal(
+        stopped.body.operations.find((o: any) => o.id === pending.body.id)
+          .state,
+        "cancelled",
+      );
+      assert.ok(
+        stopped.body.messages.some((m: any) =>
+          m.text.startsWith("Stopped your operation"),
+        ),
+      );
       const before = (
         await service.store.query("SELECT * FROM fleet_chat_action")
       ).length;
@@ -657,14 +825,23 @@ test(
         `/api/chat/operations/${op.body.id}`,
         "attacker",
       );
+      const restored = await browser("/api/chat/conversation", "attacker");
+      assert.ok(restored.body.messages.some((m: any) => m.text === "Status"));
+      assert.ok(restored.body.messages.some((m: any) => m.text === "Stop"));
+      assert.ok(
+        restored.body.messages.some((m: any) => m.text === "Change objective"),
+      );
+      assert.ok(restored.body.messages.some((m: any) => m.text === message));
       assert.equal(saved.body.state, "completed");
       assert.equal(saved.body.results.length, attacked.results.length);
       for (const [failure, code] of [
         ["refuse", "provider_refused"],
+        ["declined-plan", "provider_refused"],
         ["rate-limit", "provider_rate_limit"],
         ["malformed", "provider_malformed_output"],
         ["truncated", "provider_truncated_output"],
         ["out-of-scope", "provider_malformed_output"],
+        ["repeat-discovery", "provider_malformed_output"],
       ]) {
         mode = failure;
         const count = (
@@ -691,7 +868,7 @@ test(
       mode = "blocked";
       const timeout = AbortSignal.timeout.bind(AbortSignal);
       const timer = t.mock.method(AbortSignal, "timeout", (ms: number) =>
-        timeout(ms === 15000 ? 20 : ms),
+        timeout([15000, 20000].includes(ms) ? 20 : ms),
       );
       const timed = await request(
         "/v1/chat/operations",
@@ -709,6 +886,36 @@ test(
       );
       timer.mock.restore();
       assert.ok(calls >= 10);
+      const evidenceBefore = await service.store.query(
+        "SELECT * FROM fleet_evidence",
+      );
+      await service.store.call("start_fleet", [4, 2, 2, false]);
+      await service.store.call("enable_fleet_chat", []);
+      const retained = await service.store.query(
+        "SELECT * FROM fleet_evidence",
+      );
+      assert.ok(
+        evidenceBefore.every((e: any) =>
+          retained.some((r: any) => r.id === e.id),
+        ),
+      );
+      const visible = (await original(
+        db.env.SPACETIME_URI +
+          "/v1/database/" +
+          db.env.SPACETIME_DATABASE +
+          "/sql",
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${cfg.body.token}`,
+            "content-type": "text/plain",
+          },
+          body: "SELECT * FROM visible_evidence",
+        },
+      ).then((r) => r.json())) as any;
+      assert.equal(visible[0].rows.length, 0);
+      const history = await browser("/api/chat/conversation", "attacker");
+      assert.ok(history.body.messages.some((m: any) => m.text === message));
     } finally {
       await service.close();
       globalThis.fetch = original;

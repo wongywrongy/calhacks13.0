@@ -1,4 +1,6 @@
-# Fleet chat integration validation
+# Fleet chat integration validation (historical UI baseline)
+
+For the latest Claude UI integration and its incomplete credentialed acceptance result, see [FLEET_UI_VALIDATION.md](FLEET_UI_VALIDATION.md). The results and budgets below describe the earlier baseline only.
 
 Verified locally on 2026-10-24. This integrates PR #7 (`feat/backend-service`, `f0d7186`) with the newer fleet role UI (`feat/fleet-role-views`, `dd7f9ca`), both descended from `main` (`e5eabe4`). The original dirty checkout was left intact. The earlier `agents/common` integration in that checkout was not copied over the newer backend runtime.
 

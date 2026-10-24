@@ -44,6 +44,7 @@ import GrantFleetViewReducer from "./grant_fleet_view_reducer";
 import HeartbeatBackendReducer from "./heartbeat_backend_reducer";
 import PlanChatOperationReducer from "./plan_chat_operation_reducer";
 import PublishSnapshotReducer from "./publish_snapshot_reducer";
+import RecordChatExchangeReducer from "./record_chat_exchange_reducer";
 import ReleaseBackendReducer from "./release_backend_reducer";
 import SaveBackendSnapshotReducer from "./save_backend_snapshot_reducer";
 import StartFleetReducer from "./start_fleet_reducer";
@@ -133,6 +134,7 @@ const reducersSchema = __reducers(
   __reducerSchema("heartbeat_backend", HeartbeatBackendReducer),
   __reducerSchema("plan_chat_operation", PlanChatOperationReducer),
   __reducerSchema("publish_snapshot", PublishSnapshotReducer),
+  __reducerSchema("record_chat_exchange", RecordChatExchangeReducer),
   __reducerSchema("release_backend", ReleaseBackendReducer),
   __reducerSchema("save_backend_snapshot", SaveBackendSnapshotReducer),
   __reducerSchema("start_fleet", StartFleetReducer),

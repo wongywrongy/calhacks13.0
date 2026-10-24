@@ -95,7 +95,7 @@ pub fn acquire_backend(
         r.error = "Scheduler restarted; create a new run".into();
         ctx.db.backend_run().id().update(r);
     }
-    for mut r in ctx.db.backend_chat().iter().filter(|r|["planning","running"].contains(&r.state.as_str())) { chat_transition(ctx,&r.id,"interrupted"); r.state="interrupted".into(); ctx.db.backend_chat().id().update(r); }
+    for mut r in ctx.db.backend_chat().iter().filter(|r|["planning","running"].contains(&r.state.as_str())) { chat_transition(ctx,&r.id,"interrupted"); append_chat_message(ctx,format!("{}:terminal",r.id),&r.role,&r.id,"coordinator","Operation interrupted by backend restart. No automatic resumption.".into(),0)?; r.state="interrupted".into(); ctx.db.backend_chat().id().update(r); }
     ctx.db.backend_lease().id().delete(0);
     ctx.db.backend_lease().insert(Lease {
         id: 0,
@@ -335,6 +335,12 @@ pub fn create_chat_operation(ctx: &ReducerContext, session: String, id: String, 
     let deadline=v["deadline"].as_i64().ok_or("Missing deadline")?;
     if deadline<=now(ctx)||deadline>now(ctx)+45000||v["maxDecisionsPerAgent"].as_u64()!=Some(8)||v["maxModelCalls"].as_u64()!=Some(33) {return Err("Invalid operation budget".into())}
     crate::fleet::validate_chat_fleet(ctx,epoch)?;
+    let target=v["target"].as_u64().unwrap_or(0);
+    if !v["target"].is_null() && (target==0||target>u32::MAX as u64){return Err("Invalid selected target".into())}
+    if target>0 {crate::fleet::validate_chat_target(ctx,&role,target as u32)?;}
+    let message=v["message"].as_str().ok_or("Missing objective")?;
+    append_chat_message(ctx,format!("{}:user",key),&role,&id,"operator",message.into(),target as u32)?;
+    append_chat_message(ctx,format!("{}:planning",id),&role,&id,"coordinator","Planning a bounded operation. No action has executed yet.".into(),target as u32)?;
     crate::fleet::enable_fleet_chat(ctx)?;
     chat_transition(ctx,&id,"planning");
     ctx.db.backend_chat().insert(ChatOperation{id,request_key:key,role,epoch,state:"planning".into(),config,result:"[]".into()}); Ok(())
@@ -355,8 +361,11 @@ pub fn plan_chat_operation(ctx:&ReducerContext,session:String,id:String,tasks:St
         let a=t["agentId"].as_u64().filter(|n|*n<=u32::MAX as u64).ok_or("Invalid agent")? as u32;
         let d=t["target"].as_u64().filter(|n|*n<=u32::MAX as u64).ok_or("Invalid target")? as u32;
         if !used.insert(a)||t.as_object().map(|o|o.len())!=Some(3)||t["objective"].as_str().map(|s|s.trim().is_empty()||s.len()>1200).unwrap_or(true) {return Err("Invalid assignment".into())}
+        if let Some(target)=v["target"].as_u64(){if target!=d as u64{return Err("Outside selected target".into())}}
         crate::fleet::validate_chat_assignment(ctx,&r.role,r.epoch,a,d)?;
     }
+    let detail=entries.iter().map(|t|format!("Agent {} → DR-{:03}: {}",t["agentId"].as_u64().unwrap(),t["target"].as_u64().unwrap(),t["objective"].as_str().unwrap())).collect::<Vec<_>>().join("\n");
+    append_chat_message(ctx,format!("{}:plan",id),&r.role,&id,"coordinator",format!("Validated assignments (instructions, not results):\n{}",detail),v["target"].as_u64().unwrap_or(0) as u32)?;
     v["tasks"]=assignments;r.config=v.to_string();r.state="running".into();
     chat_transition(ctx,&id,"running");ctx.db.backend_chat().id().update(r);Ok(())
 }
@@ -368,7 +377,10 @@ pub fn update_chat_operation(ctx: &ReducerContext, session: String, id: String, 
     if !["planning","running"].contains(&r.state.as_str()) {return Err("Operation already terminal".into())}
     if (state=="running"&&r.state!="running") || (state=="planning"&&r.state!="planning") || (state=="completed"&&r.state!="running") {return Err("Invalid transition".into())}
     serde_json::from_str::<Vec<serde_json::Value>>(&result).map_err(|_|"Invalid result")?;
-    if r.state!=state {chat_transition(ctx,&id,&state);}
+    if r.state!=state {
+      chat_transition(ctx,&id,&state);
+      if !["planning","running"].contains(&state.as_str()){append_chat_message(ctx,format!("{}:terminal",id),&r.role,&id,"coordinator",chat_summary(&state,&result),0)?;}
+    }
     r.state=state;r.result=result;ctx.db.backend_chat().id().update(r);Ok(())
 }
 pub(crate) fn chat_authority(ctx:&ReducerContext, session:&str, id:&str, agent:u32, target:u32, epoch:u64)->Result<String,String>{
@@ -379,4 +391,37 @@ pub(crate) fn chat_authority(ctx:&ReducerContext, session:&str, id:&str, agent:u
     if now(ctx)>=v["deadline"].as_i64().ok_or("Missing deadline")? {return Err("Operation expired".into())}
     if !v["tasks"].as_array().ok_or("Missing tasks")?.iter().any(|t| t["agentId"].as_u64()==Some(agent as u64)&&t["target"].as_u64()==Some(target as u64)){return Err("Outside assignment".into())}
     Ok(r.role)
+}
+
+#[table(accessor=backend_chat_message)]
+pub struct ChatMessage {
+    #[primary_key] #[auto_inc] id:u64,
+    #[unique] key:String,
+    #[index(btree)] role:String,
+    operation:String,
+    speaker:String,
+    text:String,
+    target:u32,
+    at:i64,
+}
+fn append_chat_message(ctx:&ReducerContext,key:String,role:&str,operation:&str,speaker:&str,text:String,target:u32)->Result<(),String>{
+    if let Some(old)=ctx.db.backend_chat_message().key().find(&key) {
+        return if old.role==role&&old.text==text&&old.target==target {Ok(())}else{Err("Idempotency conflict".into())};
+    }
+    ctx.db.backend_chat_message().insert(ChatMessage{id:0,key,role:role.into(),operation:operation.into(),speaker:speaker.into(),text,target,at:now(ctx)});Ok(())
+}
+#[reducer]
+pub fn record_chat_exchange(ctx:&ReducerContext,session:String,key:String,role:String,message:String,target:u32,operation:String,reply:String)->Result<(),String>{
+    lease(ctx,&session)?;
+    if !["attacker","defender"].contains(&role.as_str())||key.len()>120||message.trim().is_empty()||message.len()>8000||reply.len()>8000{return Err("Invalid conversation message".into())}
+    if !operation.is_empty() && ctx.db.backend_chat().id().find(&operation).map(|r|r.role)!=Some(role.clone()){return Err("Operation outside role".into())}
+    if target>0 {crate::fleet::validate_chat_target(ctx,&role,target)?;}
+    append_chat_message(ctx,format!("{}:user",key),&role,&operation,"operator",message,target)?;
+    append_chat_message(ctx,format!("{}:reply",key),&role,&operation,"coordinator",reply,target)
+}
+fn chat_summary(state:&str,result:&str)->String {
+    let rows:Vec<serde_json::Value>=serde_json::from_str(result).unwrap_or_default();
+    let count=|kind:&str|rows.iter().filter(|r|r["status"]=="executed"&&r["outcome"]==kind).count();
+    let errors:Vec<&str>=rows.iter().filter_map(|r|r["error"].as_str()).collect();
+    format!("Operation {}. {} accepted unauthorized commands, {} blocked commands, {} verified recoveries.{}",state,count("unauthorized_command_accepted"),count("unauthorized_command_blocked"),count("recovery_verified"),if errors.is_empty(){String::new()}else{format!(" Recorded failures: {}. No fixture fallback was used.",errors.join(", "))})
 }

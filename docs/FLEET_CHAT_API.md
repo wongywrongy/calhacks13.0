@@ -1,6 +1,6 @@
 # Existing fleet chat: Bitdeer integration
 
-The existing `web/fleet.ts` chat now starts, polls and stops operations through the same Node backend from PR #7. The fleet layout, styles, role views and animation implementation are preserved. This is the SpacetimeDB reducer simulation; the HTTP practice suite remains a separate execution path.
+The implemented Claude chat/log UI (`feat/chat-log-rework` through local commit `07d255a`, including work newer than the pushed document) uses the same Node backend from PR #7. The fleet layout, styles, role views and animation implementation are preserved. This is the SpacetimeDB reducer simulation; the HTTP practice suite remains a separate execution path.
 
 ## Start and authenticate
 
@@ -20,15 +20,23 @@ For remote deployments, set `SUDOKO_PUBLIC_ORIGIN` to the exact HTTPS origin and
 | --- | --- |
 | POST `/api/session` | `{token}`: authenticate an already-granted viewer and set a session cookie |
 | GET `/fleet-config` | Authenticated sandbox, role and viewer subscription configuration; client role query cannot escalate |
-| POST `/api/chat/operations` | `{message,sandbox}` and `Idempotency-Key`; role comes from session |
+| POST `/api/chat/operations` | `{message,sandbox,target?}` and `Idempotency-Key`; role comes from session |
+| POST `/api/chat/messages` | Same input; persist the operator message and bounded coordinator replies; start, Status or Stop |
+| GET `/api/chat/conversation?after=0` | Role-private persisted messages, cursor, `more`, and latest 50 operations |
 | GET `/api/chat/operations/:id` | Durable operation, assignments, receipts, inference metrics and transitions |
 | POST `/api/chat/operations/:id/stop` | Cancel planning/queued inference/workers and wait before returning |
 
 The original bearer-token `POST /v1/chat/operations`, `GET /v1/chat/operations/:id` and `POST /v1/chat/operations/:id/stop` remain available to trusted server clients. Their tokens remain server-side. Evaluator/operator tokens cannot invoke role chat. Both adapters call the same operation implementation.
 
-Start now returns 202 as soon as a **durable planning** operation exists; assignments arrive through subsequent reads. Planning failures remain retrievable, including after restart. Same-key/same-message submissions return the original operation even when submitted concurrently. Conflicting messages return 409. One operation per role may be active; opposing roles may run concurrently against the same fleet epoch. Other-role reads return 404.
+Start now returns 202 as soon as a **durable planning** operation exists; assignments arrive through subsequent reads. Planning failures remain retrievable, including after restart. Same-key/same-message/same-target submissions return the original operation even when submitted concurrently. Conflicting message or target reuse returns 409. One operation per role may be active; opposing roles may run concurrently against the same fleet epoch. Other-role reads return 404.
 
-The UI saves the current operation ID and submission key per sandbox/role, polls every 750 ms while active, and retrieves the operation after reload. It renders objectives, validated assignments, active inference workers, executed/blocked receipts, evidence IDs, cancellation and provider failures using text nodes. It does not narrate a plan as execution or a completed operation as a successful takeover. The existing action chips submit objectives through the same path. Stop is available during planning and execution. New objectives require stopping the active operation; conversational replanning is not implemented.
+The existing chat input now posts to `/api/chat/messages`. Its trusted-server counterpart is `/v1/chat/messages` (without `sandbox`); `/v1/chat/conversation` provides the same role-scoped history. The original operation routes retain their contract with optional `target` added. Selected targets must be existing drones visible to the authenticated role. Node and reducers reject hidden targets, and both enforce that every validated assignment stays on the selected drone. Attackers can still discover previously unknown targets when no drone is selected.
+
+Conversation messages are durable private SpacetimeDB rows, not reconstructed operation memory. Operator text, planning acknowledgement, validated assignments and terminal outcome summaries append to the transcript without replacing existing bubbles. The client polls every 750 ms, follows message cursors, and stores a pending submission key/message/target locally until acknowledged, so a lost response can be retried without redeployment. Operation IDs are persisted with messages and recovered from history after reload. Conversation history is paginated; the attached operation projection is bounded to the latest 50 operations, and any older operation remains readable by ID.
+
+`Status` (also `status update`, `what's the status`, `how is it going`, `what happened`, and `what are my agents doing`) reports the authenticated side's latest actual operation, worker count and measured results without inference. `Stop`/`Cancel` cancels that side's active operation and waits for workers. Changed objectives during an active operation receive an explicit **not applied** reply; stop first, then submit the new objective. Other text starts a new bounded operation when idle. This is an intentionally limited command grammar, not arbitrary conversational replanning. Persisted conversation is not automatically fed back into model memory.
+
+The activity log combines persisted operator messages, queued/failed attempts, executed receipts and visible threat evidence. Evidence and action/operation causation IDs remain attached to rows; receipts sharing a visible evidence event are merged to avoid duplicate actions. Planned assignments never become success rows. Agent cards/modal states come from persisted worker lifecycle (`working`, `failed`, `done`, `paused`), independent of whether an agent entity exists. Modal activity is scoped to that worker; statistics count measured events. Swarm rendering remains driven by the existing role-scoped subscriptions. Model text is rendered with text nodes. No styles or layout were redesigned.
 
 ## Models and budgets
 
@@ -43,16 +51,16 @@ The UI saves the current operation ID and submission key per sandbox/role, polls
 | Specialist decisions | At most 8 each; stop after a measured command result, verified recovery or chosen wait |
 | Total calls | At most 33 per operation, including coordination; no provider retries |
 | Operation deadline | 45 seconds including planning, also bounded by the current fleet deadline |
-| Provider request deadline | 15 seconds; queued calls remain bounded by the operation deadline |
-| Output cap | 2,048 coordinator tokens; 2,048 per specialist call, including provider reasoning tokens |
+| Provider request deadline | 20 seconds for coordination, 15 seconds for specialists; queued calls remain bounded by the operation deadline |
+| Output cap | 3,072 coordinator tokens; 2,048 per specialist call, including provider reasoning tokens |
 
-For compatibility, `BITDEER_MODEL` is the fallback when an independent setting is absent; otherwise the explicit Flash defaults apply. There are no embedding, reranking or image calls. The initial 600-token coordinator cap truncated an actual GLM response, so the bounded cap was increased. A specialist also exhausted a 768-token cap, so both caps are now 2,048. JSON-object mode returned an invalid empty plan; explicit JSON-schema constraints produced a valid plan without changing the user objective. Strict JSON Schema mode is requested, and exact response shapes, agent IDs, targets and action enums are independently validated. Provider output cannot supply URLs, code, credentials or evidence. No private reasoning is stored.
+For compatibility, `BITDEER_MODEL` is the fallback when an independent setting is absent; otherwise the explicit Flash defaults apply. There are no embedding, reranking or image calls. The initial 600-token coordinator cap truncated an actual GLM response, so the bounded cap was increased. A specialist also exhausted a 768-token cap, so specialists have 2,048 tokens. The latest UI smoke exhausted 2,048 coordinator tokens; coordination now has a 3,072-token cap and 20-second request timeout. JSON-object mode returned an invalid empty plan; explicit JSON-schema constraints produced a valid plan without changing the user objective. Strict JSON Schema mode is requested, and exact response shapes, agent IDs, targets and action enums are independently validated. Provider output cannot supply URLs, code, credentials or evidence. No private reasoning is stored. Explicit refusal placeholders in coordinator tasks are rejected as `provider_refused`; discovery is no longer offered for an already discovered target.
 
 Operation inference records contain configured model, stage, agent, status, latency, finish reason and available prompt/completion/total token counts. Refusal, malformed output, truncation, provider timeout, operation timeout, rate limiting, other HTTP errors, transport errors and reducer rejection have distinct safe categories. Failures never invoke security fixtures.
 
 ## Authority and evidence
 
-SpacetimeDB is the only durable runtime database. Private operation rows store objectives, independently scoped assignments and results. Private transition rows record planning/running/terminal changes. Reducers enforce publisher identity, scheduler lease, role, assignment, epoch, deadline, policy version, action sequence and deduplication before changing state. A new scheduler marks abandoned planning/running operations interrupted.
+SpacetimeDB is the only durable runtime database. Private operation rows store objectives, independently scoped assignments and results. Private transition rows record planning/running/terminal changes; private conversation rows store role-bound operator and coordinator messages. Operation results persist worker lifecycle and attempts alongside action receipts. Reducers enforce publisher identity, scheduler lease, role, assignment, epoch, deadline, policy version, action sequence and deduplication before changing state. A new scheduler marks abandoned planning/running operations interrupted. Starting a new fleet retains prior evidence rows; live subscription views filter the current epoch so historical evidence does not contaminate the new fleet.
 
 Attacker specialists receive only their assignment, discovered-target observations and their own action memory. Defenders receive their own tasks and drone telemetry; they do not receive attacker plans or conversations. Browser subscriptions retain the existing identity-scoped views.
 
@@ -72,6 +80,6 @@ SPACETIME_BINARY=/path/to/spacetimedb-standalone npm run test:fleet-chat
 SPACETIME_BINARY=/path/to/spacetimedb-standalone npm run smoke:fleet-chat
 ```
 
-Install Playwright Chromium, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an existing installation. Checks use temporary local databases, preserve the same fleet epoch between opposing operations, save sanitized evidence and screenshots in `output/fleet-chat-{mocked,smoke}/`, and tear down their test database. The smoke is not a production deployment and does not perform a load test. See `FLEET_CHAT_VALIDATION.md` for recorded results and limits.
+Install Playwright Chromium, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an existing installation. Checks use temporary local databases, preserve the same fleet epoch between opposing operations, save sanitized evidence and screenshots in `output/fleet-ui-{mocked,smoke}/`, and tear down their test database. The smoke is not a production deployment and does not perform a load test. See `FLEET_UI_VALIDATION.md` for current recorded results and the remaining credentialed acceptance gap; `FLEET_CHAT_VALIDATION.md` is the historical baseline.
 
 Remaining scope: no mid-operation conversational replanning, no HTTP-to-fleet execution linkage, no production deployment or internet-exposed isolation validation. The authenticated session adapter uses granted sandbox identities, not a general user-account service.

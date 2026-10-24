@@ -41,7 +41,7 @@ pub fn start_fleet(ctx:&ReducerContext,drones:u32,attackers:u32,defenders:u32,ha
  owner(ctx)?;if !(1..=256).contains(&drones)||!(1..=32).contains(&attackers)||!(1..=32).contains(&defenders){return Err("Fleet/agent limits exceeded".into())}
  let epoch=ctx.db.fleet_session().id().find(0).map(|s|s.epoch+1).unwrap_or(1);
  for d in ctx.db.drone_schedule().iter(){ctx.db.drone_schedule().id().delete(d.id);} for a in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(a.id);}
- for d in ctx.db.fleet_drone().iter(){ctx.db.fleet_drone().id().delete(d.id);}for a in ctx.db.fleet_agent().iter(){ctx.db.fleet_agent().id().delete(a.id);}for e in ctx.db.fleet_evidence().iter(){ctx.db.fleet_evidence().id().delete(e.id);}for d in ctx.db.fleet_discovery().iter(){ctx.db.fleet_discovery().drone().delete(d.drone);}for h in ctx.db.fleet_hold().iter(){ctx.db.fleet_hold().drone().delete(h.drone);}
+ for d in ctx.db.fleet_drone().iter(){ctx.db.fleet_drone().id().delete(d.id);}for a in ctx.db.fleet_agent().iter(){ctx.db.fleet_agent().id().delete(a.id);}for d in ctx.db.fleet_discovery().iter(){ctx.db.fleet_discovery().drone().delete(d.drone);}for h in ctx.db.fleet_hold().iter(){ctx.db.fleet_hold().drone().delete(h.drone);}
  ctx.db.fleet_session().id().delete(0);ctx.db.fleet_session().insert(Session{id:0,epoch,active:true,hardened,drones,deadline:ctx.timestamp.to_micros_since_unix_epoch()+60_000_000});
  for id in 1..=drones{let (x,y,z)=formation::formation(id,0.);ctx.db.fleet_drone().insert(Drone{id,epoch,x,y,z,battery:100.,tick:0,controller:"defender".into(),isolated:hardened,policy_version:0,commands:0,rejected:0});ctx.db.drone_schedule().insert(DroneSchedule{id:id as u64,epoch,scheduled_at:Duration::from_millis(180+(id%7) as u64*20).into()});}
  for id in 1..=attackers+defenders{let role=if id<=attackers{"attacker"}else{"defender"};ctx.db.fleet_agent().insert(Agent{id,epoch,role:role.into(),step:0,target:(id-1)%drones+1,last_action:"ready".into()});ctx.db.agent_schedule().insert(AgentSchedule{id:id as u64,epoch,scheduled_at:Duration::from_millis(350+(id%9) as u64*37).into()});}Ok(())
@@ -71,7 +71,7 @@ pub fn visible_drones(ctx:&ViewContext)->Vec<Drone>{let r=role(ctx);if r.is_empt
 #[view(accessor=visible_agents,public)]
 pub fn visible_agents(ctx:&ViewContext)->Vec<Agent>{let r=role(ctx);ctx.db.fleet_agent().epoch().filter(0u64..) .filter(|a|r=="observer"||a.role==r).collect()}
 #[view(accessor=visible_evidence,public)]
-pub fn visible_evidence(ctx:&ViewContext)->Vec<Evidence>{let r=role(ctx);if r.is_empty(){return vec![]}ctx.db.fleet_evidence().epoch().filter(0u64..) .filter(|e|r=="observer"||if r=="attacker"{e.kind=="discovered"||e.kind.starts_with("unauthorized_command")}else{e.kind!="discovered"}).map(|mut e|{if r=="defender"&&e.kind.starts_with("unauthorized_command"){e.actor=0;}if r=="attacker"{e.policy_version=0;}e}).collect()}
+pub fn visible_evidence(ctx:&ViewContext)->Vec<Evidence>{let r=role(ctx);if r.is_empty(){return vec![]}let Some(session)=ctx.db.fleet_session().id().find(0)else{return vec![]};ctx.db.fleet_evidence().epoch().filter(session.epoch).filter(|e|r=="observer"||if r=="attacker"{e.kind=="discovered"||e.kind.starts_with("unauthorized_command")}else{e.kind!="discovered"}).map(|mut e|{if r=="defender"&&e.kind.starts_with("unauthorized_command"){e.actor=0;}if r=="attacker"{e.policy_version=0;}e}).collect()}
 
 // Explicitly switch security decisions from scheduled fixtures to external model workers.
 #[reducer]
@@ -120,4 +120,9 @@ pub struct FleetAccess { identity:Identity, role:String }
 pub fn visible_fleet_access(ctx:&ViewContext)->Vec<FleetAccess>{
  if ctx.db.publisher().id().find(0).map(|p|p.identity)==Some(ctx.sender()){return vec![]}
  let r=role(ctx);if r.is_empty(){return vec![]}vec![FleetAccess{identity:ctx.sender(),role:r}]
+}
+
+pub(crate) fn validate_chat_target(ctx:&ReducerContext,role:&str,target:u32)->Result<(),String>{
+ let d=ctx.db.fleet_drone().id().find(target).ok_or("Selected drone is not visible")?;
+ if role=="attacker" && ctx.db.fleet_discovery().drone().find(target).map(|r|r.epoch)!=Some(d.epoch){return Err("Selected drone is not visible".into())}Ok(())
 }

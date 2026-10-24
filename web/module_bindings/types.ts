@@ -47,6 +47,18 @@ export const ChatAction = __t.object("ChatAction", {
 });
 export type ChatAction = __Infer<typeof ChatAction>;
 
+export const ChatMessage = __t.object("ChatMessage", {
+  id: __t.u64(),
+  key: __t.string(),
+  role: __t.string(),
+  operation: __t.string(),
+  speaker: __t.string(),
+  text: __t.string(),
+  target: __t.u32(),
+  at: __t.i64(),
+});
+export type ChatMessage = __Infer<typeof ChatMessage>;
+
 export const ChatOperation = __t.object("ChatOperation", {
   id: __t.string(),
   requestKey: __t.string(),
