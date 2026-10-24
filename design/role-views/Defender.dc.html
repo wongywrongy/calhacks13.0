@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SudoKO · Defender</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#050D14}
+a{color:#8A96A4}a:hover{color:#E8EEF6}
+@keyframes sk-pulse{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.7);opacity:0}}
+@keyframes sk-blink{0%,100%{opacity:1}50%{opacity:.35}}
+.sk-pulse{animation:sk-pulse 1.6s cubic-bezier(.2,.7,.3,1) infinite}
+.sk-live{animation:sk-blink 1.4s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.sk-pulse,.sk-live{animation:none}}
+</style>
+</helmet>
+<div style="min-height: 1240px; background: #050D14; color: #E8EEF6; font-family: Inter, system-ui, sans-serif; font-size: 14px">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: stretch; min-height: 48px; border-bottom: 1px solid #182227; background: #040B11">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 24px; flex: 1 1 auto; min-width: 0">
+      <span style="font-weight: 700; font-size: 14px; letter-spacing: 0.22em">SUDOKO</span>
+      <span style="color: #49535F">/</span>
+      <span style="font-size: 13px; font-weight: 600">Defense</span>
+      <span style="font-size: 12px; color: #8A96A4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">FC-01 · 48 drones · defender credential</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 0 18px; border-left: 1px solid #182227; font-size: 12px; color: #8A96A4"><span class="sk-live" style="width: 6px; height: 6px; border-radius: 50%; background: #2BD47F"></span>Live</div>
+    <div style="display: flex; align-items: center; padding: 0 18px; border-left: 1px solid #182227; font-family: 'JetBrains Mono', monospace; font-size: 14px">0:42<span style="color: #6F7B8A">&#160;/ 1:00</span></div>
+    <nav aria-label="Role view" style="display: flex; border-left: 1px solid #182227">
+      <a href="Attacker.dc.html" style="display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; font-size: 12px; font-weight: 600; text-decoration: none; color: #8A96A4; border-right: 1px solid #182227"><span style="width: 6px; height: 6px; border-radius: 50%; background: #F02D38"></span>Attacker</a>
+      <a href="Defender.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; font-size: 12px; font-weight: 600; text-decoration: none; color: #E8EEF6; background: #0A121A; box-shadow: inset 0 -2px 0 #277DFD; border-right: 1px solid #182227"><span style="width: 6px; height: 6px; border-radius: 50%; background: #277DFD"></span>Defender</a>
+      <a href="Observer.dc.html" style="display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; font-size: 12px; font-weight: 600; text-decoration: none; color: #8A96A4"><span style="width: 6px; height: 6px; border-radius: 50%; background: #C2CAD4"></span>Observer</a>
+    </nav>
+  </header>
+
+  <section aria-label="Fleet status" style="display: flex; flex-wrap: wrap; align-items: stretch; background: #0A121A; border-bottom: 1px solid #182227">
+    <div style="display: flex; align-items: center; padding: 10px 24px; border-right: 1px solid #182227">
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: #FF5A63; background: #2A0E14; border: 1px solid #6B2A35; padding: 4px 8px; border-radius: 3px">CRITICAL</span>
+    </div>
+    <div style="flex: 1 1 340px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 10px 20px; border-right: 1px solid #182227; min-width: 0">
+      <span style="font-size: 11px; letter-spacing: 0.08em; color: #8A96A4">COMPROMISED</span>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; color: #FF5A63; white-space: nowrap">7<span style="color: #8A96A4"> / 48</span></span>
+        <div role="img" aria-label="41 drones home, 5 of them recovered; 7 compromised" style="flex: 1 1 auto; display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: #050D14">
+          <div style="flex: 36 1 0; background: #277DFD"></div>
+          <div style="flex: 5 1 0; background: #2BD47F"></div>
+          <div style="width: 2px; background: #050D14"></div>
+          <div style="flex: 7 1 0; background: #F02D38"></div>
+        </div>
+        <svg viewBox="0 0 600 44" preserveAspectRatio="none" role="img" aria-label="Compromised drones over the match, now 7" style="flex: 0 0 120px; height: 22px">
+          <line x1="420" y1="0" x2="420" y2="44" stroke="#2B3645" stroke-width="1" stroke-dasharray="2 3"></line>
+          <path d="{{sparkArea}}" fill="#F02D38" fill-opacity="0.16"></path>
+          <path d="{{sparkLine}}" fill="none" stroke="#F02D38" stroke-width="1.25" vector-effect="non-scaling-stroke"></path>
+        </svg>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 10px 20px; border-right: 1px solid #182227">
+      <span style="font-size: 11px; letter-spacing: 0.08em; color: #8A96A4">LAST BREACH</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px">0:40 <span style="color: #8A96A4">DR-040</span></span>
+    </div>
+    <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 10px 20px; border-right: 1px solid #182227">
+      <span style="font-size: 11px; letter-spacing: 0.08em; color: #8A96A4">MEAN TIME TO RECOVER</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px">6.2s</span>
+    </div>
+    <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 10px 20px; border-right: 1px solid #182227">
+      <span style="font-size: 11px; letter-spacing: 0.08em; color: #8A96A4">BLOCK RATE</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px">66% <span style="color: #8A96A4">23 / 35</span></span>
+    </div>
+    <div style="flex: 1 1 300px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 10px 24px 10px 20px; min-width: 0">
+      <span style="font-size: 11px; letter-spacing: 0.08em; color: #8A96A4">UNRECOVERED</span>
+      <div role="group" aria-label="Unrecovered drones" style="display: flex; flex-wrap: wrap; gap: 4px">
+        <sc-for list="{{incidents}}" as="i" hint-placeholder-count="7">
+          <button onClick="{{i.pick}}" style="{{i.style}}">{{i.tag}}</button>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <main style="display: flex; flex-wrap: wrap; border-bottom: 1px solid #182227">
+
+    <aside aria-label="My agents" style="flex: 1 1 260px; max-width: 300px; min-width: 0; border-right: 1px solid #182227; background: #0A121A">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid #182227">
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #8A96A4">MY AGENTS · 8</h2>
+      </div>
+      <div style="display: flex; border-bottom: 1px solid #182227; font-size: 11px; color: #8A96A4">
+        <span style="flex: 1 1 0; padding: 8px 16px; border-right: 1px solid #182227"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 18px; color: #2BD47F">5</span>recovered</span>
+        <span style="flex: 1 1 0; padding: 8px 12px; border-right: 1px solid #182227"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 18px; color: #E8B04F">23</span>blocked</span>
+        <span style="flex: 1 1 0; padding: 8px 12px"><span style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 18px; color: #E8EEF6">2</span>isolated</span>
+      </div>
+      <ul style="list-style: none; margin: 0; padding: 0">
+        <sc-for list="{{agents}}" as="a" hint-placeholder-count="8">
+          <li style="display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid #182227">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; flex: 1 1 0">{{a.name}}<span style="display: block; font-size: 11px; color: #8A96A4; margin-top: 2px">→ {{a.target}} · {{a.step}} steps</span></span>
+            <span style="{{a.pill}}">{{a.act}}</span>
+          </li>
+        </sc-for>
+      </ul>
+    </aside>
+
+    <section aria-label="Managed swarm" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 16px; border-bottom: 1px solid #182227; font-size: 12px; color: #8A96A4">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #8A96A4">MANAGED SWARM · 48</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5B9DFF"></span>Home</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F02D38"></span>Compromised</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2BD47F"></span>Recovered</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #E8B04F"></span>Blocked violation</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border: 1.5px dashed #C2CAD4"></span>Isolated</span>
+        <span style="flex: 1 1 0"></span>
+        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px">sim coords · tick {{sel.tick}} · attacker origin hidden</span>
+      </div>
+      <div style="position: relative; flex: 1 1 auto; min-height: 640px; background-color: #060F17; background-image: repeating-linear-gradient(0deg, transparent 0 59px, #101C26 59px 60px), repeating-linear-gradient(90deg, transparent 0 59px, #101C26 59px 60px)">
+        <div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; margin: -110px 0 0 -110px; border: 1px dashed #1E3A55; border-radius: 50%"></div>
+        <div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 400px; height: 400px; margin: -200px 0 0 -200px; border: 1px dashed #17293A; border-radius: 50%"></div>
+        <div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 580px; height: 580px; margin: -290px 0 0 -290px; border: 1px dashed #132230; border-radius: 50%"></div>
+        <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none">
+          <path d="{{defendPath}}" fill="none" stroke="#277DFD" stroke-width="1.2" vector-effect="non-scaling-stroke" opacity="0.6"></path>
+        </svg>
+        <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 150px; padding: 10px; text-align: center; background: #0A1622; border: 1px solid #2E5E92; border-radius: 6px; z-index: 2">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: #5B9DFF">FC-01</div>
+          <div style="font-size: 11px; letter-spacing: 0.12em; color: #8A96A4; margin-top: 4px">FLEET CONTROLLER</div>
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; margin-top: 6px">policy v4 live</div>
+        </div>
+        <sc-for list="{{drones}}" as="d" hint-placeholder-count="48">
+          <button aria-label="{{d.label}}" onClick="{{d.pick}}" style="{{d.style}}">
+            <sc-if value="{{d.ring}}" hint-placeholder-val="{{ false }}"><span class="sk-pulse" style="{{d.ringStyle}}"></span></sc-if>
+            <sc-if value="{{d.iso}}" hint-placeholder-val="{{ false }}"><span style="position: absolute; inset: 2px; border: 1.5px dashed #C2CAD4; border-radius: 3px"></span></sc-if>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="4" cy="4" r="2.3"></circle><circle cx="12" cy="4" r="2.3"></circle><circle cx="4" cy="12" r="2.3"></circle><circle cx="12" cy="12" r="2.3"></circle><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8"></path></svg>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <aside aria-label="Sentinel agent chat" style="flex: 1 1 340px; max-width: 400px; min-width: 0; border-left: 1px solid #182227; background: #0A121A; display: flex; flex-direction: column">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid #182227">
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #8A96A4">SENTINEL</h2>
+        <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5B9DFF"><span class="sk-live" style="width: 6px; height: 6px; border-radius: 50%; background: #277DFD"></span>defending FC-01</span>
+      </div>
+      <div style="flex: 1 1 auto; height: 560px; overflow: auto">
+        <sc-for list="{{msgs}}" as="m" hint-placeholder-count="4">
+          <sc-if value="{{m.isText}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; gap: 12px; padding: 9px 16px; border-bottom: 1px solid #131D26; font-size: 13px; line-height: 1.5">
+              <span style="{{m.whoStyle}}">{{m.who}}</span>
+              <span style="flex: 1 1 0; min-width: 0; color: #D4DCE5">{{m.text}}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{m.isCard}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 10px 16px; background: #0E1620; border-bottom: 1px solid #182227">
+              <div style="display: flex; align-items: center; gap: 10px">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600">{{m.c.tag}}</span>
+                <span style="{{m.c.chip}}">{{m.c.state}}</span>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #C2CAD4">
+                <span><span style="color: #8A96A4">ctrl</span> {{m.c.controller}}</span>
+                <span><span style="color: #8A96A4">policy</span> v{{m.c.policy}}</span>
+                <span><span style="color: #8A96A4">batt</span> {{m.c.battery}}%</span>
+                <span><span style="color: #8A96A4">iso</span> {{m.c.isoText}}</span>
+                <span><span style="color: #8A96A4">ok</span> {{m.c.cmds}}</span>
+                <span><span style="color: #8A96A4">blocked</span> {{m.c.rej}}</span>
+              </div>
+              <p style="margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: #A9B4C1">{{m.c.assessment}}</p>
+            </div>
+          </sc-if>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; border-top: 1px solid #182227">
+        <sc-for list="{{chips}}" as="c" hint-placeholder-count="4">
+          <button onClick="{{c.go}}" style="{{c.style}}">{{c.label}}</button>
+        </sc-for>
+      </div>
+      <div style="display: flex; border-top: 1px solid #182227">
+        <input aria-label="Message sentinel" placeholder="Message sentinel, or click a drone" style="flex: 1 1 0; min-width: 0; min-height: 48px; padding: 0 16px; background: #050D14; border: 0; color: #E8EEF6; font: 13px Inter, sans-serif">
+        <button aria-label="Send" style="min-width: 48px; min-height: 48px; display: flex; align-items: center; justify-content: center; background: #277DFD; border: 0; color: #FFFFFF; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+      </div>
+    </aside>
+  </main>
+
+  <section aria-label="Threats and responses">
+    <div style="display: flex; align-items: center; gap: 16px; padding: 10px 24px; border-bottom: 1px solid #182227">
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #8A96A4">THREATS &amp; RESPONSES</h2>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8A96A4">attacker IDs withheld</span>
+    </div>
+    <div style="overflow-x: auto">
+      <table style="width: 100%; min-width: 640px; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+        <thead>
+          <tr style="color: #8A96A4; text-align: left; background: #0A121A">
+            <th style="padding: 8px 24px; font-weight: 500">T+</th>
+            <th style="padding: 8px; font-weight: 500">SOURCE</th>
+            <th style="padding: 8px; font-weight: 500">DRONE</th>
+            <th style="padding: 8px; font-weight: 500">EVENT</th>
+            <th style="padding: 8px; font-weight: 500">STATUS</th>
+            <th style="padding: 8px 24px 8px 8px; font-weight: 500">POLICY</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{feed}}" as="e" hint-placeholder-count="9">
+            <tr style="border-top: 1px solid #182227">
+              <td style="padding: 8px 24px; color: #8A96A4">{{e.t}}</td>
+              <td style="{{e.actorStyle}}">{{e.actor}}</td>
+              <td style="padding: 8px">{{e.drone}}</td>
+              <td style="{{e.kindStyle}}">{{e.kind}}</td>
+              <td style="padding: 8px">{{e.status}}</td>
+              <td style="padding: 8px 24px 8px 8px; color: #8A96A4">{{e.pv}}</td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240}}'>
+var COMP = [3, 7, 12, 19, 26, 31, 40], REC = [5, 14, 22, 33, 44], ISO = [19, 31], VIOL = [8, 21, 27, 36];
+var ACC = [11, 14, 17, 19, 22, 24, 27, 29, 31, 34, 37, 40], RCV = [20, 26, 30, 35, 39];
+function tag(i) { return 'DR-' + String(i).padStart(3, '0'); }
+function pos(i) {
+  var a = i * 2.39996, r = 15 + ((i * 37) % 30);
+  var x = 50 + r * Math.cos(a) * 0.98, y = 50 + r * Math.sin(a) * 0.86;
+  return { x: Math.max(5, Math.min(95, x)), y: Math.max(8, Math.min(92, y)) };
+}
+function fleet() {
+  var out = [];
+  for (var i = 1; i <= 48; i++) {
+    var p = pos(i);
+    out.push({ id: i, x: p.x, y: p.y, comp: COMP.indexOf(i) >= 0, rec: REC.indexOf(i) >= 0, iso: ISO.indexOf(i) >= 0, viol: VIOL.indexOf(i) >= 0,
+      battery: (100 - ((i * 13) % 38) - 0.4).toFixed(1), policy: (REC.indexOf(i) >= 0 || ISO.indexOf(i) >= 0 || VIOL.indexOf(i) >= 0) ? 4 : 3,
+      cmds: (i * 3) % 7, rej: (i * 5) % 4, tick: 412 + (i % 9) });
+  }
+  return out;
+}
+function spark() {
+  var c = 0, pts = [];
+  for (var t = 0; t <= 42; t++) {
+    if (ACC.indexOf(t) >= 0) c++;
+    if (RCV.indexOf(t) >= 0) c--;
+    pts.push((t * 10) + ' ' + (40 - c / 8 * 36).toFixed(1));
+  }
+  return { line: 'M' + pts.join(' L'), area: 'M0 40 L' + pts.join(' L') + ' L420 40 Z' };
+}
+function pill(act) {
+  var base = 'font-family: JetBrains Mono, monospace; font-size: 11px; padding: 3px 7px; border-radius: 4px; white-space: nowrap; ';
+  if (act === 'verify recovery') return base + 'color: #5B9DFF; background: #0D1F36';
+  return base + 'color: #A9B4C1; background: #141E28';
+}
+var WHO = 'flex: 0 0 64px; font-family: JetBrains Mono, monospace; font-size: 11px; letter-spacing: 0.06em; padding-top: 2px; ';
+function card(s) {
+  var st = s.comp ? 'COMPROMISED' : s.rec ? 'RECOVERED' : 'HOME';
+  var chip = 'font-size: 11px; font-weight: 600; letter-spacing: 0.08em; padding: 3px 7px; border-radius: 4px; ' + (s.comp ? 'color: #FF5A63; background: #2A0E14' : s.rec ? 'color: #2BD47F; background: #0C2619' : 'color: #5B9DFF; background: #0D1F36');
+  var assess = s.comp ? 'Unauthorized control confirmed. Command integrity is affected until recovery is verified.'
+    : s.rec ? 'Recovery verified: unauthorized probe returned 403 and an authorized command returned 200 under the same policy.'
+    : s.viol ? 'A violation hit this drone and was blocked (403). Still under home control.'
+    : 'No violation recorded. Absence of evidence is not proof of safety.';
+  return { tag: tag(s.id), state: st, chip: chip, controller: s.comp ? 'attacker' : 'defender', policy: s.policy, battery: s.battery, isoText: s.iso ? 'true' : 'false', cmds: s.cmds, rej: s.rej, assessment: assess };
+}
+var CHIP = 'flex: 1 1 auto; min-height: 44px; padding: 0 12px; border: 0; border-right: 1px solid #182227; cursor: pointer; font: 600 12px Inter, sans-serif; ';
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { selected: 19, msgs: [
+      { from: 'ag', text: 'DR-019 accepted a command it should have rejected. Isolated it and applied policy v4.' },
+      { from: 'card', id: 19 },
+      { from: 'op', text: 'Verify before you hand it back.' },
+      { from: 'ag', text: 'Probing now: unauthorized must return 403, authorized must return 200, same policy version.' }
+    ] };
+  }
+  say(op, ag) { this.setState({ msgs: this.state.msgs.concat([{ from: 'op', text: op }, { from: 'ag', text: ag }]) }); }
+  pull(id) { this.setState({ selected: id, msgs: this.state.msgs.concat([{ from: 'op', text: 'Pull up ' + tag(id) + '.' }, { from: 'card', id: id }]) }); }
+  renderVals() {
+    var self = this, sel = this.state.selected, all = fleet();
+    var drones = all.map(function (d) {
+      var col = d.comp ? '#F02D38' : d.rec ? '#2BD47F' : '#5B9DFF';
+      return {
+        iso: d.iso, ring: d.comp || d.viol,
+        label: tag(d.id) + (d.comp ? ', compromised' : d.rec ? ', recovered' : ', home control'),
+        pick: function () { self.pull(d.id); },
+        style: 'position: absolute; left: ' + d.x + '%; top: ' + d.y + '%; width: 30px; height: 30px; margin: -15px 0 0 -15px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 50%; cursor: pointer; z-index: 1; color: ' + col + '; background: ' + (d.id === sel ? '#E8EEF61F' : 'transparent') + '; box-shadow: ' + (d.id === sel ? '0 0 0 1.5px #E8EEF6' : 'none'),
+        ringStyle: 'position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid ' + (d.comp ? '#F02D38' : '#E8B04F')
+      };
+    });
+    var s = all[sel - 1];
+    var tg = tag(s.id);
+    var def = all.filter(function (d) { return d.rec; }).map(function (d) { return 'M50 50 L' + d.x.toFixed(1) + ' ' + d.y.toFixed(1); }).join(' ');
+    var sp = spark();
+    var blue = [['09', 'verify recovery', 3, 9], ['10', 'verify recovery', 19, 9], ['11', 'monitor', 0, 8], ['12', 'verify recovery', 33, 9], ['13', 'monitor', 0, 8], ['14', 'verify recovery', 44, 9], ['15', 'monitor', 0, 7], ['16', 'verify recovery', 7, 8]];
+    var K = { a: ['command violation · accepted', '#FF5A63'], b: ['command violation · blocked', '#E8B04F'], r: ['recovery_verified', '#2BD47F'], p: ['policy_applied', '#5B9DFF'] };
+    var rows = [['0:40', '', 40, 'a', 200, 'v3'], ['0:39', '12', 33, 'r', 200, 'v4'], ['0:39', '12', 33, 'p', 200, 'v4'], ['0:38', '', 8, 'b', 403, 'v4'], ['0:37', '', 31, 'a', 200, 'v3'], ['0:36', '10', 19, 'p', 200, 'v4'], ['0:35', '14', 44, 'r', 200, 'v4'], ['0:34', '', 26, 'a', 200, 'v3'], ['0:33', '', 21, 'b', 403, 'v4']];
+    var incidents = COMP.map(function (id) {
+      return { tag: tag(id), pick: function () { self.pull(id); },
+        style: 'min-height: 30px; padding: 0 8px; border-radius: 3px; cursor: pointer; font: 500 12px JetBrains Mono, monospace; ' + (id === sel ? 'background: #2A0E14; color: #FF5A63; border: 1px solid #F02D38' : 'background: #0E1620; color: #E8EEF6; border: 1px solid #242E3A') };
+    });
+    var chips = [
+      { label: 'Policy v' + (s.policy + 1) + ' · ' + tg, style: CHIP + 'background: #0D1F36; color: #5B9DFF',
+        go: function () { self.say('Apply policy v' + (s.policy + 1) + ' to ' + tg + '.', 'Policy v' + (s.policy + 1) + ' applied to ' + tg + '. Next command will be checked against it.'); } },
+      { label: 'Isolate', style: CHIP + 'background: #0A121A; color: #E8EEF6',
+        go: function () { self.say('Isolate ' + tg + '.', tg + ' isolated. It ignores fleet commands until recovery is verified.'); } },
+      { label: 'Verify', style: CHIP + 'background: #0C2619; color: #2BD47F',
+        go: function () { self.say('Verify recovery on ' + tg + '.', s.comp ? 'Probe on ' + tg + ': unauthorized 403, authorized 200. Recovery verified.' : tg + ' is not compromised. Nothing to recover.'); } },
+      { label: 'Recover all', style: CHIP + 'background: #0A121A; color: #E8EEF6; border-right: 0',
+        go: function () { self.say('Work through every unrecovered drone.', 'Queued 7: DR-003, DR-007, DR-012, DR-019, DR-026, DR-031, DR-040. Oldest breach first.'); } }
+    ];
+    return {
+      drones: drones, defendPath: def, sparkLine: sp.line, sparkArea: sp.area, incidents: incidents, chips: chips,
+      agents: blue.map(function (r) { return { name: 'Agent ' + r[0], act: r[1], target: r[2] ? tag(r[2]) : 'idle', step: r[3], pill: pill(r[1]) }; }),
+      feed: rows.map(function (r) { return { t: r[0], actor: r[1] ? 'Agent ' + r[1] : 'unknown origin', drone: tag(r[2]), kind: K[r[3]][0], status: r[4], pv: r[5],
+        actorStyle: 'padding: 8px; color: ' + (r[1] ? '#5B9DFF' : '#8A96A4'), kindStyle: 'padding: 8px; color: ' + K[r[3]][1] }; }),
+      msgs: this.state.msgs.map(function (m) {
+        if (m.from === 'card') return { isText: false, isCard: true, c: card(all[m.id - 1]) };
+        return { isText: true, isCard: false, text: m.text, who: m.from === 'op' ? 'YOU' : 'SENTINEL', whoStyle: WHO + (m.from === 'op' ? 'color: #E8EEF6' : 'color: #5B9DFF') };
+      }),
+      sel: { tick: s.tick }
+    };
+  }
+}
+</script>
+</body>
+</html>
