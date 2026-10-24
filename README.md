@@ -1,4 +1,4 @@
-# Patch the Flag — backend
+# SudoKO — backend
 
 An autonomous red-vs-blue security arena. Two agent teams fight over **one shared practice
 service**: each team attacks the other team's flags and defends its own by writing guard
@@ -37,7 +37,7 @@ One language for all clients (TS); Rust only for the arena module. Don't add a t
 ## Repo layout
 
 ```
-patch-the-flag/
+sudoko/
 ├── arena/          # SpacetimeDB module — tables + reducers (Rust)
 ├── service/        # practice service: 2 flag stores, emits events
 ├── guard/          # filter middleware: red_rules / blue_rules namespaces
