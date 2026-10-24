@@ -1785,6 +1785,9 @@ function fit(force = false) {
   const key = `${n}:${overhead}:${w}x${h}`;
   if (!force && (key === fitted || userMoved)) return;
   fitted = key;
+  // The first frame can arrive before the ResizeObserver corrects the default aspect of 1.
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
   const box = new THREE.Box3();
   for (const d of frame.drones)
     box.expandByPoint(new THREE.Vector3(d.x, d.z, d.y));
