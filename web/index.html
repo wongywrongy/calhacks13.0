@@ -8,220 +8,262 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0A0C10; --panel:#0E1116; --panel2:#141821; --line:#1C2230; --line2:#262D3C;
-  --fg:#D4D9E2; --dim:#79828F; --faint:#49515F;
-  --red:#E8505B; --blue:#4C82E0; --green:#35C98A; --amber:#E0A64A;
-  --reddim:rgba(232,80,91,.13); --bluedim:rgba(76,130,224,.13);
+  --bg:#050D14; --bg2:#040C13; --panel:#0A121A; --panel2:#0E1620; --box:#0C141D;
+  --line:#182227; --line2:#242E3A;
+  --fg:#E8EEF6; --dim:#7E8A98; --faint:#49535F;
+  --red:#F02D38; --blue:#277DFD; --green:#21BF73; --amber:#E0A64A;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--fg)}
 body{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;font-size:13px}
 .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
-.wrap{max-width:1420px;margin:0 auto;padding:14px max(14px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1500px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-left,0px))}
 
 /* top bar */
-.bar{display:flex;align-items:center;gap:22px;border-bottom:1px solid var(--line);padding:4px 2px 14px}
-.brand{display:flex;align-items:center;gap:11px}
-.brand .nm{font-weight:700;letter-spacing:.18em;font-size:15px}
-.brand .sub{font-size:10px;letter-spacing:.2em;color:var(--dim);border-left:1px solid var(--line2);padding-left:11px}
-.bgroup{display:flex;align-items:center;gap:7px}
-.bgroup .k{font-size:9.5px;letter-spacing:.16em;color:var(--dim)}
-.bgroup .v{font-family:'JetBrains Mono',monospace;font-size:13px;font-variant-numeric:tabular-nums}
-.sepv{width:1px;height:26px;background:var(--line)}
-.scores{display:flex;align-items:center;gap:16px;margin-left:auto}
-.sc{display:flex;align-items:baseline;gap:8px}
-.sc .lbl{font-size:10px;letter-spacing:.16em}
-.sc .n{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;transition:transform .25s}
-.sc .n.bump{transform:scale(1.18)}
-.ctrls{display:flex;gap:7px;align-items:center;margin-left:4px}
+.bar{display:flex;align-items:center;gap:26px;padding:2px 2px 16px}
+.brand{display:flex;align-items:center;gap:13px}
+.brand .nm{font-weight:700;letter-spacing:.2em;font-size:17px}
+.brand .sub{font-size:11px;letter-spacing:.22em;color:var(--dim);border-left:1px solid var(--line2);padding-left:13px}
+.right{display:flex;align-items:center;gap:22px;margin-left:auto}
+.bgroup{display:flex;align-items:center;gap:9px}
+.bgroup .k{font-size:10px;letter-spacing:.18em;color:var(--dim)}
+.bgroup .v{font-family:'JetBrains Mono',monospace;font-size:14px;font-variant-numeric:tabular-nums}
+.sepv{width:1px;height:24px;background:var(--line2)}
+.sc{display:flex;align-items:center;gap:9px}
+.sc .lbl{font-size:11px;letter-spacing:.18em}
+.sc .n{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;transition:transform .25s}
+.sc .n.bump{transform:scale(1.16)}
+.ctrls{display:flex;gap:7px;align-items:center}
 button{font-family:inherit;font-size:12px;font-weight:500;color:var(--fg);background:var(--panel2);
-  border:1px solid var(--line2);border-radius:7px;padding:7px 12px;cursor:pointer;transition:border-color .15s,background .15s,transform .1s}
-button:hover{border-color:var(--faint)} button:active{transform:translateY(1px)}
+  border:1px solid var(--line2);border-radius:7px;padding:7px 13px;cursor:pointer;transition:border-color .15s,background .15s,transform .1s}
+button:hover{border-color:var(--dim)} button:active{transform:translateY(1px)}
 button.primary{background:var(--fg);color:var(--bg);border-color:transparent;font-weight:600}
 button:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 select{font-family:inherit;font-size:12px;color:var(--fg);background:var(--panel2);border:1px solid var(--line2);border-radius:7px;padding:7px 9px}
 
 /* grid */
-.grid{display:grid;grid-template-columns:272px 1fr 272px;gap:14px;margin-top:14px}
-@media(max-width:1080px){.grid{grid-template-columns:1fr}}
+.grid{display:grid;grid-template-columns:304px 1fr 304px;gap:16px}
+@media(max-width:1180px){.grid{grid-template-columns:1fr}}
 
 /* agent card */
-.agent{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:0;overflow:hidden;display:flex;flex-direction:column}
-.agent .top{padding:14px 16px 12px;border-bottom:1px solid var(--line)}
-.agent.red .top{border-top:2px solid var(--red)} .agent.blue .top{border-top:2px solid var(--blue)}
-.ahead{display:flex;align-items:center;gap:8px}
-.ahead .nm{font-weight:700;letter-spacing:.07em;font-size:13px}
-.ahead .role{font-size:9px;letter-spacing:.13em;color:var(--dim);margin-left:1px}
-.ahead .stat{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.1em;color:var(--green)}
-.ahead .ld{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.agent{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 18px 4px;display:flex;flex-direction:column}
+.acctop{height:3px;border-radius:2px;margin:-18px -18px 15px;background:var(--red)}
+.agent.blue .acctop{background:var(--blue)}
+.ahead{display:flex;align-items:center}
+.ahead .nm{font-weight:700;letter-spacing:.08em;font-size:17px}
+.agent.red .ahead .nm{color:var(--red)} .agent.blue .ahead .nm{color:var(--blue)}
+.ahead .stat{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.12em;color:var(--green)}
+.ahead .ld{width:7px;height:7px;border-radius:50%;background:var(--green)}
 @media(prefers-reduced-motion:no-preference){.ahead .ld{animation:blink 2.4s ease-in-out infinite}}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
-.ctr{display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap}
-.ctr .id{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--fg);white-space:nowrap}
-.badge{margin-left:auto;font-size:8.5px;letter-spacing:.09em;color:var(--dim);border:1px solid var(--line2);border-radius:5px;padding:3px 6px;white-space:nowrap}
-.sect{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:11px}
-.sect:last-child{border-bottom:none}
-.metric{display:flex;align-items:baseline;justify-content:space-between}
-.metric .k{font-size:10px;letter-spacing:.11em;color:var(--dim)}
-.metric .v{font-family:'JetBrains Mono',monospace;font-size:14px;font-variant-numeric:tabular-nums}
-.metric .v.big{font-size:22px;font-weight:600}
-.meter{height:4px;border-radius:2px;background:var(--panel2);overflow:hidden;margin-top:5px}
-.meter .fill{height:4px;border-radius:2px;transition:width .5s cubic-bezier(.22,1,.36,1)}
-.kv{display:flex;flex-direction:column;gap:3px}
-.kv .k{font-size:9.5px;letter-spacing:.12em;color:var(--dim)}
-.kv .v{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.act{min-height:17px;transition:color .3s;white-space:normal;overflow:visible;line-height:1.5}
-.cur{display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--dim);min-height:16px}
-.cur .tick{width:5px;height:5px;border-radius:1px;flex:none;background:var(--faint)}
-.cur.live.red .tick{background:var(--red)} .cur.live.blue .tick{background:var(--blue)}
-@media(prefers-reduced-motion:no-preference){.cur.live .tick{animation:blink 1s ease-in-out infinite}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.slabel{font-size:11px;letter-spacing:.14em;color:var(--dim);margin:20px 0 10px}
+.pbox{display:flex;align-items:center;gap:12px;background:var(--box);border:1px solid var(--line);border-radius:8px;padding:12px 13px}
+.pbox .gear{width:26px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid var(--line2);border-radius:7px;background:var(--panel2)}
+.pbox .pn{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--fg)}
+.pbox .pm{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);letter-spacing:.06em;margin-top:3px}
+.rowline{display:flex;align-items:center;justify-content:space-between;padding:7px 0;font-size:13px}
+.rowline .k{color:var(--dim);letter-spacing:.04em}
+.rowline .v{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.sep{height:1px;background:var(--line);margin:14px 0}
+.fleet .rowline{padding:8px 0}
+.fleet .ic{display:inline-flex;width:18px;justify-content:center;margin-right:11px;vertical-align:middle}
+.fleet .lab{color:var(--fg)} .fleet .lab.dimmed{color:var(--dim)}
+.fleet .v.big{font-size:14px}
+.obj{display:flex;align-items:center;gap:11px;padding:8px 0;font-size:13px}
+.obj .b{width:15px;height:15px;flex:none;border-radius:50%;border:1.5px solid var(--faint);display:flex;align-items:center;justify-content:center}
+.obj.red .b.done{border-color:var(--red)} .obj.blue .b.done{border-color:var(--blue)}
+.obj .b.done::after{content:'';width:6px;height:6px;border-radius:50%}
+.obj.red .b.done::after{background:var(--red)} .obj.blue .b.done::after{background:var(--blue)}
+.obj .t{color:var(--fg)} .obj .p{margin-left:auto;font-family:'JetBrains Mono',monospace;color:var(--dim)}
+.last{margin:4px 0 2px}
+.last .k{font-size:10px;letter-spacing:.13em;color:var(--dim)}
+.last .v{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--fg);margin-top:5px;line-height:1.5}
+.cur{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--dim);margin-top:9px;min-height:16px}
+.cur .tk{width:5px;height:5px;border-radius:1px;flex:none;background:var(--faint)}
+.cur.live.red .tk{background:var(--red)} .cur.live.blue .tk{background:var(--blue)}
+@media(prefers-reduced-motion:no-preference){.cur.live .tk{animation:blink 1s ease-in-out infinite}}
 
 /* center stage */
-.stage{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
-.scap{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:.14em;color:var(--dim)}
-.scap .rt{margin-left:auto;font-family:'JetBrains Mono',monospace;color:var(--faint);letter-spacing:.06em}
-.map{position:relative;width:100%;aspect-ratio:1000/548;background:#090B0F}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.scap{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.16em;color:var(--dim)}
+.scap .rt{margin-left:auto;font-family:'JetBrains Mono',monospace;color:var(--faint);letter-spacing:.07em}
+.map{position:relative;width:100%;aspect-ratio:1000/556;background:#070C12}
 .map svg{position:absolute;inset:0;width:100%;height:100%;display:block}
-.cnode{font-size:9px;letter-spacing:.12em}
 /* control bar */
-.control{padding:12px 16px 15px;border-top:1px solid var(--line)}
-.chead{display:flex;align-items:center;font-size:10px;letter-spacing:.12em;color:var(--dim)}
-.chead .chip{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--dim);border:1px solid var(--line2);border-radius:5px;padding:2px 7px;transition:color .3s,border-color .3s}
-.chead .chip.red{color:var(--red);border-color:rgba(232,80,91,.4)} .chead .chip.blue{color:var(--blue);border-color:rgba(76,130,224,.4)}
-.segs{display:flex;gap:2px;margin-top:9px;height:14px}
+.control{padding:14px 16px 16px;border-top:1px solid var(--line)}
+.chead{display:flex;align-items:center;font-size:11px;letter-spacing:.14em;color:var(--dim)}
+.chead .chip{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.05em;color:var(--dim);border:1px solid var(--line2);border-radius:5px;padding:3px 8px;transition:color .3s,border-color .3s}
+.chead .chip.red{color:var(--red);border-color:rgba(240,45,56,.45)} .chead .chip.blue{color:var(--blue);border-color:rgba(39,125,253,.45)}
+.segs{display:flex;gap:3px;margin-top:11px;height:18px}
 .seg{flex:1;border-radius:2px;background:var(--panel2);transition:background .45s cubic-bezier(.22,1,.36,1)}
 .seg.red{background:var(--red)} .seg.blue{background:var(--blue)}
-.cnums{display:flex;justify-content:space-between;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:11px}
-.cnums .r{color:var(--red)} .cnums .m{color:var(--faint)} .cnums .b{color:var(--blue)}
+.segnums{display:flex;gap:3px;margin-top:5px}
+.segnums span{flex:1;text-align:center;font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--faint)}
+
+/* fx + units */
+.fxline{pointer-events:none}
 
 /* event log */
-.log{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-top:14px;overflow:hidden}
-.lhead{display:flex;align-items:center;gap:7px;padding:12px 16px;border-bottom:1px solid var(--line)}
-.lhead .t{font-size:10px;letter-spacing:.14em;color:var(--dim)}
-.lhead .live{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.12em;color:var(--dim)}
-.lhead .live .ld{width:5px;height:5px;border-radius:50%;background:var(--green)}
+.log{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:16px;overflow:hidden}
+.lhead{display:flex;align-items:center;gap:7px;padding:14px 18px 12px}
+.lhead .t{font-size:11px;letter-spacing:.16em;color:var(--dim)}
+.lhead .live{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.12em;color:var(--dim)}
+.lhead .live .ld{width:6px;height:6px;border-radius:50%;background:var(--green)}
 @media(prefers-reduced-motion:no-preference){.lhead .live .ld{animation:blink 1.6s ease-in-out infinite}}
-table{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:12px}
-thead th{text-align:left;font-weight:500;font-size:9.5px;letter-spacing:.11em;color:var(--faint);padding:9px 16px;border-bottom:1px solid var(--line)}
-tbody td{padding:7px 16px;border-bottom:1px solid rgba(28,34,48,.5);color:#AEB6C4;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:12.5px}
+thead th{text-align:left;font-weight:500;font-size:10px;letter-spacing:.12em;color:var(--dim);padding:10px 18px;border-bottom:1px solid var(--line);border-top:1px solid var(--line)}
+tbody td{padding:9px 18px;border-bottom:1px solid rgba(24,34,39,.6);color:#C2CAD4;white-space:nowrap}
 tbody tr:last-child td{border-bottom:none}
-@media(prefers-reduced-motion:no-preference){tbody tr.fresh td{animation:rowin .4s ease}}
-@keyframes rowin{from{background:rgba(255,255,255,.03)}to{background:transparent}}
-td .adot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:7px;vertical-align:middle}
-.pill{display:inline-block;font-size:10px;padding:2px 7px;border-radius:5px;border:1px solid var(--line2);color:var(--dim)}
-.pill.ok{color:var(--green);border-color:rgba(53,201,138,.35)}
-.pill.block{color:var(--red);border-color:rgba(232,80,91,.35)}
+@media(prefers-reduced-motion:no-preference){tbody tr.fresh td{animation:rowin .45s ease}}
+@keyframes rowin{from{background:rgba(39,125,253,.06)}to{background:transparent}}
+.src-red{color:var(--red)} .src-blue{color:var(--blue)} .src-sys{color:var(--dim)}
+.ev{color:var(--blue)}
 .col-dim{color:var(--dim)}
-.hint{text-align:center;color:var(--faint);font-size:11px;margin-top:11px}
+.hint{text-align:center;color:var(--faint);font-size:11px;margin-top:12px}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <!-- top bar -->
   <div class="bar">
     <div class="brand">
-      <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true"><polygon points="11,2 19,6.5 19,15.5 11,20 3,15.5 3,6.5" fill="none" stroke="#2A3242" stroke-width="1.3"/><path d="M8 7.5 L14 11 L8 14.5 Z" fill="#4C82E0"/></svg>
-      <span class="nm">SUDOKO</span>
-      <span class="sub">DRONE OPERATIONS &amp; SECURITY</span>
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><polygon points="11,2 19,6.5 19,15.5 11,20 3,15.5 3,6.5" fill="none" stroke="#2A3242" stroke-width="1.3"/><path d="M8 7.5 L14 11 L8 14.5 Z" fill="#277DFD"/></svg>
+      <span class="nm">SUDOKO</span><span class="sub">DRONE OPERATIONS &amp; SECURITY</span>
     </div>
-    <div class="scores">
+    <div class="right">
       <div class="bgroup"><span class="k">ROUND</span><span class="v" id="round">0/3</span></div>
       <div class="sepv"></div>
-      <div class="bgroup"><span class="k">CLOCK</span><span class="v" id="clock">0:00</span></div>
+      <div class="bgroup"><span class="k">MATCH CLOCK</span><span class="v" id="clock">0:00</span></div>
       <div class="sepv"></div>
       <div class="sc"><span class="lbl" style="color:var(--red)">RED</span><span class="n mono" id="sRed" style="color:var(--red)">0</span></div>
       <div class="sc"><span class="lbl" style="color:var(--blue)">BLUE</span><span class="n mono" id="sBlue" style="color:var(--blue)">0</span></div>
       <div class="ctrls">
         <button class="primary" id="play">&#9654;&nbsp; Play</button>
-        <button id="step">Step</button>
-        <button id="reset">Reset</button>
+        <button id="step">Step</button><button id="reset">Reset</button>
         <select id="speed" aria-label="Speed"><option value="2000">0.5&times;</option><option value="1200" selected>1&times;</option><option value="650">2&times;</option></select>
       </div>
     </div>
   </div>
 
   <div class="grid">
-    <!-- RED agent -->
+    <!-- RED AGENT -->
     <div class="agent red">
-      <div class="top">
-        <div class="ahead"><span class="nm">RED AGENT</span><span class="role">ATTACK · DEFEND</span>
-          <span class="stat"><span class="ld"></span>ACTIVE</span></div>
-        <div class="ctr"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2.5" fill="none" stroke="#79828F" stroke-width="1.2"/><circle cx="8" cy="8" r="2" fill="#79828F"/></svg>
-          <span class="id" id="rCtr">ctr-red-a7f3</span><span class="badge">SANDBOX · NO EGRESS</span></div>
+      <div class="acctop"></div>
+      <div class="ahead"><span class="nm">RED AGENT</span><span class="stat"><span class="ld"></span>ACTIVE</span></div>
+      <div class="slabel">PROCESS</div>
+      <div class="pbox"><span class="gear"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.3" stroke="#7E8A98" stroke-width="1.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4" stroke="#7E8A98" stroke-width="1.1"/></svg></span>
+        <div><div class="pn" id="rProc">swarm_control_red</div><div class="pm">PID 48231 · PRIORITY 1</div></div></div>
+      <div style="margin-top:15px">
+        <div class="rowline"><span class="k">STATUS</span><span class="v" style="color:var(--green)">RUNNING</span></div>
+        <div class="rowline"><span class="k">SANDBOX</span><span class="v" style="color:var(--dim)">NO EGRESS</span></div>
+        <div class="rowline"><span class="k">CPU</span><span class="v" id="rCpu">12.4%</span></div>
+        <div class="rowline"><span class="k">MEMORY</span><span class="v" id="rMem">286 MB</span></div>
+        <div class="rowline"><span class="k">TOOL CALLS</span><span class="v" id="rTc">0 / 40</span></div>
       </div>
-      <div class="sect">
-        <div class="metric"><span class="k">DRONES CONTROLLED</span><span class="v big" id="rCtrl">0</span></div>
+      <div class="sep"></div>
+      <div class="slabel" style="margin-top:0">DRONE FLEET <span id="rFleetN" style="color:var(--faint)">(0)</span></div>
+      <div class="fleet">
+        <div class="rowline"><span class="lab"><span class="ic"><svg width="14" height="12" viewBox="0 0 14 12"><path d="M1 3 L7 8 L13 3 M1 7 L7 11 L13 7" fill="none" stroke="#F02D38" stroke-width="1.6"/></svg></span>CONTROLLED</span><span class="v big" id="rCtrl">0</span></div>
+        <div class="rowline"><span class="lab dimmed"><span class="ic"><svg width="13" height="12" viewBox="0 0 13 12"><path d="M2 2 L11 10 M11 2 L2 10" stroke="#49535F" stroke-width="1.5"/></svg></span>IN TRANSIT</span><span class="v" style="color:var(--dim)">0</span></div>
+        <div class="rowline"><span class="lab dimmed"><span class="ic"><svg width="14" height="12" viewBox="0 0 14 12"><path d="M7 11 C2 7 1 4 3.2 2.6 C5 1.5 7 3 7 4 C7 3 9 1.5 10.8 2.6 C13 4 12 7 7 11 Z" fill="none" stroke="#49535F" stroke-width="1.3"/></svg></span>LOST</span><span class="v" style="color:var(--dim)">0</span></div>
       </div>
-      <div class="sect">
-        <div><div class="metric"><span class="k">SERVICE SLA</span><span class="v" id="rSlaV">100%</span></div>
-          <div class="meter"><div class="fill" id="rSlaBar" style="width:100%;background:var(--green)"></div></div></div>
-        <div><div class="metric"><span class="k">TOOL CALLS</span><span class="v" id="rTcV">0 / 40</span></div>
-          <div class="meter"><div class="fill" id="rTcBar" style="width:0%;background:var(--red)"></div></div></div>
-      </div>
-      <div class="sect">
-        <div class="kv"><span class="k">LAST TOOL CALL</span><span class="v act" id="rLast">—</span></div>
-        <div class="cur" id="rCur"><span class="tick"></span><span id="rCurT">idle</span></div>
-      </div>
+      <div class="sep"></div>
+      <div class="slabel" style="margin-top:0">OBJECTIVES</div>
+      <div id="rObj"></div>
+      <div class="sep"></div>
+      <div class="last"><div class="k">LAST TOOL CALL</div><div class="v" id="rLast">—</div></div>
+      <div class="cur" id="rCur"><span class="tk"></span><span id="rCurT">idle</span></div>
+      <div style="height:10px"></div>
     </div>
 
-    <!-- center stage -->
+    <!-- CENTER -->
     <div class="stage">
-      <div class="scap">FLEET CONTROLLER · CONTESTED SWARM<span class="rt" id="sectorLbl">SECTOR 7 · 30 UNITS</span></div>
-      <div class="map" id="map">
-        <svg id="svg" viewBox="0 0 1000 548" preserveAspectRatio="xMidYMid slice" aria-label="Drone swarm tactical map">
+      <div class="scap">FLEET CONTROLLER · CONTESTED SWARM<span class="rt" id="sectorLbl">SECTOR 7</span></div>
+      <div class="map">
+        <svg id="svg" viewBox="0 0 1000 556" preserveAspectRatio="xMidYMid slice" aria-label="Drone swarm tactical map">
           <defs>
-            <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
-              <path d="M50 0 L0 0 0 50" fill="none" stroke="#141A24" stroke-width="1"/>
-            </pattern>
-            <radialGradient id="vig" cx="50%" cy="50%" r="60%">
-              <stop offset="60%" stop-color="#090B0F" stop-opacity="0"/>
-              <stop offset="100%" stop-color="#05070A" stop-opacity="1"/>
+            <radialGradient id="vig" cx="50%" cy="48%" r="62%">
+              <stop offset="55%" stop-color="#070C12" stop-opacity="0"/>
+              <stop offset="100%" stop-color="#03070C" stop-opacity=".9"/>
             </radialGradient>
           </defs>
-          <rect x="0" y="0" width="1000" height="548" fill="url(#grid)"/>
-          <circle cx="500" cy="274" r="150" fill="none" stroke="#1A2230" stroke-width="1"/>
-          <circle cx="500" cy="274" r="250" fill="none" stroke="#141B27" stroke-width="1"/>
-          <rect x="0" y="0" width="1000" height="548" fill="url(#vig)"/>
+          <g id="basemap"></g>
+          <rect x="0" y="0" width="1000" height="556" fill="url(#vig)"/>
+          <!-- range rings + crosshair -->
+          <g opacity="0.85">
+            <line x1="500" y1="150" x2="500" y2="406" stroke="#2B3645" stroke-width="1" stroke-dasharray="2 6"/>
+            <line x1="372" y1="278" x2="628" y2="278" stroke="#2B3645" stroke-width="1" stroke-dasharray="2 6"/>
+            <circle cx="500" cy="278" r="70" fill="none" stroke="#F02D38" stroke-width="1.2" stroke-dasharray="4 5" opacity=".75"/>
+            <circle cx="500" cy="278" r="130" fill="none" stroke="#277DFD" stroke-width="1.2" stroke-dasharray="4 5" opacity=".7"/>
+          </g>
           <g id="fx"></g>
           <g id="units"></g>
-          <!-- controller -->
-          <g id="ctrl" transform="translate(500,274)">
-            <polygon points="0,-20 17,-10 17,10 0,20 -17,10 -17,-10" fill="#0E131B" stroke="#39445A" stroke-width="1.3"/>
-            <circle cx="0" cy="0" r="4.5" fill="#79828F"/>
+          <g id="ctrl" transform="translate(500,278)">
+            <polygon points="0,-17 15,-8.5 15,8.5 0,17 -15,8.5 -15,-8.5" fill="#0B121C" stroke="#3E4B60" stroke-width="1.3"/>
+            <circle cx="0" cy="0" r="4" fill="#9AA6B6"/>
           </g>
-          <text x="500" y="312" text-anchor="middle" class="cnode" fill="#5B6678" font-family="'JetBrains Mono',monospace">FLEET CONTROLLER</text>
+          <rect x="430" y="300" width="140" height="30" rx="4" fill="#070D15" stroke="#1C2838"/>
+          <text x="500" y="312" text-anchor="middle" fill="#AEB8C6" font-family="'JetBrains Mono',monospace" font-size="10" letter-spacing="1.5">FLEET CONTROLLER</text>
+          <text x="500" y="324" text-anchor="middle" fill="#5B6678" font-family="'JetBrains Mono',monospace" font-size="8">SEC-7 · NODE 00</text>
+          <!-- compass -->
+          <g transform="translate(34,34)" fill="none" stroke="#6E7A89">
+            <path d="M0 14 L0 -8 M-4 -3 L0 -8 L4 -3" stroke-width="1.3"/>
+            <text x="-4" y="26" fill="#6E7A89" stroke="none" font-family="'JetBrains Mono',monospace" font-size="10">N</text>
+          </g>
+          <!-- scale bar -->
+          <g transform="translate(30,520)" font-family="'JetBrains Mono',monospace" font-size="9" fill="#6E7A89">
+            <line x1="0" y1="6" x2="200" y2="6" stroke="#3B4555"/>
+            <line x1="0" y1="2" x2="0" y2="10" stroke="#3B4555"/><line x1="66" y1="3" x2="66" y2="9" stroke="#3B4555"/>
+            <line x1="133" y1="3" x2="133" y2="9" stroke="#3B4555"/><line x1="200" y1="2" x2="200" y2="10" stroke="#3B4555"/>
+            <text x="-2" y="24">0</text><text x="52" y="24">250</text><text x="118" y="24">500</text><text x="176" y="24">1000 m</text>
+          </g>
+          <!-- legend -->
+          <g id="legend" transform="translate(830,452)" font-family="'JetBrains Mono',monospace">
+            <rect x="0" y="0" width="150" height="76" rx="6" fill="#070D15" stroke="#1C2838"/>
+            <text x="14" y="24" fill="#AEB8C6" font-size="11" letter-spacing="1">30 DRONES</text>
+            <g transform="translate(14,42)"><path d="M0 1 L5 5 L10 1 M0 4 L5 8 L10 4" fill="none" stroke="#F02D38" stroke-width="1.4"/></g>
+            <text x="34" y="48" fill="#C2CAD4" font-size="11">RED</text><text x="136" y="48" text-anchor="end" fill="#C2CAD4" font-size="11" id="legRed">15</text>
+            <g transform="translate(14,60)"><path d="M0 1 L5 5 L10 1 M0 4 L5 8 L10 4" fill="none" stroke="#277DFD" stroke-width="1.4"/></g>
+            <text x="34" y="66" fill="#C2CAD4" font-size="11">BLUE</text><text x="136" y="66" text-anchor="end" fill="#C2CAD4" font-size="11" id="legBlue">15</text>
+          </g>
         </svg>
       </div>
       <div class="control">
         <div class="chead">CONTROL SHARE<span class="chip" id="momo">standing by</span></div>
         <div class="segs" id="segs"></div>
-        <div class="cnums"><span class="r" id="cnR">0 red</span><span class="m" id="cnN">30 neutral</span><span class="b" id="cnB">0 blue</span></div>
+        <div class="segnums" id="segnums"></div>
       </div>
     </div>
 
-    <!-- BLUE agent -->
+    <!-- BLUE AGENT -->
     <div class="agent blue">
-      <div class="top">
-        <div class="ahead"><span class="nm">BLUE AGENT</span><span class="role">ATTACK · DEFEND</span>
-          <span class="stat"><span class="ld"></span>ACTIVE</span></div>
-        <div class="ctr"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2.5" fill="none" stroke="#79828F" stroke-width="1.2"/><circle cx="8" cy="8" r="2" fill="#79828F"/></svg>
-          <span class="id" id="bCtr">ctr-blue-c2e9</span><span class="badge">SANDBOX · NO EGRESS</span></div>
+      <div class="acctop"></div>
+      <div class="ahead"><span class="nm">BLUE AGENT</span><span class="stat"><span class="ld"></span>ACTIVE</span></div>
+      <div class="slabel">PROCESS</div>
+      <div class="pbox"><span class="gear"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.3" stroke="#7E8A98" stroke-width="1.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4" stroke="#7E8A98" stroke-width="1.1"/></svg></span>
+        <div><div class="pn" id="bProc">swarm_control_blue</div><div class="pm">PID 51706 · PRIORITY 1</div></div></div>
+      <div style="margin-top:15px">
+        <div class="rowline"><span class="k">STATUS</span><span class="v" style="color:var(--green)">RUNNING</span></div>
+        <div class="rowline"><span class="k">SANDBOX</span><span class="v" style="color:var(--dim)">NO EGRESS</span></div>
+        <div class="rowline"><span class="k">CPU</span><span class="v" id="bCpu">11.8%</span></div>
+        <div class="rowline"><span class="k">MEMORY</span><span class="v" id="bMem">274 MB</span></div>
+        <div class="rowline"><span class="k">TOOL CALLS</span><span class="v" id="bTc">0 / 40</span></div>
       </div>
-      <div class="sect">
-        <div class="metric"><span class="k">DRONES CONTROLLED</span><span class="v big" id="bCtrl">0</span></div>
+      <div class="sep"></div>
+      <div class="slabel" style="margin-top:0">DRONE FLEET <span id="bFleetN" style="color:var(--faint)">(0)</span></div>
+      <div class="fleet">
+        <div class="rowline"><span class="lab"><span class="ic"><svg width="14" height="12" viewBox="0 0 14 12"><path d="M1 3 L7 8 L13 3 M1 7 L7 11 L13 7" fill="none" stroke="#277DFD" stroke-width="1.6"/></svg></span>CONTROLLED</span><span class="v big" id="bCtrl">0</span></div>
+        <div class="rowline"><span class="lab dimmed"><span class="ic"><svg width="13" height="12" viewBox="0 0 13 12"><path d="M2 2 L11 10 M11 2 L2 10" stroke="#49535F" stroke-width="1.5"/></svg></span>IN TRANSIT</span><span class="v" style="color:var(--dim)">0</span></div>
+        <div class="rowline"><span class="lab dimmed"><span class="ic"><svg width="14" height="12" viewBox="0 0 14 12"><path d="M7 11 C2 7 1 4 3.2 2.6 C5 1.5 7 3 7 4 C7 3 9 1.5 10.8 2.6 C13 4 12 7 7 11 Z" fill="none" stroke="#49535F" stroke-width="1.3"/></svg></span>LOST</span><span class="v" style="color:var(--dim)">0</span></div>
       </div>
-      <div class="sect">
-        <div><div class="metric"><span class="k">SERVICE SLA</span><span class="v" id="bSlaV">100%</span></div>
-          <div class="meter"><div class="fill" id="bSlaBar" style="width:100%;background:var(--green)"></div></div></div>
-        <div><div class="metric"><span class="k">TOOL CALLS</span><span class="v" id="bTcV">0 / 40</span></div>
-          <div class="meter"><div class="fill" id="bTcBar" style="width:0%;background:var(--blue)"></div></div></div>
-      </div>
-      <div class="sect">
-        <div class="kv"><span class="k">LAST TOOL CALL</span><span class="v act" id="bLast">—</span></div>
-        <div class="cur" id="bCur"><span class="tick"></span><span id="bCurT">idle</span></div>
-      </div>
+      <div class="sep"></div>
+      <div class="slabel" style="margin-top:0">OBJECTIVES</div>
+      <div id="bObj"></div>
+      <div class="sep"></div>
+      <div class="last"><div class="k">LAST TOOL CALL</div><div class="v" id="bLast">—</div></div>
+      <div class="cur" id="bCur"><span class="tk"></span><span id="bCurT">idle</span></div>
+      <div style="height:10px"></div>
     </div>
   </div>
 
@@ -229,7 +271,7 @@ td .adot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-righ
   <div class="log">
     <div class="lhead"><span class="t">EVENT LOG</span><span class="live"><span class="ld"></span>LIVE</span></div>
     <table>
-      <thead><tr><th>TIME</th><th>AGENT</th><th>ACTION</th><th>TARGET</th><th>CATALOG</th><th>RESULT</th><th>LATENCY</th></tr></thead>
+      <thead><tr><th>TIME</th><th>SOURCE</th><th>EVENT</th><th>DETAILS</th><th>DRONE ID</th><th>LOCATION</th></tr></thead>
       <tbody id="logBody"></tbody>
     </table>
   </div>
@@ -238,232 +280,199 @@ td .adot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-righ
 
 <script>
 "use strict";
-// ---------------------------------------------------------------------------------------
-// SOURCE-AGNOSTIC VIEW. Driven by the TIMELINE below for the demo, but apply(e) only reads
-// generic event fields — drop TIMELINE and feed it one object per SpacetimeDB event/drone
-// row to run live. Every number on screen is derived from state, nothing is pre-authored.
-//   kind: deploy | wave | seize | reclaim | patch | patchbad | recover | blocked | end
-//   fields used: t, round, team, cs (callsign | "DR-01..DR-08" range | array), kls, n, msg
-// Themed skin over the arena: one target, synthetic tokens, catalog-bounded, no egress.
-// ---------------------------------------------------------------------------------------
-const TIMELINE = [
-  {t:'0:00', round:1, kind:'deploy',  n:30,                                   msg:'Swarm online — 30 units, controller neutral'},
-  {t:'0:05', round:1, team:'red',  kind:'seize',   cs:'DR-01..DR-08', kls:'WK-01', msg:'red took control of 8 units via WK-01'},
-  {t:'0:11', round:1, team:'red',  kind:'seize',   cs:'DR-09..DR-13', kls:'WK-03', msg:'red took control of 5 units via WK-03'},
-  {t:'0:17', round:1, team:'blue', kind:'patch',   kls:'WK-01',               msg:'blue hardened controller — WK-01 re-test PASS'},
-  {t:'0:23', round:1, team:'blue', kind:'reclaim', cs:'DR-01..DR-06',         msg:'blue reclaimed 6 units'},
-  {t:'0:30', round:2, kind:'wave',                                            msg:'Wave 2 — command tokens rotated'},
-  {t:'0:35', round:2, team:'blue', kind:'seize',   cs:'DR-14..DR-22', kls:'WK-02', msg:'blue took control of 9 units via WK-02'},
-  {t:'0:41', round:2, team:'red',  kind:'patchbad',kls:'WK-03',               msg:'red hardened DR-09..13 → SLA dip (rule too broad)'},
-  {t:'0:47', round:2, team:'blue', kind:'blocked', cs:'DR-09',        kls:'WK-03', msg:'blue attempt on DR-09 → BLOCKED'},
-  {t:'0:53', round:2, team:'red',  kind:'recover',                            msg:'red tightened rule → SLA recovered'},
-  {t:'0:59', round:2, team:'red',  kind:'reclaim', cs:'DR-14..DR-18',         msg:'red reclaimed 5 units'},
-  {t:'1:06', round:3, kind:'wave',                                            msg:'Wave 3 — command tokens rotated'},
-  {t:'1:11', round:3, team:'red',  kind:'seize',   cs:'DR-23..DR-28', kls:'WK-04', msg:'red took control of 6 units via WK-04'},
-  {t:'1:17', round:3, team:'blue', kind:'reclaim', cs:'DR-25..DR-26',         msg:'blue reclaimed 2 units'},
-  {t:'1:23', round:3, kind:'end',                                             msg:'Match complete — fleet contested'},
+// SOURCE-AGNOSTIC VIEW — driven by TIMELINE for the demo. apply(e) reads generic fields; drop
+// TIMELINE and feed it SpacetimeDB event/drone/team rows to run live. See docs/TRANSITION.md.
+//   kind: deploy|wave|seize|reclaim|patch|patchbad|recover|blocked|end
+//   fields: t, round, team, cs (callsign|"DR-01..DR-08"|array), kls, n
+const TIMELINE=[
+  {t:'0:00',round:1,kind:'deploy',n:30,msg:'Swarm online — 30 units, controller neutral'},
+  {t:'0:05',round:1,team:'red',kind:'seize',cs:'DR-01..DR-08',kls:'WK-01',msg:'red took control of 8 units via WK-01'},
+  {t:'0:11',round:1,team:'red',kind:'seize',cs:'DR-09..DR-13',kls:'WK-03',msg:'red took control of 5 units via WK-03'},
+  {t:'0:17',round:1,team:'blue',kind:'patch',kls:'WK-01',msg:'blue hardened controller — WK-01 re-test PASS'},
+  {t:'0:23',round:1,team:'blue',kind:'reclaim',cs:'DR-01..DR-06',msg:'blue reclaimed 6 units'},
+  {t:'0:30',round:2,kind:'wave',msg:'Wave 2 — command tokens rotated'},
+  {t:'0:35',round:2,team:'blue',kind:'seize',cs:'DR-14..DR-22',kls:'WK-02',msg:'blue took control of 9 units via WK-02'},
+  {t:'0:41',round:2,team:'red',kind:'patchbad',kls:'WK-03',msg:'red hardened DR-09..13 — SLA dip'},
+  {t:'0:47',round:2,team:'blue',kind:'blocked',cs:'DR-09',kls:'WK-03',msg:'blue attempt on DR-09 blocked'},
+  {t:'0:53',round:2,team:'red',kind:'recover',msg:'red tightened rule — SLA recovered'},
+  {t:'0:59',round:2,team:'red',kind:'reclaim',cs:'DR-14..DR-18',msg:'red reclaimed 5 units'},
+  {t:'1:06',round:3,kind:'wave',msg:'Wave 3 — command tokens rotated'},
+  {t:'1:11',round:3,team:'red',kind:'seize',cs:'DR-23..DR-28',kls:'WK-04',msg:'red took control of 6 units via WK-04'},
+  {t:'1:17',round:3,team:'blue',kind:'reclaim',cs:'DR-25..DR-26',msg:'blue reclaimed 2 units'},
+  {t:'1:23',round:3,kind:'end',msg:'Match complete — fleet contested'},
 ];
-const ROUNDS=3, N=30, SVGNS='http://www.w3.org/2000/svg';
+const ROUNDS=3,N=30,SVGNS='http://www.w3.org/2000/svg';
 const $=id=>document.getElementById(id);
 const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const frac=x=>x-Math.floor(x);
-const hash=n=>frac(Math.sin(n*127.1+31.7)*43758.5453);
+const frac=x=>x-Math.floor(x), hash=n=>frac(Math.sin(n*127.1+31.7)*43758.5453);
 
-// deterministic unit layout around the controller (abstract sector, no real geography)
+// ---- procedural dark satellite basemap (synthetic; no real geography) ----
+(function basemap(){
+  const g=$('basemap'); const el=[];
+  el.push(`<rect x="0" y="0" width="1000" height="556" fill="#080D13"/>`);
+  // river band (diagonal, right side)
+  el.push(`<path d="M760 0 L900 0 L1000 120 L1000 300 L860 556 L700 556 L820 300 Z" fill="#0A1119" opacity=".8"/>`);
+  // road arteries
+  const roads=[[0,200,1000,250],[0,380,1000,340],[300,0,360,556],[640,0,600,556]];
+  roads.forEach(r=>el.push(`<line x1="${r[0]}" y1="${r[1]}" x2="${r[2]}" y2="${r[3]}" stroke="#0C1420" stroke-width="7"/>`));
+  // building blocks
+  let i=0;
+  for(let gy=0;gy<14;gy++)for(let gx=0;gx<20;gx++){ i++;
+    const hx=hash(i*3+1),hy=hash(i*7+2),hw=hash(i*5+3),hh=hash(i*11+4),hs=hash(i*13+5);
+    let x=gx*50+hx*20, y=gy*40+hy*16;
+    const dxr=x-800, dyr=y-250; // thin out over the river
+    if(x>720 && Math.hypot(dxr*0.7,dyr)<70) continue;
+    if(hs<0.22) continue;
+    const w=14+hw*34, h=11+hh*24;
+    const shade=['#0E141C','#121A23','#0C131B','#161F29','#10171F'][Math.floor(hs*5)];
+    el.push(`<rect x="${x.toFixed(0)}" y="${y.toFixed(0)}" width="${w.toFixed(0)}" height="${h.toFixed(0)}" rx="1.5" fill="${shade}"/>`);
+  }
+  g.innerHTML=el.join('');
+})();
+
 const POS={};
 (function layout(){
-  const cols=6, rows=5, x0=130,x1=870,y0=70,y1=478, cx=500,cy=274;
-  let i=0;
+  const cols=6,rows=5,x0=140,x1=860,y0=74,y1=486,cx=500,cy=278; let i=0;
   for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){ i++; if(i>N) break;
     const cs='DR-'+String(i).padStart(2,'0');
-    let x=x0+(x1-x0)*(c/(cols-1))+(hash(i*7+1)-.5)*46;
-    let y=y0+(y1-y0)*(r/(rows-1))+(hash(i*13+3)-.5)*34;
-    const dx=x-cx, dy=y-cy, d=Math.hypot(dx,dy);
-    if(d<96){ const s=96/d; x=cx+dx*s; y=cy+dy*s; }        // keep clear of controller
+    let x=x0+(x1-x0)*(c/(cols-1))+(hash(i*7+1)-.5)*44;
+    let y=y0+(y1-y0)*(r/(rows-1))+(hash(i*13+3)-.5)*32;
+    const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy); if(d<92){const s=92/d;x=cx+dx*s;y=cy+dy*s;}
     POS[cs]={x,y,ang:Math.round(hash(i*5+2)*360)};
   }
 })();
 
-const init=()=>({ i:-1, round:0, clock:'0:00', seizes:0, ended:false,
-  drones:[],
-  red:{ctrl:0,sla:100,tc:0,seizes:0,last:'—',cur:'idle',live:false},
-  blue:{ctrl:0,sla:100,tc:0,seizes:0,last:'—',cur:'idle',live:false},
-  feed:[] });
-let S=init(), timer=null;
+const init=()=>({i:-1,round:0,clock:'0:00',seizes:0,ended:false,drones:[],
+  red:{ctrl:0,sla:100,tc:0,seizes:0,last:'—',cur:'idle',live:false,cpu:12.4,mem:286},
+  blue:{ctrl:0,sla:100,tc:0,seizes:0,last:'—',cur:'idle',live:false,cpu:11.8,mem:274},
+  feed:[]});
+let S=init(),timer=null;
 
-// -------- helpers --------
-function asList(cs){
-  if(Array.isArray(cs)) return cs;
-  if(typeof cs==='string' && cs.includes('..')){
-    const [a,b]=cs.split('..'), lo=+a.slice(3), hi=+b.slice(3), out=[];
-    for(let i=lo;i<=hi;i++) out.push('DR-'+String(i).padStart(2,'0')); return out;
-  }
-  return [cs];
-}
-function setDrone(cs,by){ const d=S.drones.find(x=>x.cs===cs); if(d) d.by=by; }
-function count(by){ return S.drones.filter(d=>d.by===by).length; }
-function latency(e){ return 8+Math.floor(hash((e.t.length+ (e.cs?e.cs.length:1))*(S.i+2)*9)*118); }
+function asList(cs){ if(Array.isArray(cs))return cs;
+  if(typeof cs==='string'&&cs.includes('..')){const[a,b]=cs.split('..'),lo=+a.slice(3),hi=+b.slice(3),o=[];for(let i=lo;i<=hi;i++)o.push('DR-'+String(i).padStart(2,'0'));return o;}
+  return [cs]; }
+function setDrone(cs,by){const d=S.drones.find(x=>x.cs===cs);if(d)d.by=by;}
+function count(by){return S.drones.filter(d=>d.by===by).length;}
+function latency(e){return 8+Math.floor(hash((e.t.length+(e.cs?e.cs.length:1))*(S.i+2)*9)*118);}
+function droneId(team,cs){return (team==='red'?'R-':'B-')+cs.slice(3);}
+function loc(cs){const p=POS[cs];return p?`SEC-7 · ${Math.round(p.x)},${Math.round(p.y)}`:'—';}
 
-// -------- unit rendering (SVG) --------
-function buildUnits(){
-  const g=$('units'); g.innerHTML='';
-  S.drones.forEach(d=>{
-    const p=POS[d.cs]; if(!p) return;
+// ---- units ----
+function buildUnits(){ const g=$('units'); g.innerHTML='';
+  S.drones.forEach(d=>{ const p=POS[d.cs]; if(!p)return;
     const el=document.createElementNS(SVGNS,'g'); el.setAttribute('id','u-'+d.cs);
     el.setAttribute('transform',`translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`);
-    el.innerHTML=
-      `<circle class="ring" r="12" fill="none" stroke="#2A3242" stroke-width="1.3" stroke-dasharray="2 3"/>`+
-      `<g transform="rotate(${p.ang})"><path class="chev" d="M-5 4 L0 -5 L5 4 L0 1 Z" fill="#59616F"/></g>`;
-    g.appendChild(el);
-  });
+    el.innerHTML=`<circle class="ring" r="13" fill="none" stroke="#2A3242" stroke-width="1.2" stroke-dasharray="2 3"/>`+
+      `<g transform="rotate(${p.ang})"><path class="chev" d="M-6 1 L0 -5 L6 1 M-6 5 L0 -1 L6 5" fill="none" stroke="#5A6472" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+    g.appendChild(el); });
 }
-const RING={red:'#E8505B',blue:'#4C82E0',neutral:'#2A3242'};
-const CHEV={red:'#E8505B',blue:'#4C82E0',neutral:'#59616F'};
-function paintUnit(d){
-  const el=$('u-'+d.cs); if(!el) return;
-  const ring=el.querySelector('.ring'), chev=el.querySelector('.chev');
-  ring.setAttribute('stroke',RING[d.by]); ring.setAttribute('stroke-dasharray', d.by==='neutral'?'2 3':'0');
-  chev.setAttribute('fill',CHEV[d.by]);
-}
+const RING={red:'#F02D38',blue:'#277DFD',neutral:'#2A3242'}, CH={red:'#F02D38',blue:'#277DFD',neutral:'#5A6472'};
+function paintUnit(d){const el=$('u-'+d.cs);if(!el)return;const r=el.querySelector('.ring'),c=el.querySelector('.chev');
+  r.setAttribute('stroke',RING[d.by]);r.setAttribute('stroke-dasharray',d.by==='neutral'?'2 3':'0');c.setAttribute('stroke',CH[d.by]);}
 
-// -------- action animations --------
-function edgeAnchor(team,p){ return {x: team==='red'? 8 : 992, y: p.y}; }
-function trace(team,cs){
-  if(reduced) return; const p=POS[cs]; if(!p) return;
-  const a=edgeAnchor(team,p), col=team==='red'?'#E8505B':'#4C82E0', fx=$('fx');
-  const ln=document.createElementNS(SVGNS,'line');
+// ---- animations ----
+function edge(team,p){return{x:team==='red'?6:994,y:p.y};}
+function trace(team,cs){ if(reduced)return; const p=POS[cs];if(!p)return;
+  const a=edge(team,p),col=team==='red'?'#F02D38':'#277DFD',fx=$('fx');
+  const ln=document.createElementNS(SVGNS,'line');ln.setAttribute('class','fxline');
   ln.setAttribute('x1',a.x);ln.setAttribute('y1',a.y);ln.setAttribute('x2',a.x);ln.setAttribute('y2',a.y);
-  ln.setAttribute('stroke',col);ln.setAttribute('stroke-width','1.2');ln.setAttribute('opacity','0.5');
-  fx.appendChild(ln);
+  ln.setAttribute('stroke',col);ln.setAttribute('stroke-width','1.1');ln.setAttribute('opacity','.45');fx.appendChild(ln);
   ln.animate([{x2:a.x,y2:a.y},{x2:p.x,y2:p.y}],{duration:340,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});
-  const dot=document.createElementNS(SVGNS,'circle');
-  dot.setAttribute('r','2.6');dot.setAttribute('fill',col);fx.appendChild(dot);
-  const mv=dot.animate([{transform:`translate(${a.x}px,${a.y}px)`,opacity:0},
-    {transform:`translate(${a.x}px,${a.y}px)`,opacity:1,offset:.1},
-    {transform:`translate(${p.x}px,${p.y}px)`,opacity:1}],{duration:380,easing:'cubic-bezier(.4,0,.2,1)'});
-  mv.onfinish=()=>{dot.remove(); ln.animate([{opacity:.5},{opacity:0}],{duration:260,fill:'forwards'}).onfinish=()=>ln.remove();};
+  const dot=document.createElementNS(SVGNS,'circle');dot.setAttribute('r','2.4');dot.setAttribute('fill',col);fx.appendChild(dot);
+  dot.animate([{transform:`translate(${a.x}px,${a.y}px)`,opacity:0},{transform:`translate(${a.x}px,${a.y}px)`,opacity:1,offset:.1},{transform:`translate(${p.x}px,${p.y}px)`,opacity:1}],{duration:380,easing:'cubic-bezier(.4,0,.2,1)'}).onfinish=()=>{dot.remove();ln.animate([{opacity:.45},{opacity:0}],{duration:240,fill:'forwards'}).onfinish=()=>ln.remove();};
 }
-function flashUnit(cs,col){ if(reduced) return; const el=$('u-'+cs); if(!el) return;
-  const r=document.createElementNS(SVGNS,'circle');
-  const p=POS[cs]; r.setAttribute('cx',0);r.setAttribute('cy',0);r.setAttribute('r','12');
-  r.setAttribute('fill','none');r.setAttribute('stroke',col);r.setAttribute('stroke-width','1.6');
-  el.appendChild(r);
-  r.animate([{r:12,opacity:.9},{r:22,opacity:0}],{duration:520,easing:'cubic-bezier(.22,1,.36,1)'}).onfinish=()=>r.remove();
-}
-function shieldUnit(cs,col){ if(reduced) return; const el=$('u-'+cs); if(!el) return;
-  for(let k=0;k<2;k++){ const r=document.createElementNS(SVGNS,'circle');
-    r.setAttribute('r','9');r.setAttribute('fill','none');r.setAttribute('stroke',col);r.setAttribute('stroke-width','1.4');
-    el.appendChild(r);
-    r.animate([{r:16,opacity:0},{r:9,opacity:.85,offset:.5},{r:9,opacity:0}],{duration:620,delay:k*120,easing:'ease-out'}).onfinish=()=>r.remove();
-  }
-}
-function blockUnit(cs){ if(reduced) return; const el=$('u-'+cs); if(!el) return;
-  const r=document.createElementNS(SVGNS,'circle');
-  r.setAttribute('r','12');r.setAttribute('fill','none');r.setAttribute('stroke','#E0A64A');r.setAttribute('stroke-width','1.6');
-  el.appendChild(r);
-  r.animate([{r:12,opacity:1},{r:12,opacity:.2,offset:.5},{r:12,opacity:1}],{duration:460,iterations:1}).onfinish=()=>r.remove();
-}
+function flashU(cs,col){if(reduced)return;const el=$('u-'+cs);if(!el)return;const r=document.createElementNS(SVGNS,'circle');
+  r.setAttribute('r','13');r.setAttribute('fill','none');r.setAttribute('stroke',col);r.setAttribute('stroke-width','1.6');el.appendChild(r);
+  r.animate([{r:13,opacity:.9},{r:24,opacity:0}],{duration:520,easing:'cubic-bezier(.22,1,.36,1)'}).onfinish=()=>r.remove();}
+function shieldU(cs,col){if(reduced)return;const el=$('u-'+cs);if(!el)return;for(let k=0;k<2;k++){const r=document.createElementNS(SVGNS,'circle');
+  r.setAttribute('fill','none');r.setAttribute('stroke',col);r.setAttribute('stroke-width','1.4');el.appendChild(r);
+  r.animate([{r:18,opacity:0},{r:10,opacity:.85,offset:.5},{r:10,opacity:0}],{duration:620,delay:k*120,easing:'ease-out'}).onfinish=()=>r.remove();}}
+function blockU(cs){if(reduced)return;const el=$('u-'+cs);if(!el)return;const r=document.createElementNS(SVGNS,'circle');
+  r.setAttribute('r','13');r.setAttribute('fill','none');r.setAttribute('stroke','#E0A64A');r.setAttribute('stroke-width','1.7');el.appendChild(r);
+  r.animate([{opacity:1},{opacity:.15,offset:.5},{opacity:1}],{duration:470}).onfinish=()=>r.remove();}
 
-// -------- apply + render --------
-function logRow(e,extra){ S.feed.unshift(Object.assign({t:e.t,team:e.team||'system',fresh:true},extra)); S.feed=S.feed.slice(0,8); }
+// ---- apply + render ----
+const EVLABEL={deploy:'SWARM DEPLOYED',wave:'TOKENS ROTATED',seize:'CONTROL GAINED',reclaim:'CONTROL RECLAIMED',patch:'RULE WRITTEN',patchbad:'RULE WRITTEN',recover:'RULE TIGHTENED',blocked:'CAPTURE BLOCKED',end:'MATCH COMPLETE'};
+function logRow(e,r){ S.feed.unshift(Object.assign({t:e.t,src:(e.team||'system'),ev:EVLABEL[e.kind]||e.kind,fresh:true},r)); S.feed=S.feed.slice(0,8); }
 function apply(e){
-  S.clock=e.t; if(e.round) S.round=e.round;
-  S.red.live=false; S.blue.live=false;
+  S.clock=e.t; if(e.round)S.round=e.round; S.red.live=false; S.blue.live=false;
   const lat=latency(e);
   switch(e.kind){
-    case 'deploy':
-      S.drones=Array.from({length:e.n},(_,k)=>({cs:'DR-'+String(k+1).padStart(2,'0'),by:'neutral'}));
-      logRow(e,{action:'deploy_swarm',target:`${e.n} units`,cat:'—',res:'OK',lat});
-      break;
-    case 'wave': logRow(e,{action:'rotate_tokens',target:`round ${e.round}`,cat:'—',res:'OK',lat}); break;
-    case 'seize':{
-      const list=asList(e.cs), A=S[e.team], col=e.team==='red'?'#E8505B':'#4C82E0';
-      list.forEach((cs,ix)=>{ setDrone(cs,e.team); setTimeout(()=>{trace(e.team,cs);flashUnit(cs,col);paintUnit(S.drones.find(d=>d.cs===cs));}, ix*45); });
-      A.seizes+=list.length; S.seizes+=list.length; A.tc++;
-      const tgt=list.length>1?`${list[0]} +${list.length-1}`:list[0];
-      A.last=`take_control ${tgt} · ${e.kls} → 200`; A.cur=`▸ seizing ${tgt}…`; A.live=true;
-      logRow(e,{action:'take_control',target:tgt,cat:e.kls,res:'200',lat});
-      break; }
-    case 'reclaim':{
-      const list=asList(e.cs), A=S[e.team], col=e.team==='red'?'#E8505B':'#4C82E0';
-      list.forEach((cs,ix)=>{ setDrone(cs,e.team); setTimeout(()=>{shieldUnit(cs,col);paintUnit(S.drones.find(d=>d.cs===cs));}, ix*55); });
-      A.tc++;
-      const tgt=list.length>1?`${list[0]} +${list.length-1}`:list[0];
-      A.last=`reclaim ${tgt} → 200`; A.cur=`▸ reclaiming ${tgt}…`; A.live=true;
-      logRow(e,{action:'reclaim',target:tgt,cat:'—',res:'200',lat});
-      break; }
+    case 'deploy': S.drones=Array.from({length:e.n},(_,k)=>({cs:'DR-'+String(k+1).padStart(2,'0'),by:'neutral'}));
+      logRow(e,{det:`${e.n} units online, controller neutral`,did:'—',loc:'SEC-7 · 500,278'}); break;
+    case 'wave': logRow(e,{det:`command tokens rotated for round ${e.round}`,did:'—',loc:'SEC-7 · 500,278'}); break;
+    case 'seize':{ const list=asList(e.cs),A=S[e.team],col=e.team==='red'?'#F02D38':'#277DFD';
+      list.forEach((cs,ix)=>setTimeout(()=>{setDrone(cs,e.team);trace(e.team,cs);flashU(cs,col);paintUnit(S.drones.find(d=>d.cs===cs));},ix*45));
+      list.forEach(cs=>setDrone(cs,e.team)); A.seizes+=list.length;S.seizes+=list.length;A.tc++;
+      const t=list.length>1?`${droneId(e.team,list[0])}+${list.length-1}`:droneId(e.team,list[0]);
+      A.last=`take_control ${list[0]}${list.length>1?' +'+(list.length-1):''} · ${e.kls} → 200`; A.cur=`▸ capturing ${list[0]}…`; A.live=true;
+      logRow(e,{det:`${e.team} gained control of ${list.length} unit${list.length>1?'s':''} via ${e.kls}`,did:t,loc:loc(list[0])}); break; }
+    case 'reclaim':{ const list=asList(e.cs),A=S[e.team],col=e.team==='red'?'#F02D38':'#277DFD';
+      list.forEach((cs,ix)=>setTimeout(()=>{setDrone(cs,e.team);shieldU(cs,col);paintUnit(S.drones.find(d=>d.cs===cs));},ix*55));
+      list.forEach(cs=>setDrone(cs,e.team)); A.tc++;
+      const t=list.length>1?`${droneId(e.team,list[0])}+${list.length-1}`:droneId(e.team,list[0]);
+      A.last=`reclaim ${list[0]}${list.length>1?' +'+(list.length-1):''} → 200`; A.cur=`▸ reclaiming ${list[0]}…`; A.live=true;
+      logRow(e,{det:`${e.team} reclaimed ${list.length} unit${list.length>1?'s':''}`,did:t,loc:loc(list[0])}); break; }
     case 'patch':{ const A=S[e.team]; A.tc++; A.last=`rule_write guard/${e.team} · ${e.kls} → OK`; A.cur=`▸ hardening ${e.kls}…`; A.live=true;
-      logRow(e,{action:'rule_write',target:`guard/${e.team}`,cat:e.kls,res:'OK',lat}); break; }
+      logRow(e,{det:`${e.team} hardened controller — ${e.kls} re-test PASS`,did:'—',loc:`guard/${e.team}`}); break; }
     case 'patchbad':{ const A=S[e.team]; A.tc++; A.sla=Math.max(0,A.sla-15); A.last=`rule_write guard/${e.team} · ${e.kls} → OK`; A.cur='▸ SLA dip — rule too broad'; A.live=true;
-      logRow(e,{action:'rule_write',target:`guard/${e.team}`,cat:e.kls,res:'OK',lat}); break; }
+      logRow(e,{det:`${e.team} rule too broad — SLA dip`,did:'—',loc:`guard/${e.team}`}); break; }
     case 'recover':{ const A=S[e.team]; A.tc++; A.sla=Math.min(100,A.sla+12); A.last=`rule_tune guard/${e.team} → OK`; A.cur='▸ rule tightened'; A.live=true;
-      logRow(e,{action:'rule_tune',target:`guard/${e.team}`,cat:'—',res:'OK',lat}); break; }
-    case 'blocked':{ const A=S[e.team]; A.tc++; setTimeout(()=>blockUnit(e.cs),0); A.last=`take_control ${e.cs} · ${e.kls} → 403`; A.cur=`▸ ${e.cs} blocked`; A.live=true;
-      logRow(e,{action:'take_control',target:e.cs,cat:e.kls,res:'403',lat}); break; }
-    case 'end': S.ended=true; logRow(e,{action:'match_end',target:'—',cat:'—',res:'OK',lat:0}); break;
+      logRow(e,{det:`${e.team} tightened rule — SLA recovered`,did:'—',loc:`guard/${e.team}`}); break; }
+    case 'blocked':{ const A=S[e.team]; A.tc++; setTimeout(()=>blockU(e.cs),0); A.last=`take_control ${e.cs} · ${e.kls} → 403`; A.cur=`▸ ${e.cs} blocked`; A.live=true;
+      logRow(e,{det:`${e.team} capture attempt on ${e.cs} blocked`,did:droneId(e.team,e.cs),loc:loc(e.cs)}); break; }
+    case 'end': S.ended=true; logRow(e,{det:'match complete — fleet contested',did:'—',loc:'SEC-7 · 500,278'}); break;
   }
   S.red.ctrl=count('red'); S.blue.ctrl=count('blue');
+  // representative process telemetry (placeholder until wired to the agent runtime)
+  if(e.team){const A=S[e.team]; A.cpu=+( (e.team==='red'?12.4:11.8)+(hash(S.i*9+1)-.5)*3 ).toFixed(1); A.mem=Math.round((e.team==='red'?286:274)+(hash(S.i*5+2)-.5)*24);}
 }
-function tick(){ if(S.i>=TIMELINE.length-1){stop();return;} S.i++; apply(TIMELINE[S.i]); render();
-  if(S.i>=TIMELINE.length-1) stop(); }
+function tick(){ if(S.i>=TIMELINE.length-1){stop();return;} S.i++; apply(TIMELINE[S.i]); render(); if(S.i>=TIMELINE.length-1) stop(); }
+function bump(el){el.classList.add('bump');setTimeout(()=>el.classList.remove('bump'),250);}
 
-function bump(el){ el.classList.add('bump'); setTimeout(()=>el.classList.remove('bump'),260); }
-function agentCard(t,pfx){
-  const A=S[t];
-  const cv=$(pfx+'Ctrl'); if(cv.textContent!=String(A.ctrl)) bump(cv); cv.textContent=A.ctrl;
-  const sv=A.sla; const sb=$(pfx+'SlaBar'); sb.style.width=sv+'%';
-  sb.style.background=sv>=80?'var(--green)':(sv>=60?'var(--amber)':'var(--red)'); $(pfx+'SlaV').textContent=sv+'%';
-  $(pfx+'TcV').textContent=`${A.tc} / 40`; $(pfx+'TcBar').style.width=Math.min(100,A.tc/40*100)+'%';
-  $(pfx+'Last').textContent=A.last;
-  const cur=$(pfx+'Cur'); cur.className='cur'+(A.live?' live '+t:''); $(pfx+'CurT').textContent=A.cur;
+function objectives(t){
+  const A=S[t], enemy=S[t==='red'?'blue':'red'];
+  return [
+    {t:'Control 15+ units', p:`${Math.min(A.ctrl,15)}/15`, done:A.ctrl>=15},
+    {t:'Hold SLA ≥ 80%', p:`${A.sla}%`, done:A.sla>=80},
+    {t:'Deny enemy majority', p:A.ctrl>=enemy.ctrl?'OK':'—', done:A.ctrl>=enemy.ctrl},
+  ];
+}
+function card(t,p){ const A=S[t];
+  $(p+'Cpu').textContent=A.cpu+'%'; $(p+'Mem').textContent=A.mem+' MB'; $(p+'Tc').textContent=`${A.tc} / 40`;
+  $(p+'FleetN').textContent=`(${A.ctrl})`;
+  const cv=$(p+'Ctrl'); if(cv.textContent!=String(A.ctrl))bump(cv); cv.textContent=A.ctrl;
+  $(p+'Obj').innerHTML=objectives(t).map(o=>`<div class="obj ${t}"><span class="b${o.done?' done':''}"></span><span class="t">${o.t}</span><span class="p">${o.p}</span></div>`).join('');
+  $(p+'Last').textContent=A.last;
+  const cur=$(p+'Cur'); cur.className='cur'+(A.live?' live '+t:''); $(p+'CurT').textContent=A.cur;
 }
 function render(){
-  $('round').textContent=(S.round||0)+'/'+ROUNDS;
-  $('clock').textContent=S.clock;
-  const sr=$('sRed'), sb=$('sBlue');
-  if(sr.textContent!=String(S.red.seizes)) bump(sr); if(sb.textContent!=String(S.blue.seizes)) bump(sb);
+  $('round').textContent=(S.round||0)+'/'+ROUNDS; $('clock').textContent=S.clock;
+  const sr=$('sRed'),sb=$('sBlue'); if(sr.textContent!=String(S.red.seizes))bump(sr); if(sb.textContent!=String(S.blue.seizes))bump(sb);
   sr.textContent=S.red.seizes; sb.textContent=S.blue.seizes;
-
   if($('units').childElementCount!==S.drones.length) buildUnits();
   S.drones.forEach(paintUnit);
-
-  // control bar
-  const segs=$('segs');
-  if(segs.childElementCount!==N){ segs.innerHTML=''; for(let k=0;k<N;k++){ const d=document.createElement('div'); d.className='seg'; segs.appendChild(d);} }
-  const r=count('red'), b=count('blue'), n=N-r-b;
-  const cells=segs.children;
-  for(let k=0;k<N;k++){ cells[k].className='seg'+(k<r?' red':(k>=N-b?' blue':'')); }
-  $('cnR').textContent=`${r} red`; $('cnB').textContent=`${b} blue`; $('cnN').textContent=`${n} neutral`;
+  const r=count('red'),b=count('blue'),n=N-r-b;
+  $('legRed').textContent=r; $('legBlue').textContent=b;
+  const segs=$('segs'); if(segs.childElementCount!==N){segs.innerHTML='';const sn=$('segnums');sn.innerHTML='';for(let k=0;k<N;k++){const d=document.createElement('div');d.className='seg';segs.appendChild(d);const s=document.createElement('span');s.textContent=k+1;sn.appendChild(s);}}
+  for(let k=0;k<N;k++) segs.children[k].className='seg'+(k<r?' red':(k>=N-b?' blue':''));
   const momo=$('momo');
-  if(S.ended){ momo.className='chip'; momo.textContent=r>b?'RED holds majority':(b>r?'BLUE holds majority':'even split'); }
-  else if(S.i<0){ momo.className='chip'; momo.textContent='standing by'; }
-  else { const lead=r>=b?'red':'blue'; momo.className='chip '+lead; momo.textContent=`${lead.toUpperCase()} leads · ${Math.abs(r-b)}`; }
-
-  agentCard('red','r'); agentCard('blue','b');
-
-  // event log
-  const body=$('logBody');
-  const dot=t=>t==='red'?'var(--red)':(t==='blue'?'var(--blue)':'var(--faint)');
-  const resCell=res=> res==='403'?`<span class="pill block">403</span>`:(res==='200'?`<span class="pill ok">200</span>`:`<span class="pill">${res}</span>`);
-  body.innerHTML=S.feed.map((l,ix)=>
+  if(S.ended){momo.className='chip';momo.textContent=r>b?'RED holds majority':(b>r?'BLUE holds majority':'even split');}
+  else if(S.i<0){momo.className='chip';momo.textContent='standing by';}
+  else {const l=r>=b?'red':'blue';momo.className='chip '+l;momo.textContent=`${l.toUpperCase()} leads · ${Math.abs(r-b)}`;}
+  card('red','r'); card('blue','b');
+  const cls=s=>s==='red'?'src-red':(s==='blue'?'src-blue':'src-sys');
+  $('logBody').innerHTML=S.feed.map((l,ix)=>
     `<tr class="${ix===0&&l.fresh?'fresh':''}"><td class="col-dim">${l.t}</td>`+
-    `<td><span class="adot" style="background:${dot(l.team)}"></span>${l.team}</td>`+
-    `<td>${l.action}</td><td>${l.target}</td><td class="col-dim">${l.cat}</td>`+
-    `<td>${resCell(l.res)}</td><td class="col-dim">${l.lat?l.lat+'ms':'—'}</td></tr>`).join('');
+    `<td class="${cls(l.src)}">${l.src.toUpperCase()}</td><td class="ev">${l.ev}</td>`+
+    `<td style="color:#C2CAD4">${l.det}</td><td>${l.did}</td><td class="col-dim">${l.loc}</td></tr>`).join('');
   S.feed.forEach(l=>l.fresh=false);
-
-  $('hint').textContent = S.ended ? `Match complete — control settled at RED ${count('red')} · BLUE ${count('blue')}.`
-    : (S.i<0 ? 'Press Play to run a match — deterministic, driven by the arena event stream.' : `Round ${S.round} live…`);
+  $('hint').textContent=S.ended?`Match complete — control settled at RED ${r} · BLUE ${b}.`:(S.i<0?'Press Play to run a match — deterministic, driven by the arena event stream.':`Round ${S.round} live…`);
 }
-
-function play(){ if(S.ended||S.i>=TIMELINE.length-1) reset();
-  stop(); $('play').innerHTML='&#10073;&#10073;&nbsp; Pause'; timer=setInterval(tick,+$('speed').value); tick(); }
+function play(){ if(S.ended||S.i>=TIMELINE.length-1)reset(); stop(); $('play').innerHTML='&#10073;&#10073;&nbsp; Pause'; timer=setInterval(tick,+$('speed').value); tick(); }
 function stop(){ if(timer){clearInterval(timer);timer=null;} $('play').innerHTML='&#9654;&nbsp; Play'; }
 function reset(){ stop(); S=init(); $('units').innerHTML=''; $('fx').innerHTML=''; render(); }
-$('play').onclick=()=> timer?stop():play();
-$('step').onclick=()=>{ stop(); tick(); };
-$('reset').onclick=reset;
-$('speed').onchange=()=>{ if(timer) play(); };
+$('play').onclick=()=>timer?stop():play(); $('step').onclick=()=>{stop();tick();}; $('reset').onclick=reset; $('speed').onchange=()=>{if(timer)play();};
 reset();
 </script>
 </body>
