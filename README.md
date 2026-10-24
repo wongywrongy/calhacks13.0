@@ -10,6 +10,9 @@ from this working baseline. The [implementation handoff](docs/STEER.md) gives th
 builder a concrete scope. The current fleet-themed board and runtime are not yet one
 integrated live demo.
 
+Follow the [presentation readiness plan](docs/PRESENTATION_READY.md) for the remaining
+delivery order, release checks, sponsor priorities and three-minute demo script.
+
 ## Run
 
 Node 24 or later; no npm dependencies are required.
