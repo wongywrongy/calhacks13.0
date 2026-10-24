@@ -50,7 +50,7 @@ to tables.
 | `score_tick`  | round, ts, red_flags, blue_flags, red_sla, blue_sla                    | referee           |
 
 Reducers (minimum):
-`start_match`, `plant_flags`, `record_capture`, `write_rule(team, …)`, `record_event`,
+`start_match`, `plant_flags`, `submit_flag(by_team, value)`, `write_rule(team, …)`, `record_event`,
 `record_sla`, `record_score`. `write_rule` must reject writes to the other team's namespace —
 this scoping is a safety boundary, not a nicety.
 
@@ -72,7 +72,7 @@ rule = {
 ## Scoring
 
 - **Attack point:** your attacker retrieves the *current* flag from the enemy's store before
-  the referee rotates it → `record_capture`, the enemy's `flag.status = stolen`, your
+  the referee rotates it → `submit_flag`, the enemy's `flag.status = stolen`, your
   `flags_stolen += 1`.
 - **SLA gate:** each tick the referee runs known-good traffic through your rules. If your
   rules block it, your `sla_pct` drops. **Below the SLA threshold (e.g. 80%) your team stops

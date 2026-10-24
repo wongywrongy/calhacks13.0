@@ -1,0 +1,12 @@
+[package]
+name = "sudoko-arena"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Must match your installed SpacetimeDB CLI. If `spacetime build` complains about the
+# version, run `spacetime init --lang rust tmp` elsewhere and copy the version it pins.
+spacetimedb = "1.0"

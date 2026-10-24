@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SudoKO Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0C12; --panel:#12161F; --panel2:#171C27; --line:#242B3A;
+  --fg:#E8EBF2; --dim:#868FA3; --faint:#5B6478;
+  --red:#FF4D5E; --blue:#4D8CFF; --green:#2FD98A; --amber:#FFB454;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+.wrap{max-width:1340px;margin:0 auto;padding-block:16px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* top bar */
+.bar{display:flex;align-items:center;gap:16px;background:rgba(18,22,31,.7);border:1px solid var(--line);
+  border-radius:14px;padding:12px 18px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.16em;font-size:15px}
+.pips{display:flex;gap:6px}
+.pip{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--line);color:var(--faint);
+  transition:background .3s,color .3s,border-color .3s}
+.pip.done{background:var(--panel2);color:var(--dim);border-color:transparent}
+.pip.now{background:var(--fg);color:var(--bg);font-weight:700;border-color:transparent}
+.clock{font-family:'JetBrains Mono',monospace;color:var(--dim);font-size:13px;font-variant-numeric:tabular-nums}
+.score{display:flex;align-items:center;gap:14px;margin-left:auto}
+.score .n{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;transition:transform .3s}
+.score .n.bump{transform:scale(1.25)}
+.score .lbl{font-size:10px;letter-spacing:.16em;color:var(--dim);text-align:center;margin-top:3px}
+.vs{color:var(--faint);font-size:14px}
+.ctrls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button{font-family:inherit;font-size:13px;font-weight:600;color:var(--fg);background:var(--panel2);
+  border:1px solid var(--line);border-radius:9px;padding:8px 14px;cursor:pointer;transition:border-color .2s,transform .1s}
+button:hover{border-color:var(--faint)} button:active{transform:translateY(1px)}
+button.primary{background:var(--fg);color:var(--bg);border-color:transparent}
+button:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+select{font-family:inherit;font-size:13px;color:var(--fg);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+
+/* main grid */
+.grid{display:grid;grid-template-columns:260px 1fr 260px;gap:14px;margin-top:14px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+
+.rail{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.rail.red{border-left:3px solid var(--red)} .rail.blue{border-right:3px solid var(--blue)}
+.rh{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.06em;font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.tag{margin-left:auto;font-size:10px;letter-spacing:.1em;padding:4px 8px;border-radius:6px}
+.sub{font-size:16px;font-weight:600;min-height:22px;transition:color .3s}
+.subd{font-size:12px;color:var(--dim)}
+.stat{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+.con{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:20px;color:#8A93A6;margin-top:auto;min-height:60px}
+
+/* center stage */
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:14px;position:relative;overflow:hidden;
+  min-height:340px;display:flex;flex-direction:column}
+.stage .cap{position:absolute;top:14px;left:0;right:0;text-align:center;font-size:11px;letter-spacing:.18em;color:var(--dim)}
+.arena{flex:1;position:relative}
+#channel{position:absolute;top:50%;left:12%;right:12%;height:2px;transform:translateY(-50%);
+  background:linear-gradient(90deg,rgba(255,77,94,.25),rgba(255,255,255,.06),rgba(77,140,255,.25))}
+/* store nodes */
+.store{position:absolute;top:50%;transform:translate(-50%,-50%);width:150px;text-align:center}
+.store.red{left:22%;transform:translate(-50%,-50%)}
+.store.blue{left:78%;transform:translate(-50%,-50%)}
+.node{width:150px;height:118px;border-radius:16px;border:1.5px solid var(--line);background:#0E121B;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative;
+  transition:background .4s,border-color .4s,box-shadow .4s}
+.node .st{font-size:19px;font-weight:700;letter-spacing:.02em;transition:color .35s}
+.node .who{font-size:10px;letter-spacing:.14em;color:var(--dim)}
+.node.held{}
+.node.breached{background:rgba(255,77,94,.09);border-color:#E0726F;box-shadow:0 0 44px rgba(255,77,94,.22)}
+.node.defended{background:rgba(47,217,138,.08);border-color:#5FBF8C;box-shadow:0 0 44px rgba(47,217,138,.18)}
+.sla{width:112px;margin-top:4px}
+.slab{display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:.08em;color:var(--dim)}
+.track{height:5px;border-radius:3px;background:var(--panel2);margin-top:3px;overflow:hidden}
+.fill{height:5px;border-radius:3px;transition:width .5s cubic-bezier(.22,1,.36,1)}
+/* central service emblem */
+.core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:92px;height:92px;z-index:2}
+.core svg{display:block}
+.core .lab{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:9.5px;letter-spacing:.16em;color:var(--faint);white-space:nowrap}
+.halo{position:absolute;top:50%;left:50%;width:92px;height:92px;border-radius:50%;transform:translate(-50%,-50%);
+  border:1px solid rgba(232,235,242,.14)}
+@media(prefers-reduced-motion:no-preference){.halo{animation:breathe 4.2s ease-in-out infinite}}
+@keyframes breathe{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.5}50%{transform:translate(-50%,-50%) scale(1.5);opacity:0}}
+.pulse{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:3}
+.pulse.red{background:var(--red);box-shadow:0 0 14px 3px rgba(255,77,94,.7)}
+.pulse.blue{background:var(--blue);box-shadow:0 0 14px 3px rgba(77,140,255,.7)}
+.ring{position:absolute;top:50%;left:50%;width:150px;height:118px;border-radius:16px;transform:translate(-50%,-50%);
+  pointer-events:none;border:2px solid var(--green)}
+
+/* feed */
+.feed{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin-top:14px}
+.fh{display:flex;align-items:center;font-size:11px;letter-spacing:.14em;color:var(--dim)}
+.fs{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+.row{display:flex;align-items:center;gap:12px;font-family:'JetBrains Mono',monospace;font-size:13px;padding:5px 0}
+.row .rx{flex:1;min-width:0;color:#C3C9D6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .rt{color:var(--faint);flex:none}
+@media(prefers-reduced-motion:no-preference){.row.fresh{animation:slidein .4s cubic-bezier(.22,1,.36,1)}}
+@keyframes slidein{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.hint{text-align:center;color:var(--faint);font-size:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bar">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><polygon points="11,2 20,6 20,12 11,20 2,12 2,6" fill="#12161F" stroke="#2A3242"/><path d="M8 7 L8 16" stroke="#FF4D5E" stroke-width="2" stroke-linecap="round"/><path d="M8 7.5 L15 10 L8 12.5 Z" fill="#4D8CFF"/></svg>
+      SUDOKO
+    </div>
+    <div class="pips" id="pips"></div>
+    <div class="clock" id="clock">0:00</div>
+    <div class="score">
+      <div><div class="n" style="color:var(--red)" id="sRed">0</div><div class="lbl">RED</div></div>
+      <div class="vs">vs</div>
+      <div><div class="n" style="color:var(--blue)" id="sBlue">0</div><div class="lbl">BLUE</div></div>
+    </div>
+    <div class="ctrls">
+      <button class="primary" id="play">&#9654; Play</button>
+      <button id="step">Step</button>
+      <button id="reset">Reset</button>
+      <select id="speed" aria-label="Speed"><option value="1900">0.5&times;</option><option value="1150" selected>1&times;</option><option value="650">2&times;</option></select>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- RED (left) -->
+    <div class="rail red">
+      <div class="rh"><span class="dot" style="background:var(--red)"></span>RED TEAM<span class="tag" style="color:var(--red);background:rgba(255,77,94,.12)">ATTACK · DEFEND</span></div>
+      <div><div class="subd">OFFENSE</div><div class="sub" id="rOff">standing by</div></div>
+      <div><div class="subd">DEFENSE</div><div class="sub" id="rDef">standing by</div></div>
+      <div class="stat" id="rStat">STOLEN 0 &middot; SLA 100%</div>
+      <div class="con" id="rCon">&gt; awaiting kickoff</div>
+    </div>
+
+    <!-- CENTER stage -->
+    <div class="stage">
+      <div class="cap">ONE SERVICE &middot; TWO FLAG STORES</div>
+      <div class="arena" id="arena">
+        <div id="channel"></div>
+        <div class="halo"></div>
+        <div class="core" aria-hidden="true">
+          <svg width="92" height="92" viewBox="0 0 92 92" fill="none"><polygon points="78,46 62,73 30,73 14,46 30,19 62,19" fill="#0E121B" stroke="#3A4456" stroke-width="1.5"/><path d="M46 32 L46 60" stroke="#8A93A6" stroke-width="2.5" stroke-linecap="round"/><path d="M46 33 L60 38 L46 44 Z" fill="#8A93A6"/></svg>
+          <div class="lab">SERVICE</div>
+        </div>
+        <div class="store red">
+          <div class="node held" id="nodeRed"><div class="st" id="stRed" style="color:var(--dim)">HELD</div><div class="who">RED&rsquo;S STORE</div></div>
+          <div class="sla"><div class="slab"><span>RED SLA</span><span id="rSlaTxt">100%</span></div><div class="track"><div class="fill" id="rSlaBar" style="width:100%;background:var(--green)"></div></div></div>
+        </div>
+        <div class="store blue">
+          <div class="node held" id="nodeBlue"><div class="st" id="stBlue" style="color:var(--dim)">HELD</div><div class="who">BLUE&rsquo;S STORE</div></div>
+          <div class="sla"><div class="slab"><span>BLUE SLA</span><span id="bSlaTxt">100%</span></div><div class="track"><div class="fill" id="bSlaBar" style="width:100%;background:var(--green)"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BLUE (right) -->
+    <div class="rail blue">
+      <div class="rh"><span class="dot" style="background:var(--blue)"></span>BLUE TEAM<span class="tag" style="color:var(--blue);background:rgba(77,140,255,.12)">ATTACK · DEFEND</span></div>
+      <div><div class="subd">OFFENSE</div><div class="sub" id="bOff">standing by</div></div>
+      <div><div class="subd">DEFENSE</div><div class="sub" id="bDef">standing by</div></div>
+      <div class="stat" id="bStat">STOLEN 0 &middot; SLA 100%</div>
+      <div class="con" id="bCon">&gt; awaiting kickoff</div>
+    </div>
+  </div>
+
+  <div class="feed">
+    <div class="fh">LIVE FEED<span class="fs" id="feedStat">BREACHES 0 &middot; PATCHES 0</span></div>
+    <div id="feed"></div>
+  </div>
+  <div class="hint" id="hint">Press Play to run a full match &mdash; deterministic, same every time.</div>
+</div>
+
+<script>
+"use strict";
+// --- deterministic match timeline. Swap for a SpacetimeDB subscription later:
+// on each arena event row, call apply(row) + render(); the view below is source-agnostic.
+const TIMELINE = [
+  {t:'0:00', round:1, kind:'rotate', msg:'Round 1 — flags planted'},
+  {t:'0:06', round:1, team:'red',  kind:'steal',   kls:'SQLI-01', msg:'red STOLE blue flag — SQLI-01'},
+  {t:'0:12', round:1, team:'blue', kind:'patch',   kls:'SQLI-01', msg:'blue PATCHED SQLI-01 → re-test PASS'},
+  {t:'0:17', round:1, team:'blue', kind:'steal',   kls:'XSS-02',  msg:'blue STOLE red flag — XSS-02'},
+  {t:'0:23', round:1, team:'red',  kind:'patch',   kls:'XSS-02',  msg:'red PATCHED XSS-02 → re-test PASS'},
+  {t:'0:30', round:2, kind:'rotate', msg:'Round 2 — fresh flags'},
+  {t:'0:36', round:2, team:'red',  kind:'steal',   kls:'IDOR-03', msg:'red STOLE blue flag — IDOR-03'},
+  {t:'0:42', round:2, team:'blue', kind:'patchbad',kls:'IDOR-03', msg:'blue PATCHED IDOR-03 → SLA dip (rule too broad)'},
+  {t:'0:48', round:2, team:'blue', kind:'blocked', kls:'XSS-02',  msg:'blue tried red XSS-02 → BLOCKED'},
+  {t:'0:54', round:2, team:'blue', kind:'recover', msg:'blue tightened the rule → SLA recovered'},
+  {t:'1:00', round:3, kind:'rotate', msg:'Round 3 — fresh flags'},
+  {t:'1:06', round:3, team:'red',  kind:'blocked', kls:'SQLI-01', msg:'red tried blue SQLI-01 → BLOCKED'},
+  {t:'1:11', round:3, team:'red',  kind:'steal',   kls:'SSRF-04', msg:'red STOLE blue flag — SSRF-04'},
+  {t:'1:17', round:3, team:'blue', kind:'patch',   kls:'SSRF-04', msg:'blue PATCHED SSRF-04 → re-test PASS'},
+  {t:'1:24', round:3, kind:'end',   msg:'Match complete — RED 3 · BLUE 1'},
+];
+const ROUNDS = 3;
+const $ = id => document.getElementById(id);
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const other = t => t==='red'?'blue':'red';
+
+const init = () => ({ i:-1, round:0, clock:'0:00', breaches:0, patches:0, ended:false,
+  store:{red:'held',blue:'held'},
+  red:{steals:0,sla:100,off:'standing by',def:'standing by',con:[]},
+  blue:{steals:0,sla:100,off:'standing by',def:'standing by',con:[]},
+  feed:[] });
+let S = init(), timer=null;
+
+// ---- motion ----
+function firePulse(dir){ // 'LR' red attacks blue store, 'RL' blue attacks red store
+  if(reduced) return;
+  const ch = $('channel'); const w = ch.clientWidth;
+  const p = document.createElement('div');
+  p.className = 'pulse ' + (dir==='LR'?'red':'blue');
+  ch.appendChild(p);
+  const from = dir==='LR' ? 0 : w, to = dir==='LR' ? w : 0;
+  const a = p.animate(
+    [{left:from+'px',opacity:0},{left:(from+(to-from)*0.12)+'px',opacity:1,offset:.12},
+     {left:(from+(to-from)*0.88)+'px',opacity:1,offset:.88},{left:to+'px',opacity:0}],
+    {duration:680, easing:'cubic-bezier(.22,1,.36,1)'});
+  a.onfinish = () => p.remove();
+}
+function flash(node){ if(reduced) return;
+  node.animate([{transform:'scale(1)'},{transform:'scale(1.06)'},{transform:'scale(1)'}],{duration:420,easing:'ease-out'}); }
+function shield(storeSel){ if(reduced) return;
+  const host = document.querySelector(storeSel); const r = document.createElement('div'); r.className='ring';
+  host.querySelector('.node').appendChild(r);
+  const a = r.animate([{transform:'translate(-50%,-50%) scale(.7)',opacity:.6},{transform:'translate(-50%,-50%) scale(1.35)',opacity:0}],
+    {duration:720,easing:'cubic-bezier(.22,1,.36,1)'});
+  a.onfinish=()=>r.remove();
+}
+
+function apply(e){
+  S.clock=e.t; if(e.round) S.round=e.round;
+  S.feed.unshift({t:e.t,team:e.team||'ref',msg:e.msg,fresh:true}); S.feed=S.feed.slice(0,6);
+  if(e.team){ S[e.team].con.unshift(e.msg); S[e.team].con=S[e.team].con.slice(0,3); }
+  switch(e.kind){
+    case 'rotate': S.store.red='held'; S.store.blue='held'; break;
+    case 'steal':{ const v=other(e.team); S.store[v]='breached'; S[e.team].steals++; S.breaches++;
+      S[e.team].off=`stole ${e.kls} from ${v==='blue'?'Blue':'Red'}`;
+      firePulse(e.team==='red'?'LR':'RL'); flash($(v==='red'?'nodeRed':'nodeBlue')); break; }
+    case 'patch':{ S.store[e.team]='defended'; S.patches++; S[e.team].def=`patched ${e.kls}`;
+      shield(e.team==='red'?'.store.red':'.store.blue'); break; }
+    case 'patchbad':{ S.store[e.team]='defended'; S.patches++; S[e.team].def=`patched ${e.kls} (SLA dip)`;
+      S[e.team].sla=Math.max(0,S[e.team].sla-15); shield(e.team==='red'?'.store.red':'.store.blue'); break; }
+    case 'recover': S[e.team].sla=Math.min(100,S[e.team].sla+12); S[e.team].def='tightened rule · SLA back'; break;
+    case 'blocked': S[e.team].off=`${e.kls} blocked`; break;
+    case 'end': S.ended=true; break;
+  }
+}
+function tick(){ if(S.i>=TIMELINE.length-1){stop();return;} S.i++; apply(TIMELINE[S.i]); render();
+  if(S.i>=TIMELINE.length-1) stop(); }
+
+function bump(el){ el.classList.add('bump'); setTimeout(()=>el.classList.remove('bump'),300); }
+function render(){
+  const pips=$('pips'); pips.innerHTML='';
+  for(let r=1;r<=ROUNDS;r++){ const d=document.createElement('div');
+    d.className='pip'+(S.round>r||S.ended?' done':(S.round===r?' now':'')); d.textContent=r; pips.appendChild(d); }
+  $('clock').textContent=S.clock;
+  const sr=$('sRed'), sb=$('sBlue');
+  if(sr.textContent!=String(S.red.steals)) bump(sr);
+  if(sb.textContent!=String(S.blue.steals)) bump(sb);
+  sr.textContent=S.red.steals; sb.textContent=S.blue.steals;
+
+  const paint=(who,nodeId,stId)=>{ const st=S.store[who]; const n=$(nodeId); n.className='node '+st;
+    const m={held:['HELD','var(--dim)'],breached:['BREACHED','var(--red)'],defended:['DEFENDED','var(--green)']};
+    $(stId).textContent=m[st][0]; $(stId).style.color=m[st][1]; };
+  paint('red','nodeRed','stRed'); paint('blue','nodeBlue','stBlue');
+
+  const sla=(t,barId,txtId)=>{ const v=S[t].sla; const b=$(barId); b.style.width=v+'%';
+    b.style.background=v>=80?'var(--green)':(v>=60?'var(--amber)':'var(--red)'); $(txtId).textContent=v+'%'; };
+  sla('red','rSlaBar','rSlaTxt'); sla('blue','bSlaBar','bSlaTxt');
+
+  $('rOff').textContent=S.red.off; $('rDef').textContent=S.red.def;
+  $('bOff').textContent=S.blue.off; $('bDef').textContent=S.blue.def;
+  $('rStat').innerHTML=`STOLEN ${S.red.steals} &middot; SLA ${S.red.sla}%`;
+  $('bStat').innerHTML=`STOLEN ${S.blue.steals} &middot; SLA ${S.blue.sla}%`;
+  $('rCon').innerHTML=S.red.con.map(x=>'&gt; '+x).join('<br>')||'&gt; …';
+  $('bCon').innerHTML=S.blue.con.map(x=>'&gt; '+x).join('<br>')||'&gt; …';
+
+  const fc={red:'var(--red)',blue:'var(--blue)',ref:'var(--faint)'};
+  $('feed').innerHTML=S.feed.map((l,ix)=>
+    `<div class="row${ix===0&&l.fresh?' fresh':''}"><span class="dot" style="background:${fc[l.team]}"></span><span class="rx">${l.msg}</span><span class="rt">${l.t}</span></div>`).join('');
+  S.feed.forEach(l=>l.fresh=false);
+  $('feedStat').innerHTML=`BREACHES ${S.breaches} &middot; PATCHES ${S.patches}`;
+  $('hint').textContent = S.ended ? 'Match complete — Red won on offense, Blue held strong on defense.'
+    : (S.i<0 ? 'Press Play to run a full match — deterministic, same every time.' : 'Round '+S.round+' live…');
+}
+
+function play(){ if(S.ended||S.i>=TIMELINE.length-1) reset();
+  stop(); $('play').innerHTML='&#10073;&#10073; Pause'; timer=setInterval(tick,+$('speed').value); tick(); }
+function stop(){ if(timer){clearInterval(timer);timer=null;} $('play').innerHTML='&#9654; Play'; }
+function reset(){ stop(); S=init(); render(); }
+
+$('play').onclick=()=> timer?stop():play();
+$('step').onclick=()=>{ stop(); tick(); };
+$('reset').onclick=reset;
+$('speed').onchange=()=>{ if(timer) play(); };
+reset();
+</script>
+</body>
+</html>
