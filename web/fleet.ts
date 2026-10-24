@@ -83,6 +83,39 @@ const pulled: Record<Role, Set<number>> = {
 const seen: Record<Role, number> = { attacker: 0, defender: 0, observer: 0 };
 
 /* ---------- derived metrics (evidence rows + visible drones only) ---------- */
+// Mirrors formation::slot in arena-live/src/formation.rs.
+const slot = (id: number) => [((id - 1) % 16) * 6, Math.floor((id - 1) / 16) * 7];
+const median = (v: number[]) => {
+  const s = [...v].sort((a, b) => a - b),
+    m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+// Healthy drones fly one shared formation; tick timing alone puts them up to ~1 m apart.
+const OFF_FORMATION_M = 2;
+/** Where each drone would be if it were in step, measured from the visible healthy drones. */
+function formationOf(drones: Drone[]) {
+  const expected = new Map<number, [number, number, number]>(),
+    deviation = new Map<number, number>();
+  const healthy = drones.filter((d) => d.controller !== "attacker");
+  if (!healthy.length) return { expected, deviation };
+  const ox = median(healthy.map((d) => d.x - slot(d.id)[0])),
+    oy = median(healthy.map((d) => d.y - slot(d.id)[1])),
+    zAll = median(healthy.map((d) => d.z));
+  const colZ = new Map<number, number[]>();
+  for (const d of healthy) {
+    const c = (d.id - 1) % 16;
+    if (!colZ.has(c)) colZ.set(c, []);
+    colZ.get(c)!.push(d.z);
+  }
+  for (const d of drones) {
+    const [sx, sy] = slot(d.id),
+      zs = colZ.get((d.id - 1) % 16);
+    const e: [number, number, number] = [sx + ox, sy + oy, zs ? median(zs) : zAll];
+    expected.set(d.id, e);
+    deviation.set(d.id, Math.hypot(d.x - e[0], d.y - e[1], d.z - e[2]));
+  }
+  return { expected, deviation };
+}
 function derive(f: Frame) {
   const ev = f.events;
   const t0 = ev.length ? Math.min(...ev.map((e) => e.at)) : 0;
@@ -108,8 +141,11 @@ function derive(f: Frame) {
     }
   let n = 0,
     sum = 0;
+  // Time to recover runs from the takeover, not from the attacker's repeat commands on a drone
+  // it already holds: the first acceptance after that drone's previous recovery.
   for (const r of recovered) {
-    const a = accepted.filter((e) => e.drone === r.drone && e.at <= r.at).at(-1);
+    const prev = recovered.filter((e) => e.drone === r.drone && e.at < r.at).at(-1)?.at ?? -Infinity;
+    const a = accepted.find((e) => e.drone === r.drone && e.at > prev && e.at <= r.at);
     if (a) {
       n++;
       sum += r.at - a.at;
@@ -124,7 +160,13 @@ function derive(f: Frame) {
     else continue;
     series.push([rel(e.at), held.size]);
   }
+  const { expected, deviation } = formationOf(f.drones);
+  const offFormation = f.drones.filter((d) => (deviation.get(d.id) ?? 0) > OFF_FORMATION_M);
   return {
+    expected,
+    deviation,
+    offFormation,
+    maxDeviation: Math.max(0, ...deviation.values()),
     t0,
     elapsed: rel(t1),
     rel,
@@ -218,6 +260,10 @@ function statusRow(d: Derived) {
   const when = (e?: Ev) => (e ? clock(d.rel(e.at)) : "—");
   const last = (e?: Ev) =>
     e ? [clock(d.rel(e.at)) + " ", dim(tag(e.drone))] : ["—"];
+  const offCell = (label: string) =>
+    d.offFormation.length
+      ? cell(label, el("span", "c-amber", d.offFormation.length), dim(` · max ${d.maxDeviation.toFixed(1)} m`))
+      : cell(label, el("span", "c-green", "in sync"));
   const mttr =
     d.mttr === undefined ? "—" : d.mttr < 1 ? Math.round(d.mttr * 1000) + "ms" : d.mttr.toFixed(1) + "s";
   if (role === "defender") {
@@ -241,6 +287,7 @@ function statusRow(d: Derived) {
       badge(comp ? "CRITICAL" : "NOMINAL", comp > 0),
       compCell,
       cell("Last breach", ...last(d.accepted.at(-1))),
+      offCell("Off formation"),
       cell("Mean time to recover", mttr),
       cell("Block rate", rate + " ", dim(`${d.blocked.length} / ${violations}`)),
       cell("Unrecovered", chipRow(d.compromised.map((x) => x.id), "Unrecovered drones")),
@@ -265,6 +312,7 @@ function statusRow(d: Derived) {
       badge(d.accepted.length ? "ENGAGED" : "RECON", d.accepted.length > 0),
       seized,
       cell("Last takeover", ...last(d.accepted.at(-1))),
+      offCell("Pulled off formation"),
       cell("Lost back", String(d.lostBack.length) + " ", dim(`of ${d.acceptedIds.size}`)),
       cell("Blocked", String(d.blocked.length)),
       cell("Holding", chipRow(d.compromised.map((x) => x.id), "Seized drones")),
@@ -289,6 +337,7 @@ function statusRow(d: Derived) {
       badge(comp ? "CONTESTED" : "HELD", false),
       share,
       cell("First takeover", when(d.accepted[0])),
+      offCell("Off formation"),
       cell("Mean time to recover", mttr),
       cell("Block rate", rate + " ", dim(`${d.blocked.length} / ${violations}`)),
       cell(
@@ -460,6 +509,8 @@ function card(id: number, d: Derived) {
     fields.append(s);
   };
   f("ctrl", drone.controller);
+  const dev = d.deviation.get(id);
+  if (dev !== undefined) f("off-slot", dev.toFixed(1) + "m");
   if (role === "attacker") {
     f("pos", `${drone.x.toFixed(0)},${drone.y.toFixed(0)},${drone.z.toFixed(1)}`);
     f("tick", drone.tick);
@@ -488,7 +539,9 @@ function card(id: number, d: Derived) {
           : lastV === BLOCKED
             ? "A violation hit this drone and was blocked (403). Still under home control."
             : "No violation recorded. Absence of evidence is not proof of safety.";
-  c.append(head, fields, el("p", "", assess));
+  const off = dev ?? 0;
+  const drift = off > OFF_FORMATION_M ? ` ${off.toFixed(1)} m out of formation.` : st === "comp" ? "" : " Flying in formation.";
+  c.append(head, fields, el("p", "", assess + drift));
   const pinned = frame.events.find((e) => e.id === selectedEvent && e.drone === id);
   if (pinned)
     c.append(
@@ -862,6 +915,12 @@ const isoGeo = new THREE.BufferGeometry().setFromPoints(
   }),
 );
 const isoMat = new THREE.LineDashedMaterial({ color: 0xc2cad4, dashSize: 0.45, gapSize: 0.35, transparent: true, opacity: 0.85 });
+// Ghost: the slot the drone would hold if it were flying in step, tethered to where it is.
+const ghostGeo = new THREE.RingGeometry(1.05, 1.2, 32).rotateX(-Math.PI / 2);
+const ghostMat = flat(0xe8eef6, 0.35);
+const tetherMat = new THREE.LineDashedMaterial({ color: 0xe8b04f, dashSize: 0.6, gapSize: 0.45, transparent: true, opacity: 0.7 });
+const ghosts = new THREE.Group();
+scene.add(ghosts);
 const DRONE_SCALE = 1.45; // model is ~2.4 m across
 const body = new THREE.BoxGeometry(1.2, 0.3, 0.65),
   arm = new THREE.BoxGeometry(2.4, 0.09, 0.12),
@@ -877,6 +936,7 @@ new GLTFLoader().load(
     droneTemplate = source;
     for (const g of drones.values()) scene.remove(g);
     drones.clear();
+    ghosts.clear();
     render(frame);
   },
   undefined,
@@ -922,11 +982,59 @@ function meshDrone(id: number) {
   iso.computeLineDistances();
   iso.position.y = 0.1;
   root.add(craft, stem, shadow, iso);
-  root.userData = { craft, model, ring, ripple, sel, stem, shadow, iso, tone: "blue", phase: (id * 0.37) % 1 };
+  const ghost = new THREE.Mesh(ghostGeo, ghostMat);
+  const tether = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), tetherMat);
+  tether.frustumCulled = false;
+  ghost.visible = tether.visible = false;
+  ghosts.add(ghost, tether);
+  root.userData = {
+    craft, model, ring, ripple, sel, stem, shadow, iso, ghost, tether,
+    tone: "blue",
+    phase: (id * 0.37) % 1,
+    // Displayed position eases toward the latest database position between updates.
+    pos: new THREE.Vector3(),
+    want: new THREE.Vector3(),
+    ghostPos: new THREE.Vector3(),
+    ghostWant: new THREE.Vector3(),
+    fresh: true,
+  };
   return root;
 }
+let lastT = 0;
+// Ease displayed positions toward database positions (~0.15 s); jumps over 30 m snap (scrubbing).
+function glide(dt: number) {
+  const k = reduced.matches ? 1 : 1 - Math.exp(-dt / 0.15);
+  let moving = false;
+  for (const g of drones.values()) {
+    if (!g.visible) continue;
+    const u = g.userData;
+    if (u.fresh || u.pos.distanceTo(u.want) > 30) {
+      u.pos.copy(u.want);
+      u.ghostPos.copy(u.ghostWant);
+      u.fresh = false;
+    } else {
+      if (u.pos.distanceToSquared(u.want) > 1e-4) moving = true;
+      u.pos.lerp(u.want, k);
+      u.ghostPos.lerp(u.ghostWant, k);
+    }
+    g.position.set(u.pos.x, 0, u.pos.z);
+    u.craft.position.y = u.pos.y;
+    u.stem.scale.y = Math.max(0.01, u.pos.y - 0.3);
+    if (u.ghost.visible) {
+      u.ghost.position.copy(u.ghostPos);
+      const a = u.tether.geometry.attributes.position as THREE.BufferAttribute;
+      a.setXYZ(0, u.ghostPos.x, u.ghostPos.y, u.ghostPos.z);
+      a.setXYZ(1, u.pos.x, u.pos.y, u.pos.z);
+      a.needsUpdate = true;
+      u.tether.computeLineDistances();
+    }
+  }
+  return moving;
+}
 function effects(t: number) {
-  if (reduced.matches) return false;
+  const moving = glide(Math.min(0.1, (t - lastT) / 1000 || 0));
+  lastT = t;
+  if (reduced.matches) return moving;
   const k = 1 + 0.08 * Math.sin(t / 260);
   ringRed.opacity = 0.55 + 0.4 * Math.sin(t / 260);
   for (const g of drones.values()) {
@@ -964,7 +1072,8 @@ function stateWord(st: string) {
         : "home";
 }
 function screen(d: Drone) {
-  const p = new THREE.Vector3(d.x, d.z, d.y).project(camera);
+  const shown = drones.get(d.id)?.userData.pos as THREE.Vector3 | undefined;
+  const p = (shown && renderer ? shown.clone() : new THREE.Vector3(d.x, d.z, d.y)).project(camera);
   return [((p.x + 1) * host.clientWidth) / 2, ((1 - p.y) * host.clientHeight) / 2, p.z] as const;
 }
 function placeTip(tip: HTMLElement, id: number) {
@@ -1078,7 +1187,10 @@ function mapScene(d: Derived) {
   derived = d;
   paintSky();
   const ids = new Set(frame.drones.map((x) => x.id));
-  for (const [id, g] of drones) g.visible = ids.has(id);
+  for (const [id, g] of drones) {
+    g.visible = ids.has(id);
+    if (!g.visible) g.userData.ghost.visible = g.userData.tether.visible = false;
+  }
   for (const x of frame.drones) {
     let g = drones.get(x.id);
     if (!g) {
@@ -1088,9 +1200,11 @@ function mapScene(d: Derived) {
     }
     const u = g.userData;
     g.visible = true;
-    g.position.set(x.x, 0, x.y);
-    u.craft.position.y = x.z;
-    u.stem.scale.y = Math.max(0.01, x.z - 0.3);
+    u.want.set(x.x, x.z, x.y);
+    const e = d.expected.get(x.id);
+    const off = (d.deviation.get(x.id) ?? 0) > OFF_FORMATION_M;
+    u.ghost.visible = u.tether.visible = !!e && off;
+    if (e) u.ghostWant.set(e[0], e[2], e[1]);
     const st = d.state(x);
     const tone: Tone =
       st === "comp" ? "red" : st === "rec" ? (role === "attacker" ? "dim" : "green") : role === "attacker" ? "grey" : "blue";
@@ -1129,7 +1243,7 @@ function mapScene(d: Derived) {
   const n = frame.drones.length;
   if (role === "attacker") {
     $("map-title").textContent = `Discovered swarm · ${n}`;
-    legend([["#F02D38", "Seized"], ["#A9B4C1", "Home control"], ["ring", "Blocked · last 3s"]]);
+    legend([["#F02D38", "Seized"], ["#A9B4C1", "Home control"], ["ring", "Blocked · last 3s"], ["ghost", "Formation slot"]]);
   } else {
     $("map-title").textContent = role === "defender" ? `Managed swarm · ${n}` : `Full state · ${n}`;
     legend([
@@ -1138,6 +1252,7 @@ function mapScene(d: Derived) {
       ["#2BD47F", "Recovered"],
       ["ring", "Blocked · last 3s"],
       ["iso", "Isolated"],
+      ["ghost", "Formation slot"],
     ]);
   }
   const sel = frame.drones.find((x) => x.id === selected);
@@ -1163,6 +1278,7 @@ function mapScene(d: Derived) {
       el("b", "", tag(sel.id)),
       el("span", st === "comp" ? "tag red" : st === "rec" ? "tag green" : "tag blue", st === "comp" ? "UNAUTHORIZED" : st === "rec" ? "RECOVERED" : "HOME"),
       f("ctrl", sel.controller),
+      f("off-slot", (d.deviation.get(sel.id) ?? 0).toFixed(1) + "m"),
       f("policy", "v" + sel.policy_version),
       f("batt", sel.battery.toFixed(1) + "%"),
       f("iso", sel.isolated),

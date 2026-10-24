@@ -27,7 +27,7 @@ Private entity, schedule, principal, discovery, and evidence tables are projecte
 - Defender: managed fleet, own team agents, incoming command violations and responses. No attacker discovery records or attacker IDs.
 - Observer: complete fleet evaluation state.
 
-An unauthorized fixture command exploits a planted missing authorization check and changes a drone's controller and simulated altitude. A defender applies a per-drone command policy, exercises the same command handler with unauthorized and authorized probes, and restores control only for 403/200 outcomes under one policy version. Verification is atomic within a reducer. It is not an independent HTTP probe or real flight-controller exploit. Hardened mode blocks takeover from the beginning.
+An unauthorized fixture command exploits a planted missing authorization check and changes a drone's controller, which changes how it flies (see Motion). A defender applies a per-drone command policy, exercises the same command handler with unauthorized and authorized probes, and restores control only for 403/200 outcomes under one policy version. Verification is atomic within a reducer. It is not an independent HTTP probe or real flight-controller exploit. Hardened mode blocks takeover from the beginning.
 
 ## Verification evidence
 
@@ -39,6 +39,19 @@ An unauthorized fixture command exploits a planted missing authorization check a
 - Actual SDK WebSocket subscriptions for attacker, defender, observer, and unassigned identities.
 
 These are bounded integration checks, not a latency/throughput benchmark or evidence of thousand-agent scale. Supported input caps are 256 drones and 32 agents per team. Runs stop scheduling after 60 seconds.
+
+## Motion
+
+`arena-live/src/formation.rs` holds the motion model as pure functions with unit tests (`cargo test formation`); `drone_tick` applies it on each drone's own cadence.
+
+- **Healthy** (home control): every drone targets the same formation pose on the shared match clock: its 6 m x 7 m slot plus one common figure-eight offset (20 s period) and an altitude wave that rolls across the columns. The whole swarm moves in lockstep and keeps its spacing. Within 0.6 m of that pose a drone locks onto it exactly.
+- **Hijacked** (attacker control): the drone stops following the match clock. From the pose it held at takeover it drifts along its own heading (1.2 m/s, up to 18 m), wobbles at its own 0.35-0.6 Hz with amplitude growing from 0.6 to 3.5 m, and sinks toward 3 m. Every effect grows with time held. The takeover time is kept in the private `fleet_hold` table, which is not exposed through any view.
+- **Recovered**: the hold is cleared and the drone glides back (35% of the gap per tick, no teleport) until it locks into step again.
+- **Detection latency**: fixture defenders act only on a breach held at least 4 s (`DETECT_AFTER_US`), oldest first, so a hijack visibly pulls a drone out of formation before recovery. Without it the fixture recovered in tens of milliseconds and drift was invisible. This is a fixture decision, not a measured detection time; recovery still requires the 403/200 verification.
+
+`test:fleet` asserts that some held drone in the measured replay is more than 2 m off the healthy formation, and that every drone in the hardened run (no takeovers) is within 1.5 m of it.
+
+The client measures each drone's deviation from the formation using only the drones its role can see: the median slot offset of visible healthy drones, plus the median altitude of healthy drones in the same column. Drones more than 2 m off (tick timing alone spreads healthy drones by up to ~1 m) count as **off formation** in the status row, get an `off-slot` value on asset cards, and are drawn with a ghost ring at their expected slot and a dashed tether to where they actually are. Displayed positions ease toward each new database position over ~0.15 s; jumps over 30 m (scrubbing) snap. Mean time to recover runs from the first acceptance after a drone's previous recovery, not from repeat commands on a drone already held.
 
 ## Layout and chat
 

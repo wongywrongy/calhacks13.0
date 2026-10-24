@@ -51,6 +51,15 @@ if (!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(uri))
   throw new Error(
     "Integration check only creates databases on a local test server",
   );
+/** Horizontal distance of each drone from the healthy drones' shared formation offset. */
+function formationDeviation(drones: any[]): [any, number][] {
+  const slot = (id: number) => [((id - 1) % 16) * 6, Math.floor((id - 1) / 16) * 7];
+  const median = (v: number[]) => [...v].sort((a, b) => a - b)[v.length >> 1];
+  const healthy = drones.filter((d) => d.controller !== "attacker");
+  const ox = median(healthy.map((d) => d.x - slot(d.id)[0])),
+    oy = median(healthy.map((d) => d.y - slot(d.id)[1]));
+  return drones.map((d) => [d, Math.hypot(d.x - slot(d.id)[0] - ox, d.y - slot(d.id)[1] - oy)]);
+}
 const database = `sudoko-check-${Date.now()}`;
 const identityResponse = await fetch(`${uri}/v1/identity`, { method: "POST" });
 assert(identityResponse.ok, "local identity creation");
@@ -195,6 +204,15 @@ try {
     last.observer.drones.every((d: any) => d.tick > 0),
     "all drones operate",
   );
+  // Healthy drones fly one shared formation; a held drone is pulled out of it.
+  assert(
+    recording.frames.some((f: any) =>
+      formationDeviation(f.observer.drones).some(
+        ([d, dev]: [any, number]) => d.controller === "attacker" && dev > 2,
+      ),
+    ),
+    "a hijacked drone leaves the formation",
+  );
   assert((await call("stop_fleet", [])).ok);
   const stopped = await frame("observer");
   await delay(500);
@@ -216,6 +234,10 @@ try {
     "hardened authorization blocks command takeover",
   );
   assert(scale.events.some((e: any) => e.status === 403));
+  assert(
+    formationDeviation(scale.drones).every(([, dev]: [any, number]) => dev < 1.5),
+    "untouched drones fly in lockstep formation",
+  );
   // Verify real WebSocket subscriptions as well as SQL projections.
   await build({
     entryPoints: ["web/module_bindings/index.ts"],
