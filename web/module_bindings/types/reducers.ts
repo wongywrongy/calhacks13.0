@@ -6,7 +6,13 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import GrantFleetViewReducer from "../grant_fleet_view_reducer";
 import PublishSnapshotReducer from "../publish_snapshot_reducer";
+import StartFleetReducer from "../start_fleet_reducer";
+import StopFleetReducer from "../stop_fleet_reducer";
 
+export type GrantFleetViewParams = __Infer<typeof GrantFleetViewReducer>;
 export type PublishSnapshotParams = __Infer<typeof PublishSnapshotReducer>;
+export type StartFleetParams = __Infer<typeof StartFleetReducer>;
+export type StopFleetParams = __Infer<typeof StopFleetReducer>;
 

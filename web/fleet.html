@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>SudoKO · Swarm security workspace</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #071116;
+        --surface: #0e1b22;
+        --line: #29404c;
+        --text: #e4edf2;
+        --muted: #a2b5c1;
+        --accent: #ff8894;
+        --blue: #75b7fc;
+        font-family: system-ui, sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+      }
+      button,
+      select {
+        min-height: 44px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 8px 14px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #203440;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      button:focus-visible,
+      select:focus-visible,
+      input:focus-visible {
+        outline: 2px solid #a4d5ff;
+        outline-offset: 3px;
+      }
+      button[aria-pressed="true"] {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      h1 {
+        font-size: 22px;
+        letter-spacing: 0.18em;
+        margin: 0;
+      }
+      header span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      nav {
+        display: flex;
+        gap: 8px;
+        margin-left: auto;
+        flex-wrap: wrap;
+      }
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      .toolbar label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      #timeline {
+        flex: 1;
+        accent-color: var(--accent);
+        min-width: 70px;
+        min-height: 44px;
+      }
+      .workspace {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr) 300px;
+        min-height: 590px;
+      }
+      aside {
+        padding: 22px 18px;
+        border-right: 1px solid var(--line);
+        background: var(--surface);
+      }
+      aside:last-child {
+        border-right: 0;
+        border-left: 1px solid var(--line);
+      }
+      h2 {
+        font-size: 17px;
+        margin: 0 0 12px;
+      }
+      p {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+      #agents {
+        padding: 0;
+        list-style: none;
+        max-height: 430px;
+        overflow: auto;
+      }
+      #agents li {
+        padding: 13px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 14px;
+      }
+      #agents small {
+        display: block;
+        color: var(--muted);
+        margin-top: 7px;
+        font:
+          13px ui-monospace,
+          monospace;
+      }
+      .scene {
+        position: relative;
+        min-height: 500px;
+        background: #081219;
+      }
+      #viewport {
+        position: absolute;
+        inset: 0;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .scene-caption {
+        position: absolute;
+        left: 20px;
+        top: 18px;
+        pointer-events: none;
+        font-size: 12px;
+        color: #c2d3dd;
+      }
+      .legend {
+        position: absolute;
+        bottom: 18px;
+        left: 20px;
+        display: flex;
+        gap: 20px;
+        font-size: 12px;
+        color: #bcd1dc;
+        pointer-events: none;
+      }
+      .legend b:first-child {
+        color: #75b7fc;
+      }
+      .legend b:nth-child(2) {
+        color: #ff7d85;
+      }
+      .metrics {
+        display: flex;
+        gap: 22px;
+        flex-wrap: wrap;
+        padding: 16px 24px;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+      .metrics span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .metrics strong {
+        font:
+          22px ui-monospace,
+          monospace;
+        color: var(--text);
+        margin-right: 7px;
+      }
+      .asset-select {
+        display: block;
+        margin-top: 18px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      #drone-select {
+        width: 100%;
+        margin-top: 8px;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font:
+          12px/1.7 ui-monospace,
+          monospace;
+        color: #c5d8e4;
+      }
+      .events-wrap {
+        padding: 20px 24px;
+      }
+      .events-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      #events {
+        max-height: 270px;
+        overflow: auto;
+      }
+      .event {
+        display: grid;
+        grid-template-columns: 80px 112px 1fr 100px;
+        gap: 12px;
+        text-align: left;
+        width: 100%;
+        border-radius: 0;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        background: none;
+        font:
+          13px ui-monospace,
+          monospace;
+      }
+      .event[aria-pressed="true"] {
+        background: #203440;
+      }
+      footer {
+        padding: 12px 24px 22px;
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+      #status {
+        color: var(--muted);
+        font:
+          13px ui-monospace,
+          monospace;
+      }
+      ::selection {
+        background: #3d657b;
+        color: white;
+      }
+      * {
+        scrollbar-color: #486170 #0e1b22;
+        scrollbar-width: thin;
+      }
+      #error {
+        padding: 0 24px;
+        color: #ffc08e;
+        font-size: 14px;
+      }
+      body[data-role="defender"] {
+        --accent: #75b7fc;
+      }
+      body[data-role="observer"] {
+        --accent: #c5d8e4;
+      }
+      @media (max-width: 1100px) {
+        .workspace {
+          grid-template-columns: 212px minmax(0, 1fr);
+        }
+        aside:last-child {
+          grid-column: 1/-1;
+          border-top: 1px solid var(--line);
+          border-left: 0;
+        }
+        header {
+          flex-wrap: wrap;
+        }
+      }
+      @media (max-width: 650px) {
+        header,
+        .toolbar {
+          padding: 12px;
+          flex-wrap: wrap;
+        }
+        nav {
+          margin-left: 0;
+        }
+        .workspace {
+          display: flex;
+          flex-direction: column;
+        }
+        .scene {
+          order: -1;
+          min-height: 370px;
+        }
+        aside {
+          border: 0;
+          border-top: 1px solid var(--line);
+        }
+        #agents {
+          max-height: 180px;
+        }
+        #timeline {
+          flex-basis: 40%;
+        }
+        .event {
+          grid-template-columns: 65px 70px 1fr;
+        }
+        .event span:last-child {
+          display: none;
+        }
+        .metrics,
+        .events-wrap {
+          padding: 14px;
+        }
+        .scene-caption {
+          font-size: 12px;
+          left: 12px;
+        }
+        .legend {
+          left: 12px;
+          right: 12px;
+          flex-wrap: wrap;
+          gap: 8px 16px;
+          font-size: 12px;
+        }
+        .scene-caption {
+          right: 12px;
+          line-height: 1.5;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body data-role="attacker">
+    <header>
+      <h1>SUDOKO</h1>
+      <span>Swarm security workspace</span>
+      <nav aria-label="Workspace">
+        <button data-role="attacker" aria-pressed="true">Attacker</button
+        ><button data-role="defender" aria-pressed="false">Defender</button
+        ><button data-role="observer" aria-pressed="false">Observer</button>
+      </nav>
+    </header>
+    <div class="toolbar">
+      <button id="play">Play recording</button><label for="timeline">Time</label
+      ><input id="timeline" type="range" min="0" max="1" value="0" /><span
+        id="time"
+        >0.0s</span
+      ><button id="camera">Top-down view</button
+      ><span id="status" role="status">Loading measured fleet data…</span>
+    </div>
+    <p id="error" role="status"></p>
+    <main>
+      <div class="workspace">
+        <aside>
+          <h2 id="role-title">Attack operations</h2>
+          <p id="brief"></p>
+          <h2 id="agents-title">My agents</h2>
+          <ul id="agents"></ul>
+        </aside>
+        <section class="scene" aria-label="Drone swarm map">
+          <div id="viewport"></div>
+          <div class="scene-caption" id="scene-label">
+            Discovered swarm · simulation coordinates
+          </div>
+          <div class="legend">
+            <b>Home control</b><b>Unauthorized control</b
+            ><span>Selectable via asset list</span>
+          </div>
+        </section>
+        <aside>
+          <h2>Asset investigation</h2>
+          <label class="asset-select" for="drone-select">Visible drone</label
+          ><select id="drone-select">
+            <option value="">Select a drone</option>
+          </select>
+          <pre id="detail">Choose a visible drone to inspect its evidence.</pre>
+          <h2>Threat assessment</h2>
+          <p id="assessment">No asset selected.</p>
+        </aside>
+      </div>
+      <div class="metrics" id="metrics"></div>
+      <section class="events-wrap">
+        <div class="events-title">
+          <h2 id="feed-title">Attack evidence</h2>
+          <span id="event-count" aria-live="polite"></span>
+        </div>
+        <div id="events"></div>
+      </section>
+    </main>
+    <footer>
+      Fixture decisions · Synthetic drone command service · SpacetimeDB
+      scheduled entities and identity-scoped views. The recorded demo permits
+      switching between exported workspaces; live credentials only access their
+      granted workspace. This fleet mode tests command authorization in database
+      reducers; the existing HTTP scenario suite remains separate. Movement and
+      battery are simulation state, not physical flight measurements.
+    </footer>
+    <script type="module" src="/fleet.js"></script>
+  </body>
+</html>

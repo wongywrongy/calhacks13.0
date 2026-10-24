@@ -34,12 +34,18 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import GrantFleetViewReducer from "./grant_fleet_view_reducer";
 import PublishSnapshotReducer from "./publish_snapshot_reducer";
+import StartFleetReducer from "./start_fleet_reducer";
+import StopFleetReducer from "./stop_fleet_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
 import ArenaSnapshotRow from "./arena_snapshot_table";
+import VisibleAgentsRow from "./visible_agents_table";
+import VisibleDronesRow from "./visible_drones_table";
+import VisibleEvidenceRow from "./visible_evidence_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -56,11 +62,35 @@ const tablesSchema = __schema({
       { name: 'arena_snapshot_slot_key', constraint: 'unique', columns: ['slot'] },
     ],
   }, ArenaSnapshotRow),
+  visibleAgents: __table({
+    name: 'visible_agents',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleAgentsRow),
+  visibleDrones: __table({
+    name: 'visible_drones',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleDronesRow),
+  visibleEvidence: __table({
+    name: 'visible_evidence',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleEvidenceRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("grant_fleet_view", GrantFleetViewReducer),
   __reducerSchema("publish_snapshot", PublishSnapshotReducer),
+  __reducerSchema("start_fleet", StartFleetReducer),
+  __reducerSchema("stop_fleet", StopFleetReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
@@ -71,6 +101,12 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
   tables: typeof tablesSchema.schemaType.tables & {
     /** @deprecated Use `arenaSnapshot` instead. This alias will be removed in the next major version. */
     readonly "arena_snapshot": Omit<typeof tablesSchema.schemaType.tables["arenaSnapshot"], "accessorName"> & { readonly accessorName: "arena_snapshot" };
+    /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
+    readonly "visible_agents": Omit<typeof tablesSchema.schemaType.tables["visibleAgents"], "accessorName"> & { readonly accessorName: "visible_agents" };
+    /** @deprecated Use `visibleDrones` instead. This alias will be removed in the next major version. */
+    readonly "visible_drones": Omit<typeof tablesSchema.schemaType.tables["visibleDrones"], "accessorName"> & { readonly accessorName: "visible_drones" };
+    /** @deprecated Use `visibleEvidence` instead. This alias will be removed in the next major version. */
+    readonly "visible_evidence": Omit<typeof tablesSchema.schemaType.tables["visibleEvidence"], "accessorName"> & { readonly accessorName: "visible_evidence" };
   };
 };
 
@@ -90,6 +126,9 @@ const REMOTE_MODULE = {
 
 const tableAccessorAliases = {
   "arena_snapshot": "arenaSnapshot",
+  "visible_agents": "visibleAgents",
+  "visible_drones": "visibleDrones",
+  "visible_evidence": "visibleEvidence",
 } as const;
 
 function __withTableAccessorAliases<T extends object>(target: T, freeze = false): T {
@@ -112,12 +151,24 @@ type __DbViewBase = __DbConnectionImpl<typeof REMOTE_MODULE>["db"];
 export type DbView = __DbViewBase & {
   /** @deprecated Use `arenaSnapshot` instead. This alias will be removed in the next major version. */
   readonly "arena_snapshot": __DbViewBase["arenaSnapshot"];
+  /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
+  readonly "visible_agents": __DbViewBase["visibleAgents"];
+  /** @deprecated Use `visibleDrones` instead. This alias will be removed in the next major version. */
+  readonly "visible_drones": __DbViewBase["visibleDrones"];
+  /** @deprecated Use `visibleEvidence` instead. This alias will be removed in the next major version. */
+  readonly "visible_evidence": __DbViewBase["visibleEvidence"];
 };
 
 type __TablesBase = __QueryBuilder<typeof tablesSchema.schemaType>;
 export type Tables = __TablesBase & {
   /** @deprecated Use `arenaSnapshot` instead. This alias will be removed in the next major version. */
   readonly "arena_snapshot": __TablesBase["arenaSnapshot"];
+  /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
+  readonly "visible_agents": __TablesBase["visibleAgents"];
+  /** @deprecated Use `visibleDrones` instead. This alias will be removed in the next major version. */
+  readonly "visible_drones": __TablesBase["visibleDrones"];
+  /** @deprecated Use `visibleEvidence` instead. This alias will be removed in the next major version. */
+  readonly "visible_evidence": __TablesBase["visibleEvidence"];
 };
 
 /** The tables available in this remote SpacetimeDB module. Each table reference doubles as a query builder. */

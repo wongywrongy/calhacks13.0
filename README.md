@@ -1,3 +1,5 @@
+> **Current drone-swarm workspace:** see [Fleet implementation and verification](docs/FLEET.md) and [design audit](docs/DESIGN_AUDIT.md). Run `npm run demo:fleet` with a local SpacetimeDB binary. The fleet mode and the existing HTTP scenarios have separate validation scopes.
+
 # SudoKO
 
 A controlled security arena with concurrent attackers, defenders, normal clients and an
