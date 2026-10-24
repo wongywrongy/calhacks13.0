@@ -1,50 +1,49 @@
-# SECURITY.md — rules of engagement
+# Security boundaries
 
-This project runs autonomous agents in an adversarial security game. That only stays safe
-because the whole thing is boxed in. These rules are binding on all code and all contributors
-(human or coding-agent). Read before writing anything.
+SudoKO is a self-contained educational evaluation of a fixed catalog of planted
+weaknesses in its own synthetic practice service. It is not a general pentest tool.
 
-## What this is
+## Required boundaries
 
-A **self-contained educational evaluation harness**. The "attacks" exist only to test whether
-the defense closes a **fixed, documented set of planted weaknesses** in our own practice
-service. It is not a pentest tool and must never be pointed at anything we don't own and
-didn't build for this.
+- Only the loopback/Compose practice service is an attack target. Agent tools compile
+  catalog IDs into fixed paths; no arbitrary host, URL, payload or redirect is accepted.
+- Models receive no shell, filesystem or code-execution tool. Actors cannot create new
+  techniques, real-CVE reproductions or network destinations.
+- All flags, credentials and data are synthetic. Random flags and actor credentials are
+  private. Public reports redact flags and omit all credentials.
+- Defender writes are authorized from caller identity, restricted to its namespace,
+  evidence-linked and checked against a rule version. Hardened mode denies the catalog
+  maintenance-open action even if an agent requests it.
+- Only the referee can start/stop/rotate a match. No score-write operation exists. Service
+  outcomes and independent probes determine results. Agents cannot alter the referee.
+- Per-actor rate/action limits, global request/event limits and a server-enforced deadline
+  bound work. Stop prevents in-flight requests from releasing artifacts.
 
-## Hard boundaries
+## Network and process model
 
-1. **One target, ever.** Agents reach only the arena practice service. No other host, URL, IP,
-   or service is reachable or referenceable. The attacker tool (`request`) is hardwired to the
-   service base URL.
-2. **No egress.** All containers run on one internal Docker network with outbound access
-   disabled. The only external call allowed is agent inference to the Bitdeer endpoint, via the
-   `agents/common` client — nothing else makes outbound requests.
-3. **Synthetic everything.** Fake flags, fake data, no real credentials, no real user data, no
-   real CVEs. The practice service is purpose-built; its weaknesses are fixtures.
-4. **Catalog-bounded.** Attack behavior is limited to the documented weakness catalog
-   (`practice-app/catalog/`). Agents select from it; they do **not** synthesize or fetch novel
-   exploit techniques. If it's not in the catalog, it doesn't happen.
-5. **Tiny tool surface.** The tools in `AGENTS.md` are the complete list. No shell, no
-   filesystem, no arbitrary network. Widening the surface is a security decision — raise it,
-   don't just add it.
-6. **Scoped writes.** A defender writes only its own rule namespace; the reducer enforces this.
-   An agent cannot alter the referee, the score, or the other team's rules.
-7. **Referee kill switch.** `start_match`/stop is referee-only; the referee can halt a match
-   and freeze the arena at any time.
+Local development runs on loopback. It is not an OS security boundary. The trusted
+scheduler hosts multiple independent agent loops in one process; these are not mutually
+isolated processes and this system does not execute hostile agent code.
 
-## What must not land in this repo
+The provided Compose configuration isolates the service and runner on an internal Docker
+network with no host-published ports. Containers have read-only filesystems, non-root
+users, dropped capabilities and CPU/memory/process limits. They have no Docker socket or
+host source mounts. Results use a dedicated volume. Docker isolation must be tested on
+the deployment host; passing HTTP/tool tests alone does not establish it.
 
-- Real exploit payloads, real CVE reproductions, or anything targeting real software.
-- Network egress from the service, guard, or agents (beyond Bitdeer inference).
-- Secrets in code or fixtures. Use env vars; keep `.env` out of git.
-- Any capability that lets an agent act outside the arena.
+Optional model inference uses a separate authenticated proxy with one hardcoded Bitdeer
+HTTPS endpoint, a configured model and bounded completion parameters. Only that proxy
+joins an egress-capable network. The service and runner do not gain general egress.
+The proxy code is trusted infrastructure, not an untrusted-code sandbox.
 
-## For demos
+## Honest demonstrations
 
-- Pre-record a full match and replay it; don't run live agents against anything on the venue
-  network. The arena is internal-only regardless.
-- The pitch frames this as a **defensive** tool: it finds and closes planted holes before a
-  real attacker would. Keep that framing accurate — don't overclaim it as a general pentester.
+Fixture runs deliberately use a susceptible policy and must be labelled as such. Real
+Bitdeer results require a credentialed run and may not follow the same narrative. Provider
+errors never trigger a silent fixture fallback. A recorded run must be labelled recorded.
+The earlier `web/index.html` mock timeline is not evidence from this runtime.
 
-If a task seems to require crossing any boundary above, it's out of scope for this project.
-Stop and rescope.
+Use isolated local/container runs and a captured replay for venue demonstrations. Never
+point the experiment at venue devices, third-party software, or real fleet equipment.
+The old `arena/` module is not a security authority: public flags and unauthenticated
+reducers need correction before it can receive anything beyond sanitized telemetry.

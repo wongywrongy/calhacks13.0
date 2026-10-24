@@ -1,72 +1,45 @@
-# AGENTS.md
+# Agent contracts and repository conventions
 
-The four autonomous agents in the arena. (For repo setup and conventions see `README.md`;
-for safety boundaries see `SECURITY.md` — those boundaries are binding on the code here.)
+Read `docs/SECURITY.md`. TypeScript is used for clients and the practice service; Rust is
+reserved for SpacetimeDB. The runnable experiment is `sandbox/src/`.
 
-All four share one runtime (`agents/common/`): a SpacetimeDB client (subscribe + call
-reducers), an LLM client pointed at a **Bitdeer**-hosted model (OpenAI-compatible endpoint),
-and a **tool bus** that exposes a *fixed, tiny* set of tools per role. An agent has no shell,
-no filesystem, no network beyond the arena service and the arena DB. That tool surface **is**
-the containment — do not widen it.
+## Team structure
 
-## Shared loop
+Agents have separate credentials, observations, local memory and bounded decision loops.
+They run concurrently under one trusted scheduler, not in separate process/container
+sandboxes. Models never execute code.
 
-```
-subscribe to the tables this agent needs
-loop:
-  observe  → read the latest relevant rows from SpacetimeDB
-  decide   → one LLM call: given state + the catalog, pick the next action
-  act      → call exactly one allowed tool
-  wait     → short backoff, then repeat
-```
+| Role | Allowed actions | Responsibility |
+| --- | --- | --- |
+| scout | request(WK-01), submit_flag | Test the planted tenant-isolation weakness |
+| deceiver | request(WK-02), submit_flag | Submit the fixed untrusted telemetry fixture |
+| pressure | request(WK-03), submit_flag | Occupy bounded service capacity |
+| policy | read_events, list_rules, write_rule | Protect its own namespace |
+| availability | read_events, list_rules, write_rule | Preserve service and recover from overblocking |
 
-Keep each decision to a single tool call. Log every action as an `event`. Agents are
-catalog-driven: they choose from the documented weakness/rule sets — they do **not** generate
-novel exploit code.
+Request catalog IDs compile to fixed internal paths/payloads. No model-controlled host,
+port, URL, payload, shell, filesystem or network tool exists. `observe` is the runtime's
+scoped read of events/rules, not arbitrary database access. Attackers see team request and
+capture summaries; defenders see evidence targeting their own namespace.
 
-## Tool surface (the whole list)
+## Decisions and authorization
 
-| Agent        | Tools (and nothing else)                                              |
-|--------------|-----------------------------------------------------------------------|
-| red_attack   | `request(path, method, params)` → service · `submit_flag(value)`      |
-| blue_attack  | `request(path, method, params)` → service · `submit_flag(value)`      |
-| red_defend   | `read_events(since)` · `list_rules()` · `write_rule(rule)` *(red ns only)* |
-| blue_defend  | `read_events(since)` · `list_rules()` · `write_rule(rule)` *(blue ns only)* |
+One iteration observes, selects one action, applies it and backs off. `wait` does nothing.
+Rule writes include the observed version and evidence ID. Stale versions fail with 409;
+the next iteration reads current state. The server derives actor identity from credentials
+and verifies namespace ownership. Only the referee starts, stops or rotates matches.
+There is no score-write API. Captures require the current private random token.
 
-`request` can reach **only** the arena service. `write_rule` can write **only** the agent's
-own namespace (enforced in the reducer, not just here).
+The fixture policy is deliberately vulnerable to WK-02 in both modes. Hardened mode adds
+a service-side authorization check. Never label fixture results as AI behavior or silently
+substitute fixtures after inference failure.
 
-## Contracts
+## Validation
 
-### red_attack / blue_attack
-- **Goal:** retrieve the *enemy's* current flag and submit it before the referee rotates it.
-- **Input:** the enemy's flag endpoints (from the catalog) + recent responses.
-- **Decide:** pick a weakness class from the catalog to probe next; form the request from the
-  catalog entry. On a flag-shaped response, `submit_flag`.
-- **Output:** `request` calls and `submit_flag`. A correct submit → `record_capture`.
-- **Boundary:** target only the enemy's flag endpoints on the arena service.
+Run `npm test` after runtime changes. Use a bounded comparison after scheduling, scoring,
+capacity or rule changes. Inspect request counts, agent errors and referee checks.
+Wall-clock scheduling and model decisions need not reproduce identically. Do not infer
+perfect security or availability from one run. See `docs/SANDBOX_VALIDATION.md`.
 
-### red_defend / blue_defend
-- **Goal:** keep your own flags unstolen **without failing SLA**.
-- **Input:** recent `event` rows for your endpoints + your current rules.
-- **Decide:** match the attack signature to a weakness class; select the library rule that
-  closes it (`patch_rule`). Avoid rules that would block known-good traffic.
-- **Output:** `write_rule` into your namespace (bumps `rules_version`); the guard picks it up
-  on the next request.
-- **Boundary:** write only your namespace. A rule that tanks your SLA is a self-inflicted loss
-  — the loop should back off an over-broad rule.
-
-## Model config (Bitdeer)
-
-- One model for all agents to start; set `BITDEER_BASE_URL`, `BITDEER_API_KEY`, `MODEL` in env.
-- Deterministic-ish: low temperature, hard cap on tokens per decision, hard cap on tool calls
-  per tick. Budget matters in a 36h run — don't let an agent spin.
-- Timeouts + retries in `agents/common/`, not per agent.
-
-## Definition of done (per agent)
-
-1. Connects to the arena, subscribes, and acts within its tool surface only.
-2. One clean action per decision, every action logged as an `event`.
-3. Attackers capture a planted flag; defenders close a class and hold SLA.
-4. Respects every boundary in `SECURITY.md`. If a change needs a new tool, stop and raise it —
-   widening the tool surface is a security decision, not a feature.
+Preserve the fixed catalog and tool surface. New targets, arbitrary code execution or
+broader network capabilities are outside this experiment.

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SudoKO · Recorded run evidence</title>
+<style>
+  :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10141c;color:#edf1fa}
+  body{max-width:1180px;margin:36px auto;padding:0 24px}h1{font-size:30px;margin:0 0 10px}p{color:#aebbd0;line-height:1.5}
+  input,select{font:inherit;background:#1c2433;color:inherit;padding:10px;border:1px solid #46536a;border-radius:5px}
+  .row{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:20px 0}.badge{border:1px solid #647590;padding:6px 10px;font-size:12px;letter-spacing:.08em}
+  table{border-collapse:collapse;width:100%;margin:20px 0;font-variant-numeric:tabular-nums}th,td{padding:11px;text-align:left;border-bottom:1px solid #303b4e;font-size:14px}th{color:#adbed5}
+  tr[data-event]{cursor:pointer}tr[data-event]:hover{background:#202c3d}pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:20px;background:#192231;border:1px solid #344660;max-height:520px;overflow:auto}
+  #timeline{max-height:420px;overflow:auto}#error{color:#ffaba7}.note{padding-left:14px;border-left:3px solid #90b5ff}
+</style>
+<h1>SudoKO / run evidence</h1>
+<p>Inspect a recorded HTTP match. Load the JSON produced by <code>npm run sandbox</code>. This view does not represent a live connection.</p>
+<div class="row"><input id="file" type="file" accept=".json"><span class="badge">RECORDED RUN</span><span id="engine" class="badge">NO FILE LOADED</span></div>
+<p id="error" role="alert"></p><p id="meta"></p><p id="caveat" class="note"></p>
+<div id="metrics"></div>
+<div class="row"><label for="kind">Event type </label><select id="kind"><option value="">All events</option></select><span id="count"></span></div>
+<div id="timeline"></div>
+<p>Select an event to inspect the recorded action, supporting evidence and referee checks.</p><pre id="detail">No event selected.</pre>
+<script>
+let run;
+const $=id=>document.getElementById(id);
+const cell=(tag,value)=>{const e=document.createElement(tag);e.textContent=String(value??'—');return e};
+function table(headers,rows){const t=document.createElement('table'),head=document.createElement('tr');headers.forEach(h=>head.append(cell('th',h)));t.append(head);rows.forEach(values=>{const r=document.createElement('tr');values.forEach(v=>r.append(cell('td',v)));t.append(r)});return t}
+function draw(){
+  const events=run.events.filter(e=>!$('kind').value||e.kind===$('kind').value);
+  $('count').textContent=events.length+' recorded events';
+  const rows=events.map(e=>[e.id,(e.at/1000).toFixed(2)+'s',e.actor,e.target||'—',e.kind,e.detail.status??e.detail.rule??'']);
+  const t=table(['Event','Time','Actor','Target','Type','Result'],rows);
+  [...t.rows].slice(1).forEach((row,i)=>{row.dataset.event=events[i].id;row.onclick=()=>{
+    const e=events[i],support=run.events.find(x=>x.id===e.detail.evidenceId);
+    const verification=run.probes.filter(p=>p.target===e.target&&p.at>=e.at).slice(0,3);
+    $('detail').textContent=JSON.stringify({event:e,evidence:support,nextRefereeChecks:verification},null,2);
+  }});
+  $('timeline').replaceChildren(t);
+}
+$('file').onchange=async()=>{try{
+  const file=$('file').files[0];if(!file)return;if(file.size>15e6)throw Error('Choose a run smaller than 15 MB');
+  const parsed=JSON.parse(await file.text());if(parsed.schemaVersion!==1||!Array.isArray(parsed.events)||!parsed.summary?.metrics)throw Error('Expected a SudoKO schemaVersion 1 run');
+  run=parsed;$('error').textContent='';$('engine').textContent=run.engine==='fixture'?'POLICY FIXTURE · NO LLM':('MODEL · '+run.model);
+  $('meta').textContent=`${run.id} · ${run.config.mode} · ${run.actors.length} actors · ${(run.elapsedMs/1000).toFixed(1)} seconds · ${run.summary.agentErrors} agent errors`;
+  $('caveat').textContent=run.summary.conclusion;
+  const m=run.summary.metrics;
+  $('metrics').replaceChildren(table(['Observed outcome','Red service','Blue service'],[
+    ['Verified captures',m.red.verifiedCaptures,m.blue.verifiedCaptures],['Secret-bearing attack responses',m.red.secretLeaks,m.blue.secretLeaks],
+    ['Legitimate requests',m.red.legitimateRequests,m.blue.legitimateRequests],['Legitimate success',m.red.legitimateSuccessPct+'%',m.blue.legitimateSuccessPct+'%'],
+    ['Legitimate latency p95',m.red.legitimateP95Ms+' ms',m.blue.legitimateP95Ms+' ms'],['Worker-pool failures',m.red.unavailableResponses,m.blue.unavailableResponses],
+    ['Isolation probe passes',m.red.isolationProbePasses+' / '+m.red.isolationProbeCount,m.blue.isolationProbePasses+' / '+m.blue.isolationProbeCount]
+  ]));
+  $('kind').replaceChildren(new Option('All events',''),...[...new Set(run.events.map(e=>e.kind))].map(k=>new Option(k,k)));
+  $('detail').textContent='Select an event.';draw();
+}catch(e){$('error').textContent=e.message}};
+$('kind').onchange=()=>run&&draw();
+</script>
+</html>
