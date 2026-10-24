@@ -104,6 +104,22 @@ select{font-family:inherit;font-size:12px;color:var(--fg);background:var(--panel
 /* fx + units */
 .fxline{pointer-events:none}
 
+/* security posture strip */
+.posture{display:flex;align-items:center;gap:18px;background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:16px;padding:14px 18px;flex-wrap:wrap}
+.posture .lab{font-size:11px;letter-spacing:.16em;color:var(--dim)}
+.cats{display:flex;gap:8px;flex-wrap:wrap}
+.cchip{display:flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:7px;padding:6px 11px;font-size:12.5px}
+.cchip .cd{width:7px;height:7px;border-radius:50%;flex:none;transition:background .3s}
+.cchip.open .cd{background:var(--red)} .cchip.patched .cd{background:var(--green)}
+.cchip .cwk{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint)}
+.cchip .cst{font-size:9px;letter-spacing:.1em;margin-left:2px}
+.cchip.patched .cst{color:var(--green)} .cchip.open .cst{color:var(--red)}
+.ptiles{display:flex;gap:26px;margin-left:auto}
+.ptile{text-align:right}
+.ptile .k{font-size:9.5px;letter-spacing:.13em;color:var(--dim)}
+.ptile .v{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+@media(max-width:1180px){.ptiles{margin-left:0}}
+
 /* event log */
 .log{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:16px;overflow:hidden}
 .lhead{display:flex;align-items:center;gap:7px;padding:14px 18px 12px}
@@ -111,9 +127,11 @@ select{font-family:inherit;font-size:12px;color:var(--fg);background:var(--panel
 .lhead .live{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.12em;color:var(--dim)}
 .lhead .live .ld{width:6px;height:6px;border-radius:50%;background:var(--green)}
 @media(prefers-reduced-motion:no-preference){.lhead .live .ld{animation:blink 1.6s ease-in-out infinite}}
-table{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:12.5px}
+/* log: Inter for labels/prose, mono only for identifiers (.m) — consistent type system */
+table{width:100%;border-collapse:collapse;font-family:Inter,system-ui,sans-serif;font-size:13px}
 thead th{text-align:left;font-weight:500;font-size:10px;letter-spacing:.12em;color:var(--dim);padding:10px 18px;border-bottom:1px solid var(--line);border-top:1px solid var(--line)}
 tbody td{padding:9px 18px;border-bottom:1px solid rgba(24,34,39,.6);color:#C2CAD4;white-space:nowrap}
+tbody td.m{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
 tbody tr:last-child td{border-bottom:none}
 @media(prefers-reduced-motion:no-preference){tbody tr.fresh td{animation:rowin .45s ease}}
 @keyframes rowin{from{background:rgba(39,125,253,.06)}to{background:transparent}}
@@ -267,6 +285,18 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
 
+  <!-- security posture -->
+  <div class="posture">
+    <span class="lab">EXPOSURE CATALOG</span>
+    <div class="cats" id="catChips"></div>
+    <div class="ptiles">
+      <div class="ptile"><div class="k">CAPTURES</div><div class="v" id="stCap">0</div></div>
+      <div class="ptile"><div class="k">BLOCK RATE</div><div class="v" id="stBlock">—</div></div>
+      <div class="ptile"><div class="k">MTTP</div><div class="v" id="stMttp">—</div></div>
+      <div class="ptile"><div class="k">PATCHED</div><div class="v" id="stPatch">0/4</div></div>
+    </div>
+  </div>
+
   <!-- event log -->
   <div class="log">
     <div class="lhead"><span class="t">EVENT LOG</span><span class="live"><span class="ld"></span>LIVE</span></div>
@@ -302,6 +332,11 @@ const TIMELINE=[
   {t:'1:23',round:3,kind:'end',msg:'Match complete — fleet contested'},
 ];
 const ROUNDS=3,N=30,SVGNS='http://www.w3.org/2000/svg';
+// real weakness classes behind the catalog ids — what a security reviewer actually reads
+const CATALOG={'WK-01':'IDOR','WK-02':'SQLi','WK-03':'SSRF','WK-04':'Path Traversal'};
+const WKS=Object.keys(CATALOG);
+const freshCat=()=>{const o={};WKS.forEach(k=>o[k]={cls:CATALOG[k],state:'open',first:null,patched:null});return o;};
+const sec=t=>{const[m,s]=t.split(':').map(Number);return m*60+s;};
 const $=id=>document.getElementById(id);
 const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const frac=x=>x-Math.floor(x), hash=n=>frac(Math.sin(n*127.1+31.7)*43758.5453);
@@ -342,7 +377,7 @@ const POS={};
   }
 })();
 
-const init=()=>({i:-1,round:0,clock:'0:00',seizes:0,ended:false,drones:[],
+const init=()=>({i:-1,round:0,clock:'0:00',seizes:0,ended:false,drones:[],cat:freshCat(),capEvents:0,blockedEvents:0,
   red:{ctrl:0,sla:100,tc:0,seizes:0,last:'—',cur:'idle',live:false,cpu:12.4,mem:286},
   blue:{ctrl:0,sla:100,tc:0,seizes:0,last:'—',cur:'idle',live:false,cpu:11.8,mem:274},
   feed:[]});
@@ -402,25 +437,32 @@ function apply(e){
       logRow(e,{det:`${e.n} units online, controller neutral`,did:'—',loc:'SEC-7 · 500,278'}); break;
     case 'wave': logRow(e,{det:`command tokens rotated for round ${e.round}`,did:'—',loc:'SEC-7 · 500,278'}); break;
     case 'seize':{ const list=asList(e.cs),A=S[e.team],col=e.team==='red'?'#F02D38':'#277DFD';
-      list.forEach((cs,ix)=>setTimeout(()=>{setDrone(cs,e.team);trace(e.team,cs);flashU(cs,col);paintUnit(S.drones.find(d=>d.cs===cs));},ix*45));
-      list.forEach(cs=>setDrone(cs,e.team)); A.seizes+=list.length;S.seizes+=list.length;A.tc++;
+      list.forEach(cs=>setDrone(cs,e.team)); // ownership set synchronously; timers only animate + repaint current state
+      list.forEach((cs,ix)=>setTimeout(()=>{trace(e.team,cs);flashU(cs,col);paintUnit(S.drones.find(d=>d.cs===cs));},ix*45));
+      A.seizes+=list.length;S.seizes+=list.length;A.tc++;
+      S.capEvents++; const cS=S.cat[e.kls]; if(cS&&cS.first==null) cS.first=sec(e.t);
+      const clsN=CATALOG[e.kls]||e.kls;
       const t=list.length>1?`${droneId(e.team,list[0])}+${list.length-1}`:droneId(e.team,list[0]);
       A.last=`take_control ${list[0]}${list.length>1?' +'+(list.length-1):''} · ${e.kls} → 200`; A.cur=`▸ capturing ${list[0]}…`; A.live=true;
-      logRow(e,{det:`${e.team} gained control of ${list.length} unit${list.length>1?'s':''} via ${e.kls}`,did:t,loc:loc(list[0])}); break; }
+      logRow(e,{det:`${e.team} gained control of ${list.length} unit${list.length>1?'s':''} via ${clsN} (${e.kls})`,did:t,loc:loc(list[0])}); break; }
     case 'reclaim':{ const list=asList(e.cs),A=S[e.team],col=e.team==='red'?'#F02D38':'#277DFD';
-      list.forEach((cs,ix)=>setTimeout(()=>{setDrone(cs,e.team);shieldU(cs,col);paintUnit(S.drones.find(d=>d.cs===cs));},ix*55));
-      list.forEach(cs=>setDrone(cs,e.team)); A.tc++;
+      list.forEach(cs=>setDrone(cs,e.team)); // ownership set synchronously; timers only animate + repaint current state
+      list.forEach((cs,ix)=>setTimeout(()=>{shieldU(cs,col);paintUnit(S.drones.find(d=>d.cs===cs));},ix*55));
+      A.tc++;
       const t=list.length>1?`${droneId(e.team,list[0])}+${list.length-1}`:droneId(e.team,list[0]);
       A.last=`reclaim ${list[0]}${list.length>1?' +'+(list.length-1):''} → 200`; A.cur=`▸ reclaiming ${list[0]}…`; A.live=true;
       logRow(e,{det:`${e.team} reclaimed ${list.length} unit${list.length>1?'s':''}`,did:t,loc:loc(list[0])}); break; }
-    case 'patch':{ const A=S[e.team]; A.tc++; A.last=`rule_write guard/${e.team} · ${e.kls} → OK`; A.cur=`▸ hardening ${e.kls}…`; A.live=true;
-      logRow(e,{det:`${e.team} hardened controller — ${e.kls} re-test PASS`,did:'—',loc:`guard/${e.team}`}); break; }
-    case 'patchbad':{ const A=S[e.team]; A.tc++; A.sla=Math.max(0,A.sla-15); A.last=`rule_write guard/${e.team} · ${e.kls} → OK`; A.cur='▸ SLA dip — rule too broad'; A.live=true;
-      logRow(e,{det:`${e.team} rule too broad — SLA dip`,did:'—',loc:`guard/${e.team}`}); break; }
+    case 'patch':{ const A=S[e.team]; A.tc++; const c=S.cat[e.kls], cl=CATALOG[e.kls]||e.kls; if(c){c.state='patched';if(c.patched==null)c.patched=sec(e.t);}
+      A.last=`rule_write guard/${e.team} · ${e.kls} → OK`; A.cur=`▸ patching ${cl}…`; A.live=true;
+      logRow(e,{det:`${e.team} patched ${cl} (${e.kls}) — re-test PASS`,did:'—',loc:`guard/${e.team}`}); break; }
+    case 'patchbad':{ const A=S[e.team]; A.tc++; A.sla=Math.max(0,A.sla-15); const c=S.cat[e.kls], cl=CATALOG[e.kls]||e.kls; if(c){c.state='patched';if(c.patched==null)c.patched=sec(e.t);}
+      A.last=`rule_write guard/${e.team} · ${e.kls} → OK`; A.cur='▸ SLA dip — rule too broad'; A.live=true;
+      logRow(e,{det:`${e.team} patched ${cl} (${e.kls}) — rule too broad, SLA dip`,did:'—',loc:`guard/${e.team}`}); break; }
     case 'recover':{ const A=S[e.team]; A.tc++; A.sla=Math.min(100,A.sla+12); A.last=`rule_tune guard/${e.team} → OK`; A.cur='▸ rule tightened'; A.live=true;
       logRow(e,{det:`${e.team} tightened rule — SLA recovered`,did:'—',loc:`guard/${e.team}`}); break; }
-    case 'blocked':{ const A=S[e.team]; A.tc++; setTimeout(()=>blockU(e.cs),0); A.last=`take_control ${e.cs} · ${e.kls} → 403`; A.cur=`▸ ${e.cs} blocked`; A.live=true;
-      logRow(e,{det:`${e.team} capture attempt on ${e.cs} blocked`,did:droneId(e.team,e.cs),loc:loc(e.cs)}); break; }
+    case 'blocked':{ const A=S[e.team]; A.tc++; S.blockedEvents++; setTimeout(()=>blockU(e.cs),0); const cl=CATALOG[e.kls]||e.kls;
+      A.last=`take_control ${e.cs} · ${e.kls} → 403`; A.cur=`▸ ${e.cs} blocked`; A.live=true;
+      logRow(e,{det:`${e.team} ${cl} attempt on ${e.cs} blocked (403)`,did:droneId(e.team,e.cs),loc:loc(e.cs)}); break; }
     case 'end': S.ended=true; logRow(e,{det:'match complete — fleet contested',did:'—',loc:'SEC-7 · 500,278'}); break;
   }
   S.red.ctrl=count('red'); S.blue.ctrl=count('blue');
@@ -446,6 +488,16 @@ function card(t,p){ const A=S[t];
   $(p+'Last').textContent=A.last;
   const cur=$(p+'Cur'); cur.className='cur'+(A.live?' live '+t:''); $(p+'CurT').textContent=A.cur;
 }
+function renderPosture(){
+  $('catChips').innerHTML=WKS.map(k=>{const c=S.cat[k],on=c.state==='patched';
+    return `<div class="cchip ${on?'patched':'open'}"><span class="cd"></span>${c.cls}<span class="cwk">${k}</span><span class="cst">${on?'PATCHED':'OPEN'}</span></div>`;}).join('');
+  const tot=S.capEvents+S.blockedEvents;
+  $('stBlock').textContent=tot?Math.round(S.blockedEvents/tot*100)+'%':'—';
+  const mt=WKS.map(k=>S.cat[k]).filter(c=>c.first!=null&&c.patched!=null).map(c=>Math.max(0,c.patched-c.first));
+  $('stMttp').textContent=mt.length?Math.round(mt.reduce((a,b)=>a+b,0)/mt.length)+'s':'—';
+  $('stCap').textContent=S.seizes;
+  $('stPatch').textContent=WKS.filter(k=>S.cat[k].state==='patched').length+'/'+WKS.length;
+}
 function render(){
   $('round').textContent=(S.round||0)+'/'+ROUNDS; $('clock').textContent=S.clock;
   const sr=$('sRed'),sb=$('sBlue'); if(sr.textContent!=String(S.red.seizes))bump(sr); if(sb.textContent!=String(S.blue.seizes))bump(sb);
@@ -460,12 +512,12 @@ function render(){
   if(S.ended){momo.className='chip';momo.textContent=r>b?'RED holds majority':(b>r?'BLUE holds majority':'even split');}
   else if(S.i<0){momo.className='chip';momo.textContent='standing by';}
   else {const l=r>=b?'red':'blue';momo.className='chip '+l;momo.textContent=`${l.toUpperCase()} leads · ${Math.abs(r-b)}`;}
-  card('red','r'); card('blue','b');
+  card('red','r'); card('blue','b'); renderPosture();
   const cls=s=>s==='red'?'src-red':(s==='blue'?'src-blue':'src-sys');
   $('logBody').innerHTML=S.feed.map((l,ix)=>
-    `<tr class="${ix===0&&l.fresh?'fresh':''}"><td class="col-dim">${l.t}</td>`+
+    `<tr class="${ix===0&&l.fresh?'fresh':''}"><td class="m col-dim">${l.t}</td>`+
     `<td class="${cls(l.src)}">${l.src.toUpperCase()}</td><td class="ev">${l.ev}</td>`+
-    `<td style="color:#C2CAD4">${l.det}</td><td>${l.did}</td><td class="col-dim">${l.loc}</td></tr>`).join('');
+    `<td style="color:#C2CAD4">${l.det}</td><td class="m">${l.did}</td><td class="m col-dim">${l.loc}</td></tr>`).join('');
   S.feed.forEach(l=>l.fresh=false);
   $('hint').textContent=S.ended?`Match complete — control settled at RED ${r} · BLUE ${b}.`:(S.i<0?'Press Play to run a match — deterministic, driven by the arena event stream.':`Round ${S.round} live…`);
 }
