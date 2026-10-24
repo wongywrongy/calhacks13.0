@@ -14,6 +14,6 @@ for (const mode of ['baseline', 'hardened'] as const) {
   console.log(JSON.stringify({ mode, metrics: run.summary.metrics }));
 }
 await writeFile(join(destination, 'recordings/index.json'), JSON.stringify(index));
-const html = (await readFile('web/live.html','utf8')).replace('<body>', '<body data-mode="recorded">').replace('<div class="bar"><button id="live">', '<section class="panel"><h2>Explore the measured test flow</h2><p>This hosted preview replays real HTTP tests against our synthetic application. Decisions are deterministic fixtures, not model inference. No attacks run from this page.</p><p><strong>1.</strong> Play the baseline recording to see a breach and team handoffs. <strong>2.</strong> Select hardened to compare defenses and normal traffic. <strong>3.</strong> Click a capture or recovery to inspect the supporting requests.</p></section><div class="bar"><button id="live">');
+const html = (await readFile('web/live.html','utf8')).replace('<body>', '<body data-mode="recorded">');
 await writeFile(join(destination, 'index.html'), html);
 await copyFile('web/dist/app.js', join(destination, 'app.js'));

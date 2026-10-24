@@ -6,11 +6,15 @@ const node = (tag: string, text: unknown, cls = '') => { const n = document.crea
 let current: any, recorded: any, source: 'live' | 'recorded' = 'live', closeConnection = () => {}, lastUpdate = 0, connected = false;
 let connectionVersion = 0;
 let selectedEvent: number | null = null;
+let motionRun = "", motionEvent = 0;
+let perspective: "attack" | "defense" = "attack";
 const hostedReplay = document.body.dataset.mode === 'recorded';
 let playback: ReturnType<typeof setInterval> | undefined;
 function pauseReplay() { clearInterval(playback); playback = undefined; $('play').textContent = 'Play replay'; }
 function inspect(event: any) {
   selectedEvent = event.id;
+  document.querySelectorAll('.event').forEach(el => el.classList.toggle('selected', (el as HTMLElement).dataset.eventId === String(event.id)));
+  document.querySelectorAll('.mapnode').forEach(el => el.classList.toggle('selected', (el as HTMLElement).dataset.actor === event.actor));
   const ids = ['evidenceId','sourceRequestId','attackEventId','normalEventId','readEventId','updateEventId'].map(k => event.detail[k]).filter(Boolean);
   const decision = current.agentTraces.findLast((t: any) => t.eventId === event.id || t.actor === event.actor && t.action?.evidenceId === event.detail.evidenceId && t.action?.kind === 'write_rule');
   $('evidence').textContent = JSON.stringify({ event, supportingRequests: current.events.filter((e: any) => ids.includes(e.id)), decision }, null, 2);
@@ -18,6 +22,8 @@ function inspect(event: any) {
 function render(run: any) {
   if (!run) return;
   if (current?.id !== run.id) { selectedEvent = null; $('evidence').textContent = 'Select an event.'; }
+  const previousEvent = motionRun === run.id ? motionEvent : Infinity;
+  motionRun = run.id; motionEvent = run.events.at(-1)?.id ?? 0;
   current = run;
   $('decision').textContent = run.engine === 'fixture' ? 'FIXTURE DECISIONS · NO LLM' : `BITDEER · ${run.model}`;
   $('connection').textContent = source === 'recorded' ? 'RECORDED' : !connected ? 'DISCONNECTED' : run.live ? 'LIVE' : 'COMPLETED';
@@ -45,6 +51,12 @@ function render(run: any) {
   $('mapnodes').replaceChildren(...agents.map((actor: any,i: number) => {
     const isAttack = attacker(actor), group = agents.filter((a: any)=>attacker(a)===isAttack), index = group.findIndex((a:any)=>a.id===actor.id);
     const n = node('button','','mapnode '+(isAttack?'attacker':'defender'));
+    n.dataset.actor = actor.id;
+    const latest = run.events.findLast((e:any)=>e.actor===actor.id);
+    const recent = latest && run.elapsedMs-latest.at < 450 && latest.id > previousEvent;
+    n.classList.toggle('signal',Boolean(recent));
+    n.classList.toggle('selected',run.events.find((e:any)=>e.id===selectedEvent)?.actor===actor.id);
+    n.setAttribute('aria-label',`${actor.id}: inspect latest measured event`);
     n.style.left = `${isAttack ? 12+(index%2)*18 : 70+(index%2)*18}%`; n.style.top = `${15+Math.floor(index/2)*26}%`;
     n.append(node('span',isAttack?'⌁':'◇','glyph'),node('small',actor.id));
     n.onclick = () => { const event = run.events.findLast((e:any)=>e.actor===actor.id); if(event) inspect(event); }; return n;
@@ -52,12 +64,27 @@ function render(run: any) {
   $('assets').replaceChildren(...run.assets.map((asset: any) => {
     const breached = asset.controlledBy !== asset.home;
     const n = node('div','', 'assetnode '+(breached?'breached':'secured'));
+    const transition = run.events.findLast((e:any)=>['capture','reclaim'].includes(e.kind) && e.target===asset.home);
+    n.classList.toggle('changed',Boolean(transition && transition.id>previousEvent));
     n.append(node('span',asset.home.toUpperCase()+' NAMESPACE'),node('strong',breached?'COMPROMISED':'HOME CONTROL'),node('small',`Owner: ${asset.controlledBy.toUpperCase()}`)); return n;
   }));
+  document.body.dataset.perspective = perspective;
+  $('view-title').textContent = perspective === 'attack' ? 'ATTACKER VIEW · EXPOSURE & IMPACT' : 'DEFENDER VIEW · DETECTION & RECOVERY';
+  $('view-detail').textContent = perspective === 'attack' ? 'Trace attempted access → leaked artifact → capture. Select an agent or event for supporting requests.' : 'Trace hostile request → policy response → verified recovery. Client success shows whether the application stayed usable.';
+  for (const side of ['attack','defense']) $(side+'-view').setAttribute('aria-pressed',String(side===perspective));
+  const relevant = (e:any) => {
+    const actor = agents.find((a:any)=>a.id===e.actor);
+    if (['capture','reclaim','match_started','match_stopped'].includes(e.kind)) return true;
+    if (perspective === 'attack') return actor && attacker(actor);
+    return ['rule_change','untrusted_telemetry'].includes(e.kind) || actor && !attacker(actor) || e.kind==='request' && e.detail.status>=400;
+  };
   const showRequests = $('requests') as HTMLInputElement;
-  $('events').replaceChildren(...run.events.filter((e: any) => showRequests.checked || !['request','untrusted_telemetry'].includes(e.kind)).slice(-120).reverse().map((e: any) => {
+  $('events').replaceChildren(...run.events.filter(relevant).filter((e: any) => showRequests.checked || !['request','untrusted_telemetry'].includes(e.kind)).slice(-120).reverse().map((e: any) => {
     const button = node('button','','event');
     button.append(node('span',`${(e.at/1000).toFixed(2)}s`),node('span',e.actor),node('strong',e.kind.replaceAll('_',' ').toUpperCase()),node('span',e.detail.rule ?? e.detail.scenario ?? e.target ?? 'match'),node('span',e.detail.status ? `HTTP ${e.detail.status}` : `#${e.id}`));
+    button.dataset.eventId = String(e.id);
+    button.classList.toggle('selected',e.id===selectedEvent);
+    button.setAttribute('aria-pressed',String(e.id===selectedEvent));
     button.onclick = () => inspect(e); return button;
   }));
   if (selectedEvent) { const event = run.events.find((e: any) => e.id === selectedEvent); if (event) inspect(event); }
@@ -76,6 +103,7 @@ function receive(raw: any) {
 }
 function disconnect() { if (source !== 'live') return; connected = false; $('connection').textContent = 'DISCONNECTED'; $('notice').textContent = 'Connection lost. The last measured state is frozen.'; }
 async function live() {
+  pauseReplay();
   const version = ++connectionVersion; closeConnection(); source = 'live'; recorded = null; current = null; $('replay').classList.add('hidden'); $('connection').textContent = 'CONNECTING';
   const config = await fetch('/api/config').then(r => r.json());
   if (version !== connectionVersion) return;
@@ -104,9 +132,10 @@ function replay(raw: any) {
   drawReplay();
 }
 function drawReplay() { const at = Number(($('scrub') as HTMLInputElement).value); $('replaytime').textContent = `${(at/1000).toFixed(1)}s`; render(replayFrame(recorded,at)); }
+for (const side of ['attack','defense'] as const) $(side+'-view').onclick = () => { perspective = side; selectedEvent = null; $('evidence').textContent = 'Select an event or agent.'; motionRun = ''; if(current) render(current); };
 $('live').onclick = () => void live().catch(disconnect);
 $('requests').onchange = () => current && render(current);
-$('scrub').oninput = () => { pauseReplay(); drawReplay(); };
+$('scrub').oninput = () => { pauseReplay(); motionRun = ''; drawReplay(); };
 $('play').onclick = () => {
   if (playback) return pauseReplay();
   const slider = $('scrub') as HTMLInputElement;
