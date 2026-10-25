@@ -1,3 +1,22 @@
+// Keep reply content as text; the renderer creates the list elements safely.
+export function replyBlocks(text: string) {
+  const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const bullet = /^(?:[-*•]|\d+[.)])\s+/;
+  const explicit = lines.some((line) => bullet.test(line));
+  const statements = !explicit && lines.length === 1
+    ? [...new Intl.Segmenter("en", { granularity: "sentence" }).segment(lines[0])].map((s) => s.segment.trim()).filter(Boolean)
+    : lines;
+  const blocks: { list: boolean; lines: string[] }[] = [];
+  for (const statement of statements) {
+    const list = explicit ? bullet.test(statement) : statements.length > 2;
+    const value = list ? statement.replace(bullet, "") : statement;
+    const previous = blocks.at(-1);
+    if (previous?.list === list) previous.lines.push(value);
+    else blocks.push({ list, lines: [value] });
+  }
+  return blocks;
+}
+
 export type ChatTransport = {
   snapshot(): Promise<any>;
   submit(key: string, message: string, target: number, epoch: number, generation: number): Promise<any>;

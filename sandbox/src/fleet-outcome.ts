@@ -28,7 +28,17 @@ export function fleetOutcome(op: { state: string; role: string; tasks: { agentId
     const partial = effects.some((r) => r.simulation!.partial > 0 || r.simulation!.succeeded > 0 && (r.simulation!.succeeded < r.simulation!.total || !completed.has(r.agentId)));
     const status = op.state === "planning" ? "Planning" : op.state === "running" ? "Running" : op.state === "cancelled" ? "Stopped"
       : succeeded === op.tasks.length && succeeded > 0 && !partial && op.state === "completed" ? "Completed" : succeeded > 0 || partial ? "Partially completed" : "Failed";
-    return { status, summary: "Simulated outcomes: " + (effects.length ? effects : simulated).slice(-6).map((r) => r.simulation!.summary).join(" "), succeeded, total: op.tasks.length,
+    const lines = new Map<string, number>(), seen = new Set<number>();
+    for (const r of effects.length ? effects : simulated) {
+      if (seen.has(r.evidenceId!)) continue;
+      seen.add(r.evidenceId!);
+      const target = r.target ? `DR-${String(r.target).padStart(3, "0")} · ` : "";
+      const line = `${target}${r.kind?.replaceAll("_", " ") ?? "attempt"}: ${r.simulation!.summary}`;
+      lines.set(line, (lines.get(line) ?? 0) + 1);
+    }
+    const summary = "Simulated outcomes:\n" + [...lines].slice(-6).map(([line, count]) => `- ${line}${count > 1 ? ` (${count} attempts)` : ""}`).join("\n")
+      + (lines.size > 6 ? `\n- ${lines.size - 6} earlier outcomes in Details.` : "");
+    return { status, summary, succeeded, total: op.tasks.length,
       evidenceIds: [...new Set(effects.flatMap((r) => [r.evidenceId!, ...(r.verificationEvidenceIds ?? [])]))] };
   }
   const measured = op.results.filter((r) => r.status === "executed" && !!r.evidenceId);

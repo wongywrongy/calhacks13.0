@@ -1,6 +1,6 @@
 import { MaincloudChat } from "./maincloud-chat.ts";
 import { explainFleetError, fleetOutcome } from "../sandbox/src/fleet-outcome.ts";
-import { OperationChat, activeOperation, type Worker, type ChatMessage } from "./fleet-chat.ts";
+import { OperationChat, activeOperation, replyBlocks, type Worker, type ChatMessage } from "./fleet-chat.ts";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { droneGeometry, FleetLines, ViewportResolution } from "./fleet-render.ts";
@@ -762,8 +762,17 @@ async function say(text: string) {
   }
   if (client === operationChat && !resetting) render(frame);
 }
+function replyContent(text: string) {
+  return replyBlocks(text).flatMap((block) => {
+    if (!block.list) return block.lines.map((line) => el("p", "", line));
+    const list = el("ul");
+    list.append(...block.lines.map((line) => el("li", "", line)));
+    return [list];
+  });
+}
 function bubble(m: Msg) {
-  const b = el("div", "bubble" + (m.who === "you" ? " you" : ""), m.text);
+  const b = el("div", "bubble" + (m.who === "you" ? " you" : ""), m.who === "you" ? m.text : "");
+  if (m.who === "agent") b.append(...replyContent(m.text));
   b.dataset.messageId = String(m.id);
   return b;
 }
@@ -873,7 +882,7 @@ function chat(d: Derived) {
         const outcome = ownOp.outcome ?? fleetOutcome(ownOp);
         const card = el("div", "bubble outcome");
         card.dataset.status = outcome.status;
-        card.append(el("b", "", outcome.status), el("p", "", outcome.summary));
+        card.append(el("b", "", outcome.status), ...replyContent(outcome.summary));
         if (outcome.succeeded < outcome.total) card.append(el("p", "", `${outcome.succeeded} of ${outcome.total} assignments succeeded.`));
         const error = ownOp.workers.find((w) => w.error)?.error ?? ownOp.results.find((r) => r.error)?.error;
         if (error) card.append(el("p", "", explainFleetError(error)));

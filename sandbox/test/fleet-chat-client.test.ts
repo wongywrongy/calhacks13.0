@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { OperationChat } from "../../web/fleet-chat.ts";
+import { OperationChat, replyBlocks } from "../../web/fleet-chat.ts";
 
 test("a late same-session poll cannot replace a newer submission snapshot", async (t) => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
@@ -209,4 +209,20 @@ test("New Chat ignores late replies and saved retries after reload without chang
   const refreshed = new OperationChat("owned", "attacker", () => {}, () => {}, 1);
   await refreshed.resume(); refreshed.close();
   assert.equal(refreshed.conversation, 2); assert.deepEqual(refreshed.messages, []);
+});
+
+
+test("agent replies become readable lists without losing facts, IDs or literal markup", () => {
+  assert.deepEqual(replyBlocks("Policy v1.2 applied. DR-007 resisted. See evidence #17."), [
+    { list: true, lines: ["Policy v1.2 applied.", "DR-007 resisted.", "See evidence #17."] },
+  ]);
+  assert.deepEqual(replyBlocks("Simulated outcomes:\n- DR-001 compromised.\n- DR-002 resisted."), [
+    { list: false, lines: ["Simulated outcomes:"] },
+    { list: true, lines: ["DR-001 compromised.", "DR-002 resisted."] },
+  ]);
+  assert.deepEqual(replyBlocks("1. 2.4% exposure.\n2. <img src=x onerror=alert(1)>"), [
+    { list: true, lines: ["2.4% exposure.", "<img src=x onerror=alert(1)>"] },
+  ]);
+  assert.deepEqual(replyBlocks("Waiting for evidence."), [{ list: false, lines: ["Waiting for evidence."] }]);
+  assert.deepEqual(replyBlocks(" "), []);
 });

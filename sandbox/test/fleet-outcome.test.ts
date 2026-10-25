@@ -50,3 +50,14 @@ test("containment alone cannot be reported as completed recovery", () => {
   assert.equal(fleetOutcome(op).status, "Partially completed");
   assert.equal(fleetOutcome({ ...op, results: [result, { ...result, kind: "verify", evidenceId: 7 }] }).status, "Completed");
 });
+
+
+test("compact outcomes identify drones and group repeated identical attempts", () => {
+  const result = { agentId: 1, kind: "command", target: 1, status: "executed", evidenceId: 4,
+    simulation: { simulated: true, summary: "Target resisted.", succeeded: 0, partial: 0, total: 1 } };
+  const summary = fleetOutcome({ state: "completed", role: "attacker", tasks: [{ agentId: 1 }],
+    results: [result, result, { ...result, evidenceId: 5 }, { ...result, agentId: 2, target: 2, evidenceId: 6 }] });
+  assert.equal(summary.summary, "Simulated outcomes:\n- DR-001 · command: Target resisted. (2 attempts)\n- DR-002 · command: Target resisted.");
+  assert.equal(summary.succeeded, 0);
+  assert.deepEqual(summary.evidenceIds, [4, 5, 6]);
+});
