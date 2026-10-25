@@ -92,3 +92,10 @@ commit takeover, policy and verified recovery. Scheduled security fixtures are d
 while movement continues. The 4-second fixture detection delay does not govern model
 defenders. See [FLEET_CHAT_API.md](FLEET_CHAT_API.md) and
 [FLEET_CHAT_VALIDATION.md](FLEET_CHAT_VALIDATION.md).
+
+## Persistent battle attempts
+
+Model-driven fleet operations now use scheduled, fallible battle attempts, cumulative local
+contamination, readiness and explicit mission availability. See [FLEET_ATTEMPTS.md](FLEET_ATTEMPTS.md)
+for the current backend mechanics, seeded validation and UI integration contract. The older
+fixture and historical UI descriptions above are not proof of model behavior or new UI integration.

@@ -95,7 +95,7 @@ pub fn new_maincloud_chat(ctx:&ReducerContext,epoch:u64,generation:u64)->Result<
 #[reducer]
 pub fn reset_maincloud_fleet(ctx:&ReducerContext,epoch:u64,demo:bool)->Result<(),String>{
     fleet::hosted_reset(ctx,epoch,demo)?;
-    if demo {clear_conversation(ctx,"attacker");clear_conversation(ctx,"defender");}Ok(())
+    clear_conversation(ctx,"attacker");clear_conversation(ctx,"defender");Ok(())
 }
 fn insert_job(ctx:&ReducerContext,j:Job){
     alarm(ctx,&j.id,now(ctx),false);alarm(ctx,&j.id,j.deadline,true);ctx.db.hosted_job().insert(j);
@@ -121,7 +121,7 @@ fn prompt(ctx:&ReducerContext,j:&Job)->Result<Value,String> {
         input["memory"]=json!(serde_json::from_str::<Vec<Value>>(&r.result).unwrap_or_default().into_iter().filter(|r|r["agentId"]==j.agent&&r["type"]!="inference").collect::<Vec<_>>());
         input["decisionsRemaining"]=json!(9-j.step);
         let discovered=input["observations"].as_array().map(|a|!a.is_empty()).unwrap_or(false);
-        let allowed=if j.role=="attacker"{if discovered{vec!["command","wait"]}else{vec!["discover","wait"]}}else{vec!["isolate","verify","wait"]};
+        let allowed=if j.role=="attacker"{if discovered{vec!["prepare","command","spread","wait"]}else{vec!["discover","wait"]}}else{vec!["prepare","isolate","harden","verify","release","wait"]};
         (prompts["specialist"].clone(),json!({"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"type":"string","enum":allowed}}}))
     };
     let model=if j.agent==0{ctx.env.BITDEER_COORDINATOR_MODEL()}else{ctx.env.BITDEER_SPECIALIST_MODEL()}.unwrap_or(MODEL.into());
@@ -160,8 +160,19 @@ fn inference(ctx:&mut ProcedureContext,j:&Job)->Result<Value,String>{
 #[procedure]
 pub fn hosted_infer(ctx:&mut ProcedureContext,a:Alarm){
     if ctx.sender()!=ctx.database_identity()||ctx.connection_id().is_some(){return}
+    let waiting=ctx.with_tx(|tx| {
+        let Some(j)=tx.db.hosted_job().id().find(&a.job)else{return false};
+        if j.state!="attempt"{return false}
+        if let Err(e)=current(tx,&j){fail(tx,&j,&e);return true}
+        let kind=serde_json::from_str::<Value>(&j.result).ok().and_then(|v|v["kind"].as_str().map(str::to_string)).unwrap_or_default();
+        let receipt=fleet::hosted_receipt(tx,&j.id);
+        if let Err(e)=complete_action(tx,&j,&kind,receipt){fail(tx,&j,&e);return true}
+        if tx.db.hosted_job().id().find(&j.id).map(|j|j.state)==Some("attempt".into()){alarm(tx,&j.id,now(tx)+500,false);}
+        true
+    });
+    if waiting{return}
     if a.watchdog {
-        ctx.with_tx(|tx|{if let Some(j)=tx.db.hosted_job().id().find(&a.job){if ["queued","running"].contains(&j.state.as_str())&&now(tx)>=j.deadline{fail(tx,&j,"operation_timeout");}}});return
+        ctx.with_tx(|tx|{if let Some(j)=tx.db.hosted_job().id().find(&a.job){if ["queued","running","attempt"].contains(&j.state.as_str())&&now(tx)>=j.deadline{fail(tx,&j,"operation_timeout");}}});return
     }
     let reserved=ctx.try_with_tx(|tx|reserve(tx,&a.job));
     let j=match reserved {Ok(Some(j))=>j,Ok(None)=>return,Err(e)=>{ctx.with_tx(|tx|{if let Some(j)=tx.db.hosted_job().id().find(&a.job){fail(tx,&j,&e);}});return}};
@@ -173,7 +184,7 @@ pub fn hosted_infer(ctx:&mut ProcedureContext,a:Alarm){
         current(tx,&saved)?;
         let value=result.as_ref().map_err(|e|e.clone())?;
         if j.agent==0{commit_plan(tx,&j,value)?;}else{commit_action(tx,&j,value)?;}
-        let mut saved=tx.db.hosted_job().id().find(&j.id).unwrap();saved.state="done".into();saved.finished=now(tx);saved.result=value.to_string();tx.db.hosted_job().id().update(saved);Ok::<_,String>(())
+        let mut saved=tx.db.hosted_job().id().find(&j.id).unwrap();if saved.state!="attempt"{saved.state="done".into();saved.finished=now(tx);}saved.result=value.to_string();tx.db.hosted_job().id().update(saved);Ok::<_,String>(())
     });
     if let Err(e)=committed{ctx.with_tx(|tx|{if let Some(j)=tx.db.hosted_job().id().find(&j.id){fail(tx,&j,&e);}});}
 }
@@ -182,7 +193,7 @@ fn metric(ctx:&ReducerContext,j:&Job,error:Option<&str>)->Value{
     json!({"type":"inference","stage":if j.agent==0{"coordinator"}else{"specialist"},"agentId":j.agent,"model":request["model"],"status":if error.is_some(){"failed"}else{"completed"},"error":error,"at":j.started,"durationMs":now(ctx)-j.started})
 }
 fn fail(ctx:&ReducerContext,j:&Job,error:&str){
-    if !["queued","running"].contains(&j.state.as_str()){return}
+    if !["queued","running","attempt"].contains(&j.state.as_str()){return}
     let mut saved=j.clone();saved.state="failed".into();saved.result=json!({"error":error}).to_string();saved.finished=now(ctx);ctx.db.hosted_job().id().update(saved);
     // A reset/cancelled generation cannot receive messages, deploy agents, or complete old work.
     if check_chat_epoch(ctx,j.epoch).is_err()||check_conversation(ctx,&j.role,j.generation).is_err(){return}
@@ -240,18 +251,35 @@ fn commit_action(ctx:&ReducerContext,j:&Job,v:&Value)->Result<(),String>{
     if v.as_object().map(|o|o.len())!=Some(1)||!allowed.as_array().unwrap().iter().any(|k|k==kind){return Err("provider_malformed_output".into())}
     if kind!="wait"&&fleet::hosted_policy(ctx,j.target)?!=j.policy{return Err("stale_policy".into())}
     fleet::execute_fleet_chat_action(ctx,SESSION.into(),j.operation.clone(),j.step,j.agent,j.target,kind.into(),j.policy)?;
-    let mut receipt=fleet::hosted_receipt(ctx,&format!("{}:{}:{}",j.operation,j.agent,j.step));
-    receipt["agentId"]=json!(j.agent);receipt["target"]=json!(j.target);receipt["step"]=json!(j.step);receipt["kind"]=json!(kind);receipt["status"]=json!("executed");receipt["at"]=json!(now(ctx));
-    let done=kind=="wait"||kind=="command"||receipt["outcome"]=="recovery_verified"||j.step>=8;
     let mut r=ctx.db.backend_chat().id().find(&j.operation).ok_or("Operation missing")?;
-    let mut records:Vec<Value>=serde_json::from_str(&r.result).map_err(|_|"Invalid results")?;records.push(metric(ctx,j,None));records.push(receipt);
+    let mut records:Vec<Value>=serde_json::from_str(&r.result).map_err(|_|"Invalid results")?;records.push(metric(ctx,j,None));
+    r.result=json!(records).to_string();ctx.db.backend_chat().id().update(r);
+    let receipt=fleet::hosted_receipt(ctx,&j.id);
+    complete_action(ctx,j,kind,receipt)?;
+    if ctx.db.hosted_job().id().find(&j.id).map(|j|j.state)==Some("attempt".into()){alarm(ctx,&j.id,now(ctx)+500,false);}
+    Ok(())
+}
+fn complete_action(ctx:&ReducerContext,j:&Job,kind:&str,mut receipt:Value)->Result<(),String>{
+    let pending=receipt["stage"].as_str().map(|s|s!="resolved").unwrap_or(false);
+    receipt["agentId"]=json!(j.agent);receipt["target"]=json!(j.target);receipt["step"]=json!(j.step);receipt["kind"]=json!(kind);receipt["status"]=json!(if pending{"queued"}else{"executed"});receipt["actionId"]=json!(j.id);receipt["at"]=json!(now(ctx));
+    let done=!pending&&(kind=="wait"||["command","spread","release"].contains(&kind)||receipt["simulation"]["succeeded"].as_u64().unwrap_or(0)>0&&kind=="verify"||j.step>=8);
+    let mut r=ctx.db.backend_chat().id().find(&j.operation).ok_or("Operation missing")?;
+    let mut records:Vec<Value>=serde_json::from_str(&r.result).map_err(|_|"Invalid results")?;
+    if let Some(old)=records.iter_mut().find(|v|v["actionId"]==j.id){*old=receipt}else{records.push(receipt)}
     if done {records.push(json!({"type":"worker","agentId":j.agent,"target":j.target,"state":if kind=="wait"{"paused"}else{"done"},"at":now(ctx)}));}
     r.result=json!(records).to_string();ctx.db.backend_chat().id().update(r);
-    if !done {
+    let mut saved=ctx.db.hosted_job().id().find(&j.id).ok_or("Job missing")?;saved.state=if pending{"attempt"}else{"done"}.into();ctx.db.hosted_job().id().update(saved);
+    if !pending&&!done {
         let mut next=j.clone();next.step+=1;next.id=format!("{}:{}:{}",j.operation,j.agent,next.step);next.state="queued".into();next.started=0;next.finished=0;next.request.clear();next.result.clear();insert_job(ctx,next);
     }
-    finish_operation(ctx,&j.operation);Ok(())
+    if !pending{finish_operation(ctx,&j.operation);}Ok(())
 }
+pub(super) fn clear_jobs(ctx:&ReducerContext){
+ for a in ctx.db.hosted_alarm().iter(){ctx.db.hosted_alarm().id().delete(a.id);}
+ for j in ctx.db.hosted_job().iter(){ctx.db.hosted_job().id().delete(j.id);}
+ for b in ctx.db.hosted_budget().iter(){ctx.db.hosted_budget().operation().delete(b.operation);}
+}
+
 fn finish_operation(ctx:&ReducerContext,id:&str){
     let Some(r)=ctx.db.backend_chat().id().find(id.to_string())else{return};if r.state!="running"{return}
     let config:Value=serde_json::from_str(&r.config).unwrap();let records:Vec<Value>=serde_json::from_str(&r.result).unwrap();
@@ -274,4 +302,9 @@ mod tests {
   assert!(parse_provider("broken").is_err());
   assert_eq!(parse_provider(r#"{"choices":[{"finish_reason":"stop","message":{"content":"{\"kind\":\"wait\"}"}}]}"#).unwrap(),json!({"kind":"wait"}));
  }
+}
+
+pub(super) fn battle_authorized(ctx:&ReducerContext,operation:&str)->bool {
+ let jobs:Vec<_>=ctx.db.hosted_job().iter().filter(|j|j.operation==operation).collect();
+ jobs.is_empty()||jobs.iter().any(|j|current(ctx,j).is_ok())
 }

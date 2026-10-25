@@ -3,6 +3,8 @@ use spacetimedb::{table,reducer,view,Identity,ReducerContext,ViewContext,Table,S
 use std::time::Duration;
 #[path="resilience.rs"]
 mod resilience;
+#[path="battle.rs"]
+mod battle;
 #[table(accessor=fleet_principal)]
 pub struct Principal { #[primary_key] identity:Identity, role:String }
 #[table(accessor=fleet_session)]
@@ -58,6 +60,7 @@ fn start_fleet_impl(ctx:&ReducerContext,drones:u32,attackers:u32,defenders:u32,h
  crate::backend::cancel_chat_session(ctx);
  for p in ctx.db.fleet_agent_profile().iter(){ctx.db.fleet_agent_profile().id().delete(p.id);}
  resilience::clear(ctx);
+ battle::clear(ctx);
  let epoch=ctx.db.fleet_session().id().find(0).map(|s|s.epoch+1).unwrap_or(1);
  ctx.db.fleet_chat_clock().id().delete(0);
  for d in ctx.db.drone_schedule().iter(){ctx.db.drone_schedule().id().delete(d.id);} for a in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(a.id);}
@@ -71,14 +74,10 @@ fn start_fleet_impl(ctx:&ReducerContext,drones:u32,attackers:u32,defenders:u32,h
 pub(crate) fn reset_chat_fleet(ctx:&ReducerContext,demo:bool)->Result<(),String>{
  owner(ctx)?;reset_chat_fleet_impl(ctx,demo)
 }
-fn reset_chat_fleet_impl(ctx:&ReducerContext,demo:bool)->Result<(),String>{
+fn reset_chat_fleet_impl(ctx:&ReducerContext,_demo:bool)->Result<(),String>{
  let s=ctx.db.fleet_session().id().find(0).ok_or("Fleet missing")?;
- let demo=demo||resilience::enabled(ctx);
- // Swarm reset preserves already-known targets alongside the conversation, never grants new visibility.
- let known:Vec<u32>=if demo{vec![]}else{ctx.db.fleet_discovery().iter().map(|d|d.drone).collect()};
  start_fleet_impl(ctx,s.drones,0,0,s.hardened)?;
  let epoch=ctx.db.fleet_session().id().find(0).unwrap().epoch;
- for drone in known{ctx.db.fleet_discovery().insert(Discovery{drone,epoch});}
  for e in ctx.db.fleet_evidence().iter(){ctx.db.fleet_evidence().id().delete(e.id);}
  for a in ctx.db.fleet_chat_action().iter(){ctx.db.fleet_chat_action().key().delete(a.key);}
  // Verify the initial pose within the reset transaction, before movement can resume.
@@ -89,11 +88,12 @@ fn reset_chat_fleet_impl(ctx:&ReducerContext,demo:bool)->Result<(),String>{
  Ok(())
 }
 #[reducer]
-pub fn stop_fleet(ctx:&ReducerContext)->Result<(),String>{owner(ctx)?;if let Some(mut s)=ctx.db.fleet_session().id().find(0){s.active=false;ctx.db.fleet_session().id().update(s);} for t in ctx.db.drone_schedule().iter(){ctx.db.drone_schedule().id().delete(t.id);}for t in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(t.id);}Ok(())}
+pub fn stop_fleet(ctx:&ReducerContext)->Result<(),String>{owner(ctx)?;crate::backend::cancel_chat_session(ctx);battle::stop(ctx);if let Some(mut s)=ctx.db.fleet_session().id().find(0){s.active=false;ctx.db.fleet_session().id().update(s);} for t in ctx.db.drone_schedule().iter(){ctx.db.drone_schedule().id().delete(t.id);}for t in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(t.id);}Ok(())}
 fn live(ctx:&ReducerContext,epoch:u64)->bool{ctx.db.fleet_session().id().find(0).map(|s|s.active&&s.epoch==epoch&&(s.deadline==0||ctx.timestamp.to_micros_since_unix_epoch()<s.deadline)).unwrap_or(false)}
 #[reducer]
 pub fn drone_tick(ctx:&ReducerContext,timer:DroneSchedule){if ctx.sender()!=ctx.database_identity(){panic!("Scheduler only")}if !live(ctx,timer.epoch){if ctx.db.drone_schedule().id().find(timer.id).map(|s|s.epoch)==Some(timer.epoch){ctx.db.drone_schedule().id().delete(timer.id);}return}if let Some(mut d)=ctx.db.fleet_drone().id().find(timer.id as u32){d.tick+=1;d.battery=(d.battery-0.003).max(0.);
  if resilience::enabled(ctx){resilience::tick(ctx,&mut d);ctx.db.fleet_drone().id().update(d);return}
+ if battle::enabled(ctx)&&d.isolated{d.z=(d.z-0.4).max(3.);ctx.db.fleet_drone().id().update(d);return}
  // Healthy drones follow the shared match clock; a held drone follows the attacker's pull instead.
  let start=match_start(ctx);let secs=|us:i64|(us-start) as f32/1e6;let t=secs(ctx.timestamp.to_micros_since_unix_epoch());
  let hold=if d.controller=="defender"{None}else{ctx.db.fleet_hold().drone().find(d.id)};
@@ -114,7 +114,7 @@ pub fn visible_drones(ctx:&ViewContext)->Vec<Drone>{let r=role(ctx);if r.is_empt
 #[view(accessor=visible_agents,public)]
 pub fn visible_agents(ctx:&ViewContext)->Vec<Agent>{let r=role(ctx);ctx.db.fleet_agent().epoch().filter(0u64..) .filter(|a|r=="observer"||a.role==r).collect()}
 #[view(accessor=visible_evidence,public)]
-pub fn visible_evidence(ctx:&ViewContext)->Vec<Evidence>{let r=role(ctx);if r.is_empty(){return vec![]}let Some(session)=ctx.db.fleet_session().id().find(0)else{return vec![]};ctx.db.fleet_evidence().epoch().filter(session.epoch).filter(|e|r=="observer"||if r=="attacker"{e.kind=="discovered"||e.kind.starts_with("unauthorized_command")||e.kind.starts_with("challenge_")}else{e.kind!="discovered"&&!e.kind.starts_with("challenge_")}).map(|mut e|{if r=="defender"&&e.kind.starts_with("unauthorized_command"){e.actor=0;}if r=="attacker"{e.policy_version=0;}e}).collect()}
+pub fn visible_evidence(ctx:&ViewContext)->Vec<Evidence>{let r=role(ctx);if r.is_empty(){return vec![]}let Some(session)=ctx.db.fleet_session().id().find(0)else{return vec![]};ctx.db.fleet_evidence().epoch().filter(session.epoch).filter(|e|r=="observer"||if r=="attacker"{e.kind=="discovered"||e.kind=="limited_access"||e.kind.starts_with("unauthorized_command")||e.kind.starts_with("challenge_")||e.kind=="attempt_resolved"&&ctx.db.fleet_agent().id().find(e.actor).map(|a|a.role=="attacker").unwrap_or(false)}else{e.kind!="discovered"&&!e.kind.starts_with("challenge_")}).map(|mut e|{if r=="defender"&&(e.kind.starts_with("unauthorized_command")||ctx.db.fleet_agent().id().find(e.actor).map(|a|a.role=="attacker").unwrap_or(false)){e.actor=0;}if r=="attacker"{e.policy_version=0;}e}).collect()}
 
 // Explicitly switch security decisions from scheduled fixtures to external model workers.
 #[reducer]
@@ -125,6 +125,7 @@ pub fn enable_fleet_chat(ctx:&ReducerContext)->Result<(),String>{
   if !crate::backend::has_agent_assignment(ctx,a.epoch,a.id)&&!ctx.db.fleet_evidence().epoch().filter(a.epoch).any(|e|e.actor==a.id){ctx.db.fleet_agent().id().delete(a.id);}
  }
  for t in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(t.id);}
+ if !resilience::enabled(ctx){if let Some(s)=ctx.db.fleet_session().id().find(0){battle::start(ctx,s.epoch);}}
  Ok(())
 }
 #[table(accessor=fleet_chat_action)]
@@ -138,18 +139,21 @@ pub fn execute_fleet_chat_action(ctx:&ReducerContext,session:String,operation:St
  let key=format!("{}:{}:{}",operation,agent,sequence);
  if let Some(old)=ctx.db.fleet_chat_action().key().find(&key){return if old.kind==kind&&old.target==target&&old.version==version {Ok(())}else{Err("Action idempotency conflict".into())}}
  if sequence>1 && ctx.db.fleet_chat_action().key().find(format!("{}:{}:{}",operation,agent,sequence-1)).is_none(){return Err("Out of order action".into())}
+ if sequence>1&&battle::pending(ctx,&format!("{}:{}:{}",operation,agent,sequence-1)){return Err("Previous attempt pending".into())}
  let mut d=ctx.db.fleet_drone().id().find(target).ok_or("Drone missing")?;
  if d.epoch!=a.epoch{return Err("Stale drone".into())}
- let mut unauthorized_evidence_id=0;let mut authorized_evidence_id=0;
+ let unauthorized_evidence_id=0;let authorized_evidence_id=0;
+ if !resilience::enabled(ctx)&&kind!="discover"&&kind!="wait"{
+  battle::queue(ctx,&key,&operation,&role,agent,target,&kind,version)?;
+  a.target=target;a.step+=1;a.last_action=format!("queued {} attempt",kind);ctx.db.fleet_agent().id().update(a);
+  ctx.db.fleet_chat_action().insert(ChatAction{key,evidence_id:0,kind,target,version,unauthorized_evidence_id:0,authorized_evidence_id:0});return Ok(())
+ }
  if resilience::enabled(ctx)&&kind!="discover"&&kind!="wait" {
  resilience::apply(ctx,&role,agent,&mut d,&kind,version)?;
  } else {
  if resilience::enabled(ctx)&&role=="defender"&&kind!="wait"{return Err("Action not permitted".into())}
  match (role.as_str(),kind.as_str()) {
  ("attacker","discover")=>{if ctx.db.fleet_discovery().drone().find(target).is_none(){ctx.db.fleet_discovery().insert(Discovery{drone:target,epoch:a.epoch});}emit(ctx,a.epoch,agent,&d,"discovered",200);},
- ("attacker","command")=>{if ctx.db.fleet_discovery().drone().find(target).is_none(){return Err("Discover first".into())}let status=command(&mut d,false);emit(ctx,a.epoch,agent,&d,if status==200{"unauthorized_command_accepted"}else{"unauthorized_command_blocked"},status);if status==200&&ctx.db.fleet_hold().drone().find(target).is_none(){ctx.db.fleet_hold().insert(Hold{drone:target,epoch:a.epoch,since:ctx.timestamp.to_micros_since_unix_epoch()});}},
- ("defender","isolate")=>{if d.policy_version!=version{return Err("Stale policy".into())}d.isolated=true;d.policy_version+=1;emit(ctx,a.epoch,agent,&d,"policy_applied",200);},
- ("defender","verify")=>{if d.policy_version!=version{return Err("Stale policy".into())}let bad=command(&mut d,false);emit(ctx,a.epoch,agent,&d,"verification_unauthorized",bad);unauthorized_evidence_id=ctx.db.fleet_evidence().iter().map(|e|e.id).max().unwrap_or(0);let good=command(&mut d,true);emit(ctx,a.epoch,agent,&d,"verification_authorized",good);authorized_evidence_id=ctx.db.fleet_evidence().iter().map(|e|e.id).max().unwrap_or(0);if bad==403&&good==200{d.controller="defender".into();ctx.db.fleet_hold().drone().delete(target);emit(ctx,a.epoch,agent,&d,"recovery_verified",200);}else{emit(ctx,a.epoch,agent,&d,"recovery_failed",409);}},
  (_,"wait")=>{},
  _=>return Err("Action not permitted".into())
  }
@@ -207,7 +211,6 @@ pub fn visible_fleet_session(ctx:&ViewContext)->Vec<FleetSessionState>{
  if role(ctx).is_empty(){return vec![]}ctx.db.fleet_session().id().find(0).map(|s|FleetSessionState{epoch:s.epoch,active:s.active,conversation:crate::backend::visible_conversation_generation(ctx,&role(ctx))}).into_iter().collect()
 }
 
-pub(crate) fn resilience_enabled(ctx:&ReducerContext)->bool{resilience::enabled(ctx)}
 
 // Role-scoped input for hosted inference; catalog addresses do not reveal undiscovered telemetry.
 pub(crate) fn hosted_role(ctx:&ReducerContext)->String {
@@ -221,12 +224,13 @@ pub(crate) fn hosted_context(ctx:&ReducerContext,role:&str,target:u32)->serde_js
  let drones:Vec<_>=ctx.db.fleet_drone().epoch().filter(s.epoch).filter(|d|(target==0||d.id==target)&&(role=="defender"||ctx.db.fleet_discovery().drone().find(d.id).map(|k|k.epoch)==Some(s.epoch))).map(|d|if role=="attacker"{serde_json::json!({"id":d.id,"controller":d.controller})}else{serde_json::json!({"id":d.id,"controller":d.controller,"isolated":d.isolated,"policyVersion":d.policy_version})}).collect();
  let mut evidence:Vec<_>=ctx.db.fleet_evidence().epoch().filter(s.epoch).filter(|e|(target==0||e.drone==target)&&if role=="attacker"{e.kind=="discovered"||e.kind.starts_with("unauthorized_command")}else{e.kind!="discovered"&&!e.kind.starts_with("challenge_")}).collect();
  evidence.sort_by_key(|e|e.id);let evidence:Vec<_>=evidence.iter().rev().take(16).map(|e|serde_json::json!({"id":e.id,"target":e.drone,"kind":e.kind,"status":e.status})).collect();
- serde_json::json!({"session":{"active":s.active,"epoch":s.epoch},"catalog":{"targetIds":(1..=s.drones).collect::<Vec<_>>(),"discoveryAvailableBeforeObservation":role=="attacker"},"observations":drones,"evidence":evidence})
+ serde_json::json!({"session":{"active":s.active,"epoch":s.epoch},"catalog":{"targetIds":(1..=s.drones).collect::<Vec<_>>(),"communicationGraph":"16-column grid; horizontal neighbors in the same row and IDs 16 apart; isolation breaks incident links","discoveryAvailableBeforeObservation":role=="attacker"},"observations":drones,"battle":battle::context(ctx,role,target),"evidence":evidence})
 }
 pub(crate) fn hosted_receipt(ctx:&ReducerContext,key:&str)->serde_json::Value {
  let Some(r)=ctx.db.fleet_chat_action().key().find(key.to_string())else{return serde_json::Value::Null};
  let e=ctx.db.fleet_evidence().id().find(r.evidence_id);
- serde_json::json!({"evidenceId":r.evidence_id,"outcome":e.as_ref().map(|e|e.kind.as_str()).unwrap_or("wait"),"responseStatus":e.as_ref().map(|e|e.status),"policyVersion":e.as_ref().map(|e|e.policy_version),"verificationEvidenceIds":([r.unauthorized_evidence_id,r.authorized_evidence_id].into_iter().filter(|n|*n>0).collect::<Vec<_>>())})
+ let mut receipt=serde_json::json!({"evidenceId":r.evidence_id,"outcome":e.as_ref().map(|e|e.kind.as_str()).unwrap_or("wait"),"responseStatus":e.as_ref().map(|e|e.status),"policyVersion":e.as_ref().map(|e|e.policy_version),"verificationEvidenceIds":([r.unauthorized_evidence_id,r.authorized_evidence_id].into_iter().filter(|n|*n>0).collect::<Vec<_>>())});
+ if let Some(b)=battle::receipt(ctx,key){receipt["stage"]=b["stage"].clone();receipt["simulation"]=b["simulation"].clone();if b["stage"]=="resolved"&&!b["simulation"]["outcome"].is_null(){receipt["outcome"]=b["simulation"]["outcome"].clone();}}receipt
 }
 pub(crate) fn hosted_reset(ctx:&ReducerContext,epoch:u64,demo:bool)->Result<(),String>{
  if hosted_role(ctx)!="defender" {return Err("Defender required".into())}

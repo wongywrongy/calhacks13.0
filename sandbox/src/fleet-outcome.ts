@@ -15,10 +15,22 @@ export const explainFleetError = (code?: string) => ({
 }[code ?? ""] ?? "The action was rejected; the backend did not provide a specific reason.");
 
 type Receipt = {
-  agentId: number; target?: number; status: string; outcome?: string;
+  agentId: number; target?: number; status: string; outcome?: string; kind?: string;
+  simulation?: { simulated: boolean; summary: string; succeeded: number; partial: number; total: number; results?: { target: number; success: boolean; partial: boolean }[] };
   verifiedEffectEvidenceId?: number; evidenceId?: number; verificationEvidenceIds?: number[]; responseStatus?: number;
 };
 export function fleetOutcome(op: { state: string; role: string; tasks: { agentId: number }[]; results: Receipt[] }) {
+  const simulated = op.results.filter((r) => r.status === "executed" && r.evidenceId && r.simulation?.simulated);
+  if (simulated.length) {
+    const effects = simulated.filter((r) => (op.role === "attacker" ? ["command", "spread"] : ["isolate", "harden", "verify", "release"]).includes(r.kind ?? ""));
+    const completed = new Set(effects.filter((r) => r.simulation!.succeeded > 0 && (op.role === "attacker" || ["verify", "release"].includes(r.kind ?? ""))).map((r) => r.agentId));
+    const succeeded = completed.size;
+    const partial = effects.some((r) => r.simulation!.partial > 0 || r.simulation!.succeeded > 0 && (r.simulation!.succeeded < r.simulation!.total || !completed.has(r.agentId)));
+    const status = op.state === "planning" ? "Planning" : op.state === "running" ? "Running" : op.state === "cancelled" ? "Stopped"
+      : succeeded === op.tasks.length && succeeded > 0 && !partial && op.state === "completed" ? "Completed" : succeeded > 0 || partial ? "Partially completed" : "Failed";
+    return { status, summary: "Simulated outcomes: " + (effects.length ? effects : simulated).slice(-6).map((r) => r.simulation!.summary).join(" "), succeeded, total: op.tasks.length,
+      evidenceIds: [...new Set(effects.flatMap((r) => [r.evidenceId!, ...(r.verificationEvidenceIds ?? [])]))] };
+  }
   const measured = op.results.filter((r) => r.status === "executed" && !!r.evidenceId);
   const successful = measured.filter((r) => op.role === "defender"
     ? r.outcome === "participation_restored" && r.responseStatus === 200 || r.outcome === "recovery_verified" && r.responseStatus === 200 && r.verificationEvidenceIds?.length === 2

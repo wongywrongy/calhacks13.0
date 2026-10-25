@@ -362,7 +362,7 @@ pub fn new_chat(ctx:&ReducerContext,session:String,role:String,epoch:u64,generat
 pub fn reset_chat_fleet(ctx:&ReducerContext,session:String,epoch:u64,demo:bool)->Result<(),String>{
     lease(ctx,&session)?;check_chat_epoch(ctx,epoch)?;
     crate::fleet::reset_chat_fleet(ctx,demo)?;
-    if demo||crate::fleet::resilience_enabled(ctx) {clear_conversation(ctx,"attacker");clear_conversation(ctx,"defender");}
+    clear_conversation(ctx,"attacker");clear_conversation(ctx,"defender");
     Ok(())
 }
 // Session metadata lives in existing keys/configs so persisted table schemas stay compatible.
@@ -373,6 +373,7 @@ fn check_chat_epoch(ctx:&ReducerContext,epoch:u64)->Result<(),String>{
     if epoch==0||epoch!=chat_epoch(ctx){return Err("Stale fleet session".into())}Ok(())
 }
 pub(crate) fn cancel_chat_session(ctx:&ReducerContext) {
+    hosted::clear_jobs(ctx);
     for mut r in ctx.db.backend_chat().iter().filter(|r|["planning","running"].contains(&r.state.as_str())) {
         chat_transition(ctx,&r.id,"cancelled");r.state="cancelled".into();ctx.db.backend_chat().id().update(r);
     }
@@ -495,6 +496,8 @@ pub fn record_chat_exchange(ctx:&ReducerContext,session:String,key:String,role:S
 }
 fn chat_summary(state:&str,result:&str)->String {
     let rows:Vec<serde_json::Value>=serde_json::from_str(result).unwrap_or_default();
+    let simulations:Vec<_>=rows.iter().filter(|r|r["status"]=="executed"&&r["simulation"].is_object()).collect();
+    if !simulations.is_empty(){return format!("Operation {}. Simulated outcomes: {}",state,simulations.iter().filter_map(|r|r["simulation"]["summary"].as_str()).collect::<Vec<_>>().join(" "))}
     let count=|kind:&str|rows.iter().filter(|r|r["status"]=="executed"&&r["outcome"]==kind).count();
     let errors:Vec<&str>=rows.iter().filter_map(|r|r["error"].as_str()).collect();
     format!("Operation {}. {} accepted unauthorized commands, {} blocked commands, {} verified recoveries.{}",state,count("unauthorized_command_accepted"),count("unauthorized_command_blocked"),count("recovery_verified"),if errors.is_empty(){String::new()}else{format!(" Recorded failures: {}. No fixture fallback was used.",errors.join(", "))})
@@ -561,3 +564,15 @@ pub fn update_chat_turn(ctx:&ReducerContext,session:String,id:String,state:Strin
 
 #[path="maincloud.rs"]
 mod hosted;
+
+// The scheduler rechecks authority before every deferred effect, including after a restart.
+pub(crate) fn battle_operation_active(ctx:&ReducerContext,id:&str,epoch:u64)->bool {
+ ctx.db.backend_chat().id().find(id.to_string()).map(|r|r.epoch==epoch&&r.state=="running"&&hosted::battle_authorized(ctx,id)&&serde_json::from_str::<serde_json::Value>(&r.config).ok().and_then(|v|v["deadline"].as_i64()).map(|d|now(ctx)<d).unwrap_or(false)).unwrap_or(false)
+}
+pub(crate) fn battle_message(ctx:&ReducerContext,operation:&str,key:&str,stage:&str,report:&str){
+ if let Some(r)=ctx.db.backend_chat().id().find(operation.to_string()) {
+  if !battle_operation_active(ctx,operation,r.epoch){return}
+  let summary=serde_json::from_str::<serde_json::Value>(report).ok().and_then(|v|v["summary"].as_str().map(str::to_string)).unwrap_or_default();
+  let _=append_chat_message(ctx,config_generation(&r.config),format!("{}:{}",key,stage),&r.role,operation,"simulation",format!("Simulation: {}",summary),0);
+ }
+}

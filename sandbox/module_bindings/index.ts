@@ -54,6 +54,7 @@ import ResetChatFleetReducer from "./reset_chat_fleet_reducer";
 import ResetMaincloudFleetReducer from "./reset_maincloud_fleet_reducer";
 import SaveBackendSnapshotReducer from "./save_backend_snapshot_reducer";
 import SendMaincloudMessageReducer from "./send_maincloud_message_reducer";
+import SetBattleSeedReducer from "./set_battle_seed_reducer";
 import StartFleetReducer from "./start_fleet_reducer";
 import StopFleetReducer from "./stop_fleet_reducer";
 import TransitionBackendRunReducer from "./transition_backend_run_reducer";
@@ -68,6 +69,8 @@ import VisibleAgentProfilesRow from "./visible_agent_profiles_table";
 import VisibleAgentsRow from "./visible_agents_table";
 import VisibleBackendEventsRow from "./visible_backend_events_table";
 import VisibleBackendRunsRow from "./visible_backend_runs_table";
+import VisibleBattleAttemptsRow from "./visible_battle_attempts_table";
+import VisibleBattleDronesRow from "./visible_battle_drones_table";
 import VisibleChatMessagesRow from "./visible_chat_messages_table";
 import VisibleChatOperationsRow from "./visible_chat_operations_table";
 import VisibleChatTurnsRow from "./visible_chat_turns_table";
@@ -122,6 +125,20 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, VisibleBackendRunsRow),
+  visibleBattleAttempts: __table({
+    name: 'visible_battle_attempts',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleBattleAttemptsRow),
+  visibleBattleDrones: __table({
+    name: 'visible_battle_drones',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleBattleDronesRow),
   visibleChatMessages: __table({
     name: 'visible_chat_messages',
     indexes: [
@@ -216,6 +233,7 @@ const reducersSchema = __reducers(
   __reducerSchema("reset_maincloud_fleet", ResetMaincloudFleetReducer),
   __reducerSchema("save_backend_snapshot", SaveBackendSnapshotReducer),
   __reducerSchema("send_maincloud_message", SendMaincloudMessageReducer),
+  __reducerSchema("set_battle_seed", SetBattleSeedReducer),
   __reducerSchema("start_fleet", StartFleetReducer),
   __reducerSchema("stop_fleet", StopFleetReducer),
   __reducerSchema("transition_backend_run", TransitionBackendRunReducer),
@@ -239,6 +257,10 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "visible_backend_events": Omit<typeof tablesSchema.schemaType.tables["visibleBackendEvents"], "accessorName"> & { readonly accessorName: "visible_backend_events" };
     /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
     readonly "visible_backend_runs": Omit<typeof tablesSchema.schemaType.tables["visibleBackendRuns"], "accessorName"> & { readonly accessorName: "visible_backend_runs" };
+    /** @deprecated Use `visibleBattleAttempts` instead. This alias will be removed in the next major version. */
+    readonly "visible_battle_attempts": Omit<typeof tablesSchema.schemaType.tables["visibleBattleAttempts"], "accessorName"> & { readonly accessorName: "visible_battle_attempts" };
+    /** @deprecated Use `visibleBattleDrones` instead. This alias will be removed in the next major version. */
+    readonly "visible_battle_drones": Omit<typeof tablesSchema.schemaType.tables["visibleBattleDrones"], "accessorName"> & { readonly accessorName: "visible_battle_drones" };
     /** @deprecated Use `visibleChatMessages` instead. This alias will be removed in the next major version. */
     readonly "visible_chat_messages": Omit<typeof tablesSchema.schemaType.tables["visibleChatMessages"], "accessorName"> & { readonly accessorName: "visible_chat_messages" };
     /** @deprecated Use `visibleChatOperations` instead. This alias will be removed in the next major version. */
@@ -282,6 +304,8 @@ const tableAccessorAliases = {
   "visible_agents": "visibleAgents",
   "visible_backend_events": "visibleBackendEvents",
   "visible_backend_runs": "visibleBackendRuns",
+  "visible_battle_attempts": "visibleBattleAttempts",
+  "visible_battle_drones": "visibleBattleDrones",
   "visible_chat_messages": "visibleChatMessages",
   "visible_chat_operations": "visibleChatOperations",
   "visible_chat_turns": "visibleChatTurns",
@@ -322,6 +346,10 @@ export type DbView = __DbViewBase & {
   readonly "visible_backend_events": __DbViewBase["visibleBackendEvents"];
   /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
   readonly "visible_backend_runs": __DbViewBase["visibleBackendRuns"];
+  /** @deprecated Use `visibleBattleAttempts` instead. This alias will be removed in the next major version. */
+  readonly "visible_battle_attempts": __DbViewBase["visibleBattleAttempts"];
+  /** @deprecated Use `visibleBattleDrones` instead. This alias will be removed in the next major version. */
+  readonly "visible_battle_drones": __DbViewBase["visibleBattleDrones"];
   /** @deprecated Use `visibleChatMessages` instead. This alias will be removed in the next major version. */
   readonly "visible_chat_messages": __DbViewBase["visibleChatMessages"];
   /** @deprecated Use `visibleChatOperations` instead. This alias will be removed in the next major version. */
@@ -356,6 +384,10 @@ export type Tables = __TablesBase & {
   readonly "visible_backend_events": __TablesBase["visibleBackendEvents"];
   /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
   readonly "visible_backend_runs": __TablesBase["visibleBackendRuns"];
+  /** @deprecated Use `visibleBattleAttempts` instead. This alias will be removed in the next major version. */
+  readonly "visible_battle_attempts": __TablesBase["visibleBattleAttempts"];
+  /** @deprecated Use `visibleBattleDrones` instead. This alias will be removed in the next major version. */
+  readonly "visible_battle_drones": __TablesBase["visibleBattleDrones"];
   /** @deprecated Use `visibleChatMessages` instead. This alias will be removed in the next major version. */
   readonly "visible_chat_messages": __TablesBase["visibleChatMessages"];
   /** @deprecated Use `visibleChatOperations` instead. This alias will be removed in the next major version. */

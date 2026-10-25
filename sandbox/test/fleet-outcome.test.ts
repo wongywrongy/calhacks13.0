@@ -29,3 +29,24 @@ test("blocked commands and repeated evidence cannot inflate success counts", () 
   assert.equal(explainFleetError("reducer_rejected"), "The action was rejected; the backend did not provide a specific reason.");
   assert.match(explainFleetError("stale_policy"), /policy changed/);
 });
+
+test("simulation receipts distinguish pending attempts, partial access and completed control effects", () => {
+  const receipt = { agentId: 1, kind: "spread", target: 18, status: "queued", evidenceId: 3,
+    simulation: { simulated: true, summary: "Partial success: one drone compromised; two resisted.", succeeded: 1, partial: 0, total: 3 } };
+  const op = { state: "completed", role: "attacker", tasks: [{ agentId: 1 }], results: [receipt] };
+  assert.equal(fleetOutcome(op).succeeded, 0, "Selection is not an effect");
+  const partial = fleetOutcome({ ...op, results: [{ ...receipt, status: "executed" }] });
+  assert.equal(partial.status, "Partially completed");assert.equal(partial.succeeded, 1);
+  assert.match(partial.summary, /^Simulated outcomes:/);
+  const limited = fleetOutcome({ ...op, results: [{ ...receipt, status: "executed", simulation: { ...receipt.simulation, succeeded: 0, partial: 1 } }] });
+  assert.equal(limited.succeeded, 0);assert.equal(limited.status, "Partially completed");
+});
+
+test("containment alone cannot be reported as completed recovery", () => {
+  const result = { agentId: 1, kind: "isolate", status: "executed", evidenceId: 4,
+    simulation: { simulated: true, summary: "Contained; mission participation suspended.", succeeded: 1, partial: 0, total: 1 } };
+  const op = { state: "completed", role: "defender", tasks: [{ agentId: 1 }], results: [result] };
+  assert.equal(fleetOutcome(op).succeeded, 0);
+  assert.equal(fleetOutcome(op).status, "Partially completed");
+  assert.equal(fleetOutcome({ ...op, results: [result, { ...result, kind: "verify", evidenceId: 7 }] }).status, "Completed");
+});

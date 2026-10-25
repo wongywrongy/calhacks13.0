@@ -24,6 +24,7 @@ test("fleet and conversation resets fence stale work and survive reconnect", { s
   let service = await startService({ operatorToken, env });
   try {
     await service.store.call("start_fleet", [4, 0, 0, false]);
+    await service.store.call("set_battle_seed", [233]);
     for (const role of ["attacker", "defender", "observer"]) {
       const identity: any = await original(db.env.SPACETIME_URI + "/v1/identity", { method: "POST" }).then((r) => r.json());
       await service.store.call("grant_fleet_view", [identity.identity, role]);
@@ -45,7 +46,7 @@ test("fleet and conversation resets fence stale work and survive reconnect", { s
       assert.equal(r.status, 202, JSON.stringify(r.body)); return r.body;
     };
     const waitFor = async (check: () => Promise<boolean>) => {
-      for (let i = 0; i < 160; i++) { if (await check()) return; await delay(30); }
+      for (let i = 0; i < 800; i++) { if (await check()) return; await delay(30); }
       assert.fail("Timed out waiting for fleet lifecycle");
     };
     const completed = async (role: string, id: string) => waitFor(async () => {
@@ -64,16 +65,18 @@ test("fleet and conversation resets fence stale work and survive reconnect", { s
       assert.deepEqual(state.agents, []); assert.deepEqual(state.events, []);
       assert.deepEqual(await service.store.query("SELECT * FROM fleet_hold"), []);
       assert.deepEqual(await service.store.query("SELECT * FROM fleet_chat_action"), []);
+      for (const table of ["battle_attempt", "battle_schedule", "battle_drone", "battle_retry", "hosted_job", "hosted_alarm"]) assert.deepEqual(await service.store.query("SELECT * FROM " + table), []);
       await waitFor(async () => (await service.store.query("SELECT * FROM fleet_drone")).every((d: any) => d.tick > 0));
+      await service.store.call("set_battle_seed", [233]);
       return c;
     };
-    // Takeover -> reset: keep chat and already-authorized visibility, clear simulation state.
+    // Reset starts a clean epoch, including discoveries and both role conversations.
     const attack = await send("attacker", "Take control of the drones", true);
     await completed("attacker", attack.id);
     assert.ok((await service.store.query("SELECT * FROM fleet_drone")).some((d: any) => d.controller === "attacker"));
     const beforeReset = await reset();
-    assert.equal((await api("/api/chat/state")).body.drones.length, 2);
-    assert.ok((await api("/api/chat/conversation")).body.messages.some((m: any) => m.text === "Take control of the drones"));
+    assert.equal((await api("/api/chat/state")).body.drones.length, 0);
+    assert.deepEqual((await api("/api/chat/conversation")).body.messages, []);
     assert.equal((await api("/api/chat/reset", "attacker", { epoch: beforeReset.epoch })).status, 409);
     assert.equal((await trustedMessage({ message: "Old retry", epoch: beforeReset.epoch })).status, 409);
     assert.equal((await trustedMessage({ message: "Missing epoch" })).status, 400);

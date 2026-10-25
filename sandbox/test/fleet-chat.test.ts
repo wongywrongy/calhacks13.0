@@ -127,7 +127,7 @@ test(
       token: string,
       predicate: (o: any) => boolean,
     ) => {
-      for (let i = 0; i < 140; i++) {
+      for (let i = 0; i < 700; i++) {
         const r = await request(`/v1/chat/operations/${id}`, token);
         if (predicate(r.body)) return r.body;
         await delay(50);
@@ -157,6 +157,7 @@ test(
     try {
       await service.store.call("start_fleet", [4, 0, 0, false]);
       await service.store.call("enable_fleet_chat", []);
+      await service.store.call("set_battle_seed", [233]);
       const [fleet] = await service.store.query("SELECT * FROM fleet_session");
       for (const role of ["attacker", "defender", "observer"]) {
         const identity: any = await original(
@@ -736,14 +737,15 @@ test(
           version,
         ]),
       );
+      // A queued attempt must resolve before this actor can take another decision.
+      for (let i = 0; i < 100; i++) {
+        const [pending] = await service.store.query(`SELECT * FROM battle_attempt WHERE key='${manual}:3:1'`);
+        if (pending.stage === "resolved") break;
+        await delay(50);
+      }
+      const currentVersion = (await service.store.query("SELECT * FROM fleet_drone WHERE id=1"))[0].policy_version;
       await service.store.call("execute_fleet_chat_action", [
-        service.store.session,
-        manual,
-        2,
-        3,
-        1,
-        "verify",
-        version + 1,
+        service.store.session, manual, 2, 3, 1, "verify", currentVersion,
       ]);
       await service.store.call("update_chat_operation", [
         service.store.session,
