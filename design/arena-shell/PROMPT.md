@@ -1,124 +1,116 @@
-# Arena shell: implementation prompt
+# Arena shell v2: spec and implementation prompt
 
 `Defender.dc.html` is a Claude Design artboard (1440×900) of the Defend view. It needs the
-Design runtime to render, so treat it as the visual spec: layout, line grid, type scale,
-tokens and copy. The viewport in it is a cleaned screenshot of the current Three.js scene
-(`viewport-reference.png`); the scene itself does not change. `before.png` is the screen
-this replaces. The artboard's `phase` / `redHeld` props and its agent, event and chat rows
-are sample states for layout only, not real data.
+Design runtime to render, so read it as markup: it is the source of truth for sizes,
+colors, copy and structure. Its `phase` / `redHeld` props and its agent, event and chat
+rows are sample states for layout, not real data. The viewport in it is a cleaned
+screenshot of the current Three.js scene (`viewport-reference.png`); the scene itself does
+not change.
 
-Apply the shell to all three role views (Attack, Defend, Observer). Hand the prompt below
-to Codex or Claude Code from the repo root.
+- `before.png`: the screen before the arena shell.
+- `implemented-v1.png`: the first implementation (ui/arena-shell). v2 below fixes it.
 
----
+## What changed from v1
 
-```
-Restyle web/fleet.html + web/fleet.ts to the arena shell in design/arena-shell/
-(Defender.dc.html is the spec; before.png is the current screen). Apply it to the
-Attack, Defend and Observer views. Read the spec file first, plus docs/FLEET.md,
-docs/UI_REWORK.md and design/role-views/PROMPT.md.
+1. The possession bar is no longer its own row. It is a 6px band along the top edge of the
+   SWARM row (red share from the left, blue the rest, 2px tick at 50%). The separate
+   RED HOLDS / BLUE HOLDS cells are gone.
+2. Row 2 is 50px and carries the column headers: AGENTS (left), SWARM row (middle),
+   SENTINEL (right). The viewport sits directly under it, so it moves up and the activity
+   log gets the space (~310px at 900px tall instead of ~264px).
+3. Camera control: Follow / Fit / Top-down are flush full-height tabs at the right end of the
+   SWARM row, split by 1px rules. Active tab: background #121823 + inset 2px #5B8CFF underline.
+4. State legend is tighter: 12px between items, 5px inside an item.
+5. Activity log is compact: 32px single-line rows, whole-row tint by state, no left border.
+6. The "DR-040 only" chip is a drone filter selector, flush right in the ACTIVITY bar.
+7. Sentinel: no ASK SENTINEL / SUGGESTED bars. The transcript runs from the SENTINEL header
+   to a composer docked at the bottom: one bordered box with the suggestions stacked above
+   the input. The drone context chip sits inside the input on the left.
 
-KEEP (do not regress):
-- Everything in the KEEP list of design/role-views/PROMPT.md: role scoping, SpacetimeDB
-  subscriptions, replay/export path, Canvas fallback, timeline, pinned evidence, real
-  field and event names. Never derive a field a role cannot see.
-- The Three.js scene, camera, in-scene drone label and selection ring. Do not change
-  what renders inside #viewport except removing the overlays listed below.
-- Chat in the right panel only, everything that happens in the activity log
-  (docs/UI_REWORK.md).
+## Layout (1440×900 reference)
 
-REMOVE:
-- The step band (#judge-guide: "Start a challenge -> respond -> inspect evidence",
-  "1. Prepare challenge", "2. Prepare defense", "3. Findings").
-- Viewport overlays: controls key (.ov.bl.key), legend (.ov.br.legend / #legend) and the
-  selected-drone popover (.ov.tr, #ov-sel, #tip-sel). Selection moves to the left rail,
-  the legend moves into the swarm strip, camera help moves into the demo menu.
-- The fleet % gauge in the left rail (possession bar replaces it).
-- Duplicate status: header badge + "Live · Awaiting objective" pill + chat-header status
-  collapse into one header status cell.
+Page: one CSS grid. `grid-template-columns: 272px minmax(0,1fr) 352px`;
+`grid-template-rows: 56px 50px minmax(0,1fr)`; height 100dvh; only inner bodies scroll.
+Borders: 1px #2A3345 on every cell edge; 1px #1B2230 between rows in lists. Dividers
+inside bars are full-height rules, never gaps. Insets 20px left/right (12px when a button
+sits on the right edge).
 
-GRID (one CSS grid for the page; this is what keeps lines aligned, flex columns drift):
-- Page: grid-template-columns 272px minmax(0,1fr) 352px;
-  grid-template-rows 56px 52px minmax(0,1fr); height 100dvh; only inner bodies scroll.
-- Every column inside the main row is the same stack: header 44px, body 440px,
-  header 44px, body fills the rest. So three horizontal rules cross all three columns:
-  the top section headers, the bottom of the viewport, and the lower section headers.
-- 1px #2A3345 borders on every cell edge; 1px #1B2230 between rows inside a list.
-  Inner dividers in bars are full-height rules, never gaps.
-- Insets: 20px left/right everywhere; 12px right when a button sits on the right edge.
+Row 1, header (56px): SUDOKO wordmark | role segmented control (Attack / Defend /
+Observer, 32px buttons) + full-height rule + "Blue team · FC-01 · 120 drones, blue
+credential" | status dot + "Live" + state text, then a 56px cell with the "⋯" demo menu
+(Reset swarm, Reset demo, Presenter mode, camera help).
 
-ROW 1, header (56px), split on the same columns:
-- Left cell: SUDOKO wordmark.
-- Middle cell: role segmented control (Attack / Defend / Observer, 8px color dots,
-  32px buttons), full-height divider, then "Blue team · FC-01 · 120 drones, blue
-  credential" (red-team copy on Attack; Observer: "FC-01 · both teams").
-- Right cell: status dot + "Live" + state text; then a 56px cell with a "⋯" button
-  (44px target) opening the demo menu: Reset swarm, Reset demo, Presenter mode, camera
-  controls help. Presenter mode (key P) hides the menu button.
+Row 2 (50px, content sits under a 6px top inset so labels line up across all three cells):
+- Left: AGENTS label + count.
+- Middle: possession band (absolute, top 0, 6px) / SWARM label / full-height rule / legend
+  (Home, Compromised, Recovered, Blocked, Isolated with live counts) / spacer / camera tabs.
+- Right: SENTINEL label + provider (muted) + 28px new-chat button.
 
-ROW 2, possession (52px), same columns:
-- Left: "RED HOLDS" label + count. Middle: 12px bar, red share from the left, blue
-  fills the rest, 2px tick at 50%, width transition 600ms. Right: count + "BLUE HOLDS".
-- Defend: compromised vs own fleet. Observer: full fleet. Attack: the attacker cannot see
-  fleet size, so show held vs discovered and label the right side "DISCOVERED"; never
-  show a total the role can't see.
+Row 3:
+- Left: agent list (440px body) / SELECTED header (44px, clear button) / selected drone:
+  mono ID + state tag + full evidence sentence.
+- Middle: viewport (440px) / ACTIVITY header (44px): label, rule, All / Problems / You
+  tabs, spacer, drone filter selector / log body.
+- Right: transcript (fills, bottom-aligned bubbles) / composer docked at the bottom.
 
-ROW 3:
-- Left column: AGENTS header (count right) / agent list in the 440 body (existing
-  agent cards, click opens the existing modal) / SELECTED header (clear button) /
-  selected drone: mono ID + state tag + the full evidence sentence (no truncation),
-  scoped to the role.
-- Middle column: SWARM strip (44px): label, full-height divider, then the state legend
-  with live counts (Home, Compromised, Recovered, Blocked, Isolated; Attack shows only
-  states it can see), then the camera segmented control: Follow (new), Fit, Top-down.
-  Follow eases the camera to frame drones whose state just changed, and pauses for 5s
-  after any user camera input. Then the 440px viewport. Then ACTIVITY header (All /
-  Problems / You tabs after a full-height divider; drone filter chip on the right),
-  then log rows: 40px grid of time | drone | state dot + label | detail (ellipsis).
-- Right column, Attack/Defend: chat header (CRIMSON or SENTINEL, provider muted, 28px
-  new-chat button) / transcript in the 440 body, bottom-aligned / SUGGESTED header /
-  three 36px suggestion buttons / composer: "About DR-xxx" context chip, 40px input with
-  attached 44px send button.
-- Right column, Observer (no chat): BLUE AGENTS in the top section, EVIDENCE for the
-  selected drone in the lower section; left column becomes RED AGENTS + SELECTED.
+Alignment checks at 1440×900: the bottom of the viewport equals the bottom of the agent
+list; the SELECTED and ACTIVITY headers share a top; the row-2 bottom rule runs unbroken
+across all three columns; column rules sit at x=272 and x=width-352 from top to bottom.
 
-SUGGESTIONS:
-- Generated from fleet state with a template map, no model call. Clicking one sends it
-  as the chat message (same path as typed input). Include the selected drone ID when one
-  is selected.
-- Defend: idle -> "Probe the fleet controller", "What is exposed right now?",
-  "Trace DR-xxx's last 3 commands"; contested -> "Why did these drones flip?",
-  "Isolate the compromised cluster", "Write a guard rule for this exploit";
-  recovered -> "Summarize what was blocked", "Show the guard rule that held",
-  "Replay the takeover on DR-xxx".
-- Attack: idle -> "Discover drones on FC-01", "What is the fleet controller exposing?",
-  "Command DR-xxx"; engaged -> "Hold what we have", "Why was DR-xxx blocked?",
-  "Try another drone"; repelled -> "Summarize what got blocked", "Find a new entry point".
+## Components
 
-TYPE (five roles only):
-- 11px JetBrains Mono 500, letter-spacing .14em, uppercase, #A3ACBC: section labels.
-- 13px Inter: all text and buttons (400 text, 500 controls, 600 emphasis).
-- 12px JetBrains Mono 500-600: IDs, times, counts, filter chips.
-- 18px JetBrains Mono 600: the two possession counts.
-- 14px JetBrains Mono 600, letter-spacing .32em: wordmark.
-- Controls: 28px tall in 44px bars, 32px in the header. Status dots 8px.
+Activity log
+- Sticky 32px top row: SENTINEL label, status dot, status text ("Waiting for user
+  instructions"). Replaces the "Sentinel · team controller" block.
+- Event row: a `<button>`, 32px, grid `64px 56px 104px 1fr`, gap 12px: time (mono 12,
+  muted) | drone (mono 12) | state word (500, state color) | action ID (mono 12, #8FB0FF)
+  + detail (ellipsis, one line). Click selects that drone.
+- Whole-row tint, no left border, 1px #0A0D13 bottom border between rows:
+  compromised rgba(255,90,95,.13) / #FF7A7E; blocked rgba(232,176,74,.12) / #E8B04A;
+  contained or isolated rgba(91,140,255,.12) / #8FB0FF; recovered rgba(56,192,122,.12) /
+  #5FD495. Hover or selected: raise the tint alpha by about .08.
+- Routine-check groups: one untinted muted row, state "Routine ×N", action ID,
+  "checks with minor results"; expanding inserts the child rows in the same format.
 
-TOKENS (map existing CSS variables onto these):
+Drone filter selector: flush full-height cell behind a 1px rule at the right of the
+ACTIVITY bar: funnel icon, "Drone" (muted), value (mono 12, #8FB0FF, "All" when unset),
+chevron. Opens a listbox: "All drones", then drone IDs. Replaces the amber chip.
+
+Composer: one box (1px #3A4760, radius 8, bg #0A0D13), 16px from the bottom and 20px from
+the sides. Top: suggestions list, three 36px rows (arrow icon, text, first row highlighted
+with a "Tab" hint), 1px rule. Bottom: 44px input row: context chip (mono 12, ×) inside the
+left edge, input, attached 44px send button (#3D6FE6). Tab fills the highlighted suggestion,
+Enter sends; clicking a suggestion sends it through the same path as typed input.
+Suggestions come from a static template map keyed on fleet state and the selected drone,
+never a model call.
+
+## Tokens and type
+
 - bg #0A0D13, panel #0D1118, raised #121823, active #18202E, line #2A3345,
   row-line #1B2230, control-border #3A4760.
 - fg #E7EBF2, text-2 #A3ACBC, muted #8C96A8, faint #7F8A9D.
 - red #FF5A5F (text #FF7A7E), blue #5B8CFF (text #8FB0FF, send #3D6FE6),
   green #38C07A (text #5FD495), amber #E8B04A.
+- Type, five roles only: 11px JetBrains Mono 500 uppercase .14em (#A3ACBC) for labels;
+  13px Inter for all text and buttons (400 / 500 controls / 600 emphasis); 12px JetBrains
+  Mono 500-600 for IDs, times, counts; 14px JetBrains Mono 600 .32em for the wordmark.
+- Controls 28px in 44px bars, 32px in the header; status dots 8px; 44px touch targets for
+  icon-only buttons.
 
-RESPONSIVE: below ~1100px the three columns stack (rail, map, chat) and the possession
-row keeps its bar full width; no horizontal page scroll at 390px.
+## Per role
 
-DONE WHEN:
-- npm run typecheck, npm run build:fleet and npm run test:fleet pass.
-- At 1440x900 in each role, the three horizontal rules line up across all columns and
-  the column borders run unbroken from the header to the bottom.
-- No step band, no viewport overlays, one status indicator, resets only in the menu.
-- Role scoping checks from design/role-views/PROMPT.md still hold.
+- Defend: as drawn.
+- Attack: same shell, red copy. The attacker cannot see fleet size: the possession band
+  shows held vs discovered, and the legend lists only states the attacker can see. Chat is
+  CRIMSON. Suggestions: idle "Discover drones on FC-01", "What is the fleet controller
+  exposing?", "Command DR-xxx"; engaged "Hold what we have", "Why was DR-xxx blocked?",
+  "Try another drone"; repelled "Summarize what got blocked", "Find a new entry point".
+- Observer: no chat. Left = RED AGENTS + SELECTED; right = BLUE AGENTS (top) + EVIDENCE
+  for the selected drone (lower section, header aligned with ACTIVITY).
 
-Update docs/UI_REWORK.md to describe the shell. Commit on a branch and open a PR.
-```
+## Other pages
+
+`web/index.html`, `web/live.html` and `web/report.html` adopt the same system: shared
+tokens and type, the same 56px header (wordmark cell + page nav + status cell), 1px rule
+grid, 44px section headers with 11px mono labels, and 32px tinted rows for any event or
+evidence table. No changes to what data they show.

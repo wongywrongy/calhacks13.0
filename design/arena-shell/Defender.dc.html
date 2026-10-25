@@ -15,7 +15,7 @@ body{margin:0;background:#0A0D13}
 a{color:#8FB0FF}a:hover{color:#B8CCFF}
 </style>
 </helmet>
-<div style="width: 100%; min-height: 900px; box-sizing: border-box; display: grid; grid-template-columns: 272px minmax(0, 1fr) 352px; grid-template-rows: 56px 52px minmax(792px, 1fr); background: #0A0D13; color: #E7EBF2; font-family: Inter, system-ui, sans-serif; font-size: 13px; line-height: 1.45">
+<div style="width: 100%; min-height: 900px; box-sizing: border-box; display: grid; grid-template-columns: 272px minmax(0, 1fr) 352px; grid-template-rows: 56px 50px minmax(794px, 1fr); background: #0A0D13; color: #E7EBF2; font-family: Inter, system-ui, sans-serif; font-size: 13px; line-height: 1.45">
 
 <div style="box-sizing: border-box; display: flex; align-items: center; padding: 0 20px; border-right: 1px solid #2A3345; border-bottom: 1px solid #2A3345; background: #0D1118">
 <span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; letter-spacing: 0.32em">SUDOKO</span>
@@ -49,27 +49,39 @@ a{color:#8FB0FF}a:hover{color:#B8CCFF}
 </div>
 </div>
 
-<div style="box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-right: 1px solid #2A3345; border-bottom: 1px solid #2A3345; background: #0D1118">
-<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #A3ACBC">RED HOLDS</span>
-<span style="font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; color: #FF7A7E">{{compromised}}</span>
+<div style="box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 6px 20px 0; border-right: 1px solid #2A3345; border-bottom: 1px solid #2A3345; background: #0D1118">
+<h2 style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #A3ACBC">AGENTS</h2>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; color: #8C96A8">{{agentCount}}</span>
 </div>
-<div aria-label="Fleet possession" style="box-sizing: border-box; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid #2A3345; background: #0D1118">
-<div style="position: relative; width: 100%; height: 12px; display: flex; border-radius: 3px; overflow: hidden; background: #18202E">
+<div style="position: relative; box-sizing: border-box; display: flex; align-items: center; gap: 14px; padding: 6px 0 0 20px; border-bottom: 1px solid #2A3345; background: #0D1118">
+<div role="img" aria-label="Fleet possession: red {{compromised}}, blue {{blueHeld}}" style="position: absolute; left: 0; right: 0; top: 0; height: 6px; display: flex">
 <div style="width: {{redPct}}%; background: #FF5A5F; transition: width 600ms ease"></div>
 <div style="flex: 1 1 0; background: #5B8CFF"></div>
 <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #0A0D13"></div>
 </div>
+<h2 style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #A3ACBC">SWARM</h2>
+<ul aria-label="Drone states" style="display: flex; align-items: center; gap: 12px; height: 100%; margin: 0; padding: 0 0 0 14px; list-style: none; border-left: 1px solid #2A3345; white-space: nowrap">
+<li style="display: flex; align-items: center; gap: 5px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5B8CFF"></span><span style="color: #A3ACBC">Home</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600">{{home}}</span></li>
+<li style="display: flex; align-items: center; gap: 5px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #FF5A5F"></span><span style="color: #A3ACBC">Compromised</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: #FF7A7E">{{compromised}}</span></li>
+<li style="display: flex; align-items: center; gap: 5px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #38C07A"></span><span style="color: #A3ACBC">Recovered</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: #5FD495">{{recovered}}</span></li>
+<li style="display: flex; align-items: center; gap: 5px"><span style="width: 5px; height: 5px; border-radius: 50%; border: 1.5px solid #E8B04A"></span><span style="color: #A3ACBC">Blocked</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600">{{blocked}}</span></li>
+<li style="display: flex; align-items: center; gap: 5px"><span style="width: 5px; height: 5px; border: 1.5px dashed #A3ACBC"></span><span style="color: #A3ACBC">Isolated</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600">{{isolated}}</span></li>
+</ul>
+<div style="flex: 1 1 0"></div>
+<div role="group" aria-label="Camera" style="display: flex; align-self: stretch">
+<button type="button" aria-pressed="true" style="display: flex; align-items: center; height: 100%; padding: 0 12px; border: 0; border-left: 1px solid #2A3345; color: #E7EBF2; background: #121823; box-shadow: inset 0 -2px 0 #5B8CFF; font: 500 13px Inter, sans-serif; cursor: pointer">Follow</button>
+<button type="button" aria-pressed="false" style="display: flex; align-items: center; height: 100%; padding: 0 12px; border: 0; border-left: 1px solid #2A3345; color: #A3ACBC; background: transparent; font: 500 13px Inter, sans-serif; cursor: pointer">Fit</button>
+<button type="button" aria-pressed="false" style="display: flex; align-items: center; height: 100%; padding: 0 12px; border: 0; border-left: 1px solid #2A3345; color: #A3ACBC; background: transparent; font: 500 13px Inter, sans-serif; cursor: pointer">Top-down</button>
 </div>
-<div style="box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-left: 1px solid #2A3345; border-bottom: 1px solid #2A3345; background: #0D1118">
-<span style="font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; color: #8FB0FF">{{blueHeld}}</span>
-<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #A3ACBC">BLUE HOLDS</span>
+</div>
+<div style="box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 6px 12px 0 20px; border-left: 1px solid #2A3345; border-bottom: 1px solid #2A3345; background: #0D1118">
+<h2 style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #A3ACBC">SENTINEL</h2>
+<span style="color: #8C96A8; white-space: nowrap">Bitdeer · GLM</span>
+<div style="flex: 1 1 0"></div>
+<button type="button" aria-label="New chat" style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #2A3345; border-radius: 5px; background: transparent; color: #A3ACBC; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
 </div>
 
 <aside aria-label="Agents and selection" style="box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; border-right: 1px solid #2A3345; background: #0D1118">
-<div style="flex: 0 0 44px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #2A3345">
-<h2 style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #A3ACBC">AGENTS</h2>
-<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; color: #8C96A8">{{agentCount}}</span>
-</div>
 <div style="flex: 0 0 440px; box-sizing: border-box; border-bottom: 1px solid #2A3345; overflow: auto">
 <sc-if value="{{isIdle}}" hint-placeholder-val="{{ true }}">
 <p style="margin: 0; padding: 14px 20px; color: #8C96A8">None deployed. Sentinel deploys specialists when you send an objective.</p>
@@ -92,26 +104,10 @@ a{color:#8FB0FF}a:hover{color:#B8CCFF}
 </aside>
 
 <section aria-label="Managed swarm" style="box-sizing: border-box; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #0A0D13">
-<div style="flex: 0 0 44px; box-sizing: border-box; display: flex; align-items: center; gap: 16px; padding: 0 12px 0 20px; border-bottom: 1px solid #2A3345; background: #0D1118">
-<h2 style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #A3ACBC">SWARM</h2>
-<ul aria-label="Drone states" style="display: flex; align-items: center; gap: 16px; height: 100%; margin: 0; padding: 0 0 0 16px; list-style: none; border-left: 1px solid #2A3345; white-space: nowrap">
-<li style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5B8CFF"></span><span style="color: #A3ACBC">Home</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600">{{home}}</span></li>
-<li style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #FF5A5F"></span><span style="color: #A3ACBC">Compromised</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: #FF7A7E">{{compromised}}</span></li>
-<li style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #38C07A"></span><span style="color: #A3ACBC">Recovered</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: #5FD495">{{recovered}}</span></li>
-<li style="display: flex; align-items: center; gap: 6px"><span style="width: 5px; height: 5px; border-radius: 50%; border: 1.5px solid #E8B04A"></span><span style="color: #A3ACBC">Blocked</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600">{{blocked}}</span></li>
-<li style="display: flex; align-items: center; gap: 6px"><span style="width: 5px; height: 5px; border: 1.5px dashed #A3ACBC"></span><span style="color: #A3ACBC">Isolated</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600">{{isolated}}</span></li>
-</ul>
-<div style="flex: 1 1 0"></div>
-<div role="group" aria-label="Camera" style="display: flex; gap: 2px; padding: 3px; border: 1px solid #2A3345; border-radius: 7px; background: #0A0D13">
-<button type="button" aria-pressed="true" style="height: 28px; padding: 0 9px; border: 1px solid #3A4760; border-radius: 5px; background: #18202E; color: #E7EBF2; font: 500 13px Inter, sans-serif; cursor: pointer">Follow</button>
-<button type="button" style="height: 28px; padding: 0 9px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #A3ACBC; font: 500 13px Inter, sans-serif; cursor: pointer">Fit</button>
-<button type="button" style="height: 28px; padding: 0 9px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #A3ACBC; font: 500 13px Inter, sans-serif; cursor: pointer">Top-down</button>
-</div>
-</div>
 <div style="flex: 0 0 440px; box-sizing: border-box; border-bottom: 1px solid #2A3345; overflow: hidden; background: #0B0F16">
 <img src="./viewport-reference.png" alt="3D view of the 120-drone swarm over the fleet controller grid" style="display: block; width: 100%; height: 100%; object-fit: cover">
 </div>
-<div style="flex: 0 0 44px; box-sizing: border-box; display: flex; align-items: center; gap: 16px; padding: 0 12px 0 20px; border-bottom: 1px solid #2A3345; background: #0D1118">
+<div style="flex: 0 0 44px; box-sizing: border-box; display: flex; align-items: center; gap: 16px; padding: 0 0 0 20px; border-bottom: 1px solid #2A3345; background: #0D1118">
 <h2 style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #A3ACBC">ACTIVITY</h2>
 <div role="tablist" aria-label="Activity filter" style="display: flex; align-items: center; gap: 2px; height: 100%; padding-left: 16px; border-left: 1px solid #2A3345">
 <button type="button" role="tab" aria-selected="true" style="height: 28px; padding: 0 9px; border: 1px solid #3A4760; border-radius: 5px; background: #18202E; color: #E7EBF2; font: 500 13px Inter, sans-serif; cursor: pointer">All</button>
@@ -119,31 +115,30 @@ a{color:#8FB0FF}a:hover{color:#B8CCFF}
 <button type="button" role="tab" style="height: 28px; padding: 0 9px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #A3ACBC; font: 500 13px Inter, sans-serif; cursor: pointer">You</button>
 </div>
 <div style="flex: 1 1 0"></div>
-<button type="button" aria-label="Remove DR-040 filter" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px 0 10px; border: 1px solid #5A4A22; border-radius: 5px; background: #1C180E; color: #E8B04A; font: 500 12px 'JetBrains Mono', monospace; cursor: pointer">DR-040 only<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+<div style="display: flex; align-self: stretch; border-left: 1px solid #2A3345"><button type="button" aria-haspopup="listbox" aria-label="Filter activity by drone: DR-040" style="display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 14px; border: 0; background: transparent; color: #E7EBF2; font: 500 13px Inter, sans-serif; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8C96A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z"></path></svg><span style="color: #8C96A8">Drone</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: #8FB0FF">DR-040</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8C96A8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button></div>
 </div>
 <div style="flex: 1 1 auto; overflow: auto">
-<sc-if value="{{isIdle}}" hint-placeholder-val="{{ true }}">
-<p style="margin: 0; padding: 14px 20px; color: #8C96A8">Nothing yet. Events stream here once an objective is sent.</p>
+<div style="position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; height: 32px; box-sizing: border-box; padding: 0 20px; border-bottom: 1px solid #1B2230; background: #0D1118; white-space: nowrap">
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #A3ACBC">SENTINEL</span>
+<span style="width: 6px; height: 6px; border-radius: 50%; background: #5FD495"></span>
+<span style="color: #A3ACBC; overflow: hidden; text-overflow: ellipsis">{{sentinelStatus}}</span>
+</div>
+<sc-if value="{{isIdle}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; padding: 8px 20px; color: #8C96A8">Nothing yet. Events stream here once an objective is sent.</p>
 </sc-if>
-<sc-for list="{{events}}" as="ev" hint-placeholder-count="4">
-<div style="display: grid; grid-template-columns: 72px 64px 112px minmax(0, 1fr); align-items: center; gap: 16px; height: 40px; box-sizing: border-box; padding: 0 20px; border-bottom: 1px solid #1B2230">
+<sc-for list="{{events}}" as="ev" hint-placeholder-count="7">
+<button type="button" style="display: grid; grid-template-columns: 64px 56px 104px minmax(0, 1fr); align-items: center; gap: 12px; width: 100%; height: 32px; box-sizing: border-box; padding: 0 20px; border: 0; border-bottom: 1px solid #0A0D13; background: {{ev.bg}}; color: #E7EBF2; font: 400 13px Inter, sans-serif; text-align: left; cursor: pointer">
 <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; color: #8C96A8">{{ev.time}}</span>
 <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500">{{ev.drone}}</span>
-<span style="display: flex; align-items: center; gap: 8px"><span style="width: 8px; height: 8px; border-radius: 50%; background: {{ev.color}}"></span>{{ev.state}}</span>
-<span style="color: #A3ACBC; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ev.detail}}</span>
-</div>
+<span style="font-weight: 500; color: {{ev.fg}}; white-space: nowrap">{{ev.state}}</span>
+<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: {{ev.detailColor}}"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; color: #8FB0FF">{{ev.action}}</span> {{ev.detail}}</span>
+</button>
 </sc-for>
 </div>
 </section>
 
 <aside aria-label="Sentinel" style="box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; border-left: 1px solid #2A3345; background: #0D1118">
-<div style="flex: 0 0 44px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 20px; border-bottom: 1px solid #2A3345">
-<h2 style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #A3ACBC">SENTINEL</h2>
-<span style="color: #8C96A8; white-space: nowrap">Bitdeer · GLM</span>
-<div style="flex: 1 1 0"></div>
-<button type="button" aria-label="New chat" style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid #2A3345; border-radius: 5px; background: transparent; color: #A3ACBC; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
-</div>
-<div style="flex: 0 0 440px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-bottom: 1px solid #2A3345; overflow: auto">
+<div style="flex: 1 1 auto; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 14px 20px; overflow: auto">
 <sc-if value="{{isIdle}}" hint-placeholder-val="{{ true }}">
 <p style="margin: 0; color: #8C96A8">Ask about the fleet, or send an objective and Sentinel deploys specialists.</p>
 </sc-if>
@@ -152,34 +147,32 @@ a{color:#8FB0FF}a:hover{color:#B8CCFF}
 <div style="max-width: 92%; padding: 8px 12px; border: 1px solid #2A3345; border-radius: 7px; background: #121823">{{replyMsg}}</div>
 </sc-if>
 </div>
-<div style="flex: 0 0 44px; box-sizing: border-box; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid #2A3345">
-<h2 style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #A3ACBC">SUGGESTED</h2>
-</div>
-<div style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 6px; padding: 12px 20px">
+<form style="position: relative; flex: 0 0 auto; padding: 0 20px 16px">
+<div style="display: flex; flex-direction: column; border: 1px solid #3A4760; border-radius: 8px; overflow: hidden; background: #0A0D13">
+<ul id="sentinel-suggestions" role="listbox" aria-label="Suggestions" style="margin: 0; padding: 4px 0; list-style: none; border-bottom: 1px solid #2A3345">
 <sc-for list="{{chips}}" as="chip" hint-placeholder-count="3">
-<button type="button" style="display: flex; align-items: center; gap: 10px; width: 100%; height: 36px; padding: 0 12px; box-sizing: border-box; border: 1px solid #2A3345; border-radius: 6px; background: #121823; color: #E7EBF2; font: 500 13px Inter, sans-serif; text-align: left; cursor: pointer"><span style="flex: 1 1 0">{{chip.text}}</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8FB0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+<li role="option" style="display: flex">
+<button type="button" style="display: flex; align-items: center; gap: 10px; width: 100%; height: 36px; padding: 0 12px; border: 0; background: {{chip.bg}}; color: #E7EBF2; font: 400 13px Inter, sans-serif; text-align: left; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8C96A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9"></path></svg><span style="flex: 1 1 0">{{chip.text}}</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; color: #7F8A9D">{{chip.key}}</span></button>
+</li>
 </sc-for>
-</div>
-<form style="position: relative; flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; padding: 12px 20px 16px; border-top: 1px solid #2A3345">
-<div style="display: flex; align-items: center; gap: 8px">
-<span style="color: #8C96A8">About</span>
-<span style="display: flex; align-items: center; gap: 4px; height: 24px; padding: 0 4px 0 8px; border: 1px solid #2C3E66; border-radius: 5px; background: #121C30; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; color: #8FB0FF">DR-040<button type="button" aria-label="Remove DR-040 context" style="display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 0; background: transparent; color: #8FB0FF; cursor: pointer"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></span>
-</div>
-<div style="display: flex; align-items: stretch; height: 40px; border: 1px solid #3A4760; border-radius: 6px; overflow: hidden; background: #0A0D13">
+</ul>
+<div style="display: flex; align-items: stretch; height: 44px">
 <label for="sentinel-msg" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Message Sentinel</label>
-<input id="sentinel-msg" type="text" placeholder="Message Sentinel" style="flex: 1 1 0; min-width: 0; padding: 0 12px; border: 0; background: transparent; color: #E7EBF2; font: 400 13px Inter, sans-serif; outline: none">
+<span style="display: flex; align-items: center; padding-left: 8px"><span style="display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 4px 0 8px; border: 1px solid #2C3E66; border-radius: 5px; background: #121C30; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; color: #8FB0FF; white-space: nowrap">DR-040<button type="button" aria-label="Remove DR-040 context" style="display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 0; background: transparent; color: #8FB0FF; cursor: pointer"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></span></span>
+<input id="sentinel-msg" type="text" placeholder="Message Sentinel" role="combobox" aria-expanded="true" aria-controls="sentinel-suggestions" style="flex: 1 1 0; min-width: 0; padding: 0 10px; border: 0; background: transparent; color: #E7EBF2; font: 400 13px Inter, sans-serif; outline: none">
 <button type="submit" aria-label="Send" style="display: flex; align-items: center; justify-content: center; width: 44px; border: 0; border-left: 1px solid #3A4760; background: #3D6FE6; color: #FFFFFF; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+</div>
 </div>
 </form>
 </aside>
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"phase":{"editor":"enum","options":["idle","contested","recovered"],"default":"idle","section":"Demo state"},"redHeld":{"editor":"range","min":0,"max":120,"step":1,"default":0,"section":"Demo state"},"$preview":{"width":1440,"height":900}}'>
+<script type="text/x-dc" data-dc-script data-props='{"phase":{"editor":"enum","options":["idle","contested","recovered"],"default":"contested","section":"Demo state"},"redHeld":{"editor":"range","min":0,"max":120,"step":1,"default":6,"section":"Demo state"},"$preview":{"width":1440,"height":900}}'>
 class Component extends DCLogic {
   renderVals() {
-    const phase = this.props.phase ?? 'idle';
-    const n = Math.max(0, Math.min(120, Number(this.props.redHeld ?? 0)));
+    const phase = this.props.phase ?? 'contested';
+    const n = Math.max(0, Math.min(120, Number(this.props.redHeld ?? 6)));
     const compromised = phase === 'recovered' ? 0 : n;
     const recovered = phase === 'recovered' ? n : 0;
     const isolated = phase === 'contested' ? Math.min(4, n) : 0;
@@ -211,19 +204,33 @@ class Component extends DCLogic {
       ]
     };
 
-    const red = '#FF5A5F', green = '#38C07A', amber = '#E8B04A', grey = '#A3ACBC';
+    const T = {
+      compromised: { bg: 'rgba(255,90,95,0.13)', fg: '#FF7A7E' },
+      contained: { bg: 'rgba(91,140,255,0.12)', fg: '#8FB0FF' },
+      blocked: { bg: 'rgba(232,176,74,0.12)', fg: '#E8B04A' },
+      recovered: { bg: 'rgba(56,192,122,0.12)', fg: '#5FD495' },
+      routine: { bg: 'transparent', fg: '#8C96A8' }
+    };
+    const row = (time, drone, kind, state, action, detail) => ({
+      time, drone, state, action, detail,
+      bg: T[kind].bg, fg: T[kind].fg,
+      detailColor: kind === 'routine' ? '#8C96A8' : '#C9D0DC'
+    });
     const eventsByPhase = {
       idle: [],
       contested: [
-        { time: '20:41:12', drone: 'DR-040', state: 'Blocked', color: amber, detail: 'Unsigned move command rejected' },
-        { time: '20:41:09', drone: 'DR-033', state: 'Isolated', color: grey, detail: 'Cut from mesh by Containment' },
-        { time: '20:41:06', drone: 'DR-017', state: 'Compromised', color: red, detail: 'Control taken via fleet controller' },
-        { time: '20:41:04', drone: 'DR-018', state: 'Compromised', color: red, detail: 'Control taken via fleet controller' }
+        row('04:32:51', 'DR-017', 'compromised', 'Compromised', 'Takeover-17', 'Attacker command accepted, drone under red control'),
+        row('04:32:48', 'DR-003', 'compromised', 'Compromised', 'Takeover-3', 'Attacker command accepted, not yet isolated'),
+        row('04:32:46', 'DR-040', 'blocked', 'Blocked', 'Guard-1', 'Unsigned move command rejected'),
+        row('04:32:45', 'DR-007', 'contained', 'Contained', 'Isolate-7-17', 'Drone isolated, mission participation suspended'),
+        row('04:32:45', 'DR-002', 'contained', 'Contained', 'Isolate-2-3', 'Drone isolated, mission participation suspended'),
+        row('', 'DR-007', 'routine', 'Routine \u00d76', 'Isolate-7-17', 'checks with minor results'),
+        row('', 'DR-002', 'routine', 'Routine \u00d74', 'Isolate-2-3', 'checks with minor results')
       ],
       recovered: [
-        { time: '20:43:30', drone: 'DR-017', state: 'Recovered', color: green, detail: 'Returned to blue after guard rule' },
-        { time: '20:43:28', drone: 'DR-018', state: 'Recovered', color: green, detail: 'Returned to blue after guard rule' },
-        { time: '20:43:21', drone: 'FC-01', state: 'Patched', color: green, detail: 'Guard rule applied' }
+        row('04:43:30', 'DR-017', 'recovered', 'Recovered', 'Recover-17', 'Returned to blue after guard rule'),
+        row('04:43:28', 'DR-003', 'recovered', 'Recovered', 'Recover-3', 'Returned to blue after guard rule'),
+        row('04:43:21', 'FC-01', 'recovered', 'Patched', 'Guard-1', 'Guard rule applied to fleet controller')
       ]
     };
 
@@ -245,10 +252,11 @@ class Component extends DCLogic {
       hasReply: !!r,
       userMsg: r ? r.user : '',
       replyMsg: r ? r.reply : '',
-      chips: (chipsByPhase[phase] || []).map((text) => ({ text })),
+      chips: (chipsByPhase[phase] || []).map((text, i) => ({ text, key: i === 0 ? 'Tab' : '', bg: i === 0 ? '#121823' : 'transparent' })),
       agents,
       agentCount: agents.length,
-      events: eventsByPhase[phase] || []
+      events: eventsByPhase[phase] || [],
+      sentinelStatus: phase === 'contested' ? 'Waiting for user instructions' : phase === 'recovered' ? 'Fleet recovered, monitoring' : 'Awaiting objective'
     };
   }
 }
