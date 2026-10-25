@@ -206,7 +206,8 @@ h2,
 .bar.flush-r { padding-right: 0; }
 .bar .grow,
 .cell .grow { flex: 1 1 0; }
-.bar h2 { flex: none; }
+.bar h2,
+.cell h2 { flex: none; }
 .rule {
   display: flex;
   align-items: center;

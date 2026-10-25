@@ -10,127 +10,28 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap"
     />
+    <link rel="stylesheet" href="theme.css" />
     <style>
       :root {
-        color-scheme: dark;
-        --bg: #0a0d13;
-        --panel: #0d1118;
-        --raised: #121823;
-        --active: #18202e;
-        --line: #2a3345;
-        --row-line: #1b2230;
-        --control-border: #3a4760;
-        --fg: #e7ebf2;
-        --text-2: #a3acbc;
-        --muted: #8c96a8;
-        --faint: #7f8a9d;
-        --red: #ff5a5f;
-        --red-text: #ff7a7e;
-        --red-bg: #3a1a1e;
-        --blue: #5b8cff;
-        --blue-text: #8fb0ff;
-        --blue-bg: #16233f;
-        --send: #3d6fe6;
-        --green: #38c07a;
-        --green-text: #5fd495;
-        --green-bg: #0f2a1d;
-        --amber: #e8b04a;
-        --amber-bg: #1c180e;
-        --team: var(--blue);
-        --team-text: var(--blue-text);
-        --team-bg: var(--blue-bg);
-        --mono: "JetBrains Mono", ui-monospace, monospace;
         /* 440px bodies; on short screens every column shrinks by the same amount so the
-           rules stay aligned and the suggestions + composer (250px) stay visible. */
-        --body: max(220px, min(440px, calc(100dvh - 56px - 52px - 44px - 44px - 250px)));
-        font: 400 13px/1.45 Inter, system-ui, sans-serif;
-        font-variant-numeric: tabular-nums;
-        color: var(--fg);
-        background: var(--bg);
-      }
-      body[data-role="attacker"] {
-        --team: var(--red);
-        --team-text: var(--red-text);
-        --team-bg: var(--red-bg);
-      }
-      body[data-role="observer"] {
-        --team: var(--faint);
-        --team-text: var(--text-2);
-        --team-bg: var(--active);
-      }
-      * {
-        box-sizing: border-box;
-        min-width: 0;
-        scrollbar-color: var(--line) var(--panel);
-        scrollbar-width: thin;
+           rules stay aligned and the transcript + composer (250px) stay visible. */
+        --body: max(220px, min(440px, calc(100dvh - 56px - 50px - 44px - 250px)));
       }
       html,
       body {
         height: 100%;
       }
-      /* One page grid: 272 | map | 352 columns, 56 | 52 | rest rows. Only inner bodies scroll. */
+      /* One page grid: 272 | map | 352 columns, 56 | 50 | rest rows. Only inner bodies scroll. */
       body {
-        margin: 0;
         display: grid;
         grid-template-columns: 272px minmax(0, 1fr) 352px;
-        grid-template-rows: 56px 52px minmax(0, 1fr);
+        grid-template-rows: 56px 50px minmax(0, 1fr);
         height: 100dvh;
         overflow: hidden;
-        background: var(--bg);
       }
       #head,
-      #possession {
+      #row2 {
         display: contents;
-      }
-      [hidden] {
-        display: none !important;
-      }
-      button,
-      input {
-        font: inherit;
-        color: inherit;
-      }
-      button {
-        background: none;
-        border: 0;
-        padding: 0;
-        cursor: pointer;
-      }
-      button:disabled {
-        opacity: 0.45;
-        cursor: default;
-      }
-      :focus-visible {
-        outline: 2px solid #a4d5ff;
-        outline-offset: -2px;
-      }
-      /* Type roles. */
-      h2,
-      .label {
-        margin: 0;
-        font: 500 11px var(--mono);
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: var(--text-2);
-        white-space: nowrap;
-      }
-      .mono {
-        font: 500 12px var(--mono);
-      }
-      .muted {
-        color: var(--muted);
-      }
-      .ellipsis {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--muted);
-        flex: none;
       }
       .dot.working, .dot.running, .dot.queued {
         background: var(--blue-text);
@@ -150,21 +51,9 @@
           opacity: 0.35;
         }
       }
-      /* Segmented control: 28px buttons in 44px bars, 32px in the header. */
-      .seg {
-        display: flex;
-        flex: none;
-        gap: 2px;
-        padding: 3px;
-        border: 1px solid var(--line);
-        border-radius: 7px;
-        background: var(--bg);
-      }
-      .seg button,
       #filter button {
         display: flex;
         align-items: center;
-        justify-content: center;
         gap: 8px;
         height: 28px;
         padding: 0 9px;
@@ -174,14 +63,15 @@
         color: var(--text-2);
         white-space: nowrap;
       }
-      .seg button[aria-pressed="true"],
-      .seg button[aria-selected="true"],
       #filter button[aria-selected="true"] {
         color: var(--fg);
         background: var(--active);
         border-color: var(--control-border);
       }
-      .seg .count {
+      #filter {
+        gap: 2px;
+      }
+      .count {
         min-width: 18px;
         padding: 0 4px;
         border-radius: 9px;
@@ -190,103 +80,8 @@
         background: var(--amber-bg);
         text-align: center;
       }
-      .seg .count:empty {
+      .count:empty {
         display: none;
-      }
-      .tag {
-        flex: none;
-        font: 500 11px var(--mono);
-        letter-spacing: 0.08em;
-        padding: 2px 6px;
-        border-radius: 4px;
-        color: var(--text-2);
-        background: var(--active);
-        white-space: nowrap;
-      }
-      .tag.red {
-        color: var(--red-text);
-        background: var(--red-bg);
-      }
-      .tag.blue {
-        color: var(--blue-text);
-        background: var(--blue-bg);
-      }
-      .tag.green {
-        color: var(--green-text);
-        background: var(--green-bg);
-      }
-      .tag.amber {
-        color: var(--amber);
-        background: var(--amber-bg);
-      }
-      /* Cells and bars. Inner dividers are full-height rules, never gaps. */
-      .cell {
-        display: flex;
-        align-items: center;
-        min-width: 0;
-        border-bottom: 1px solid var(--line);
-        background: var(--panel);
-      }
-      .cell.l {
-        border-right: 1px solid var(--line);
-      }
-      .cell.r {
-        border-left: 1px solid var(--line);
-      }
-      .bar {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        flex: 0 0 44px;
-        height: 44px;
-        padding: 0 20px;
-        border-bottom: 1px solid var(--line);
-        background: var(--panel);
-      }
-      .bar.btn-r {
-        padding-right: 12px;
-      }
-      .bar .grow {
-        flex: 1 1 0;
-      }
-      .bar h2 {
-        flex: none;
-      }
-      .bar .rule {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        align-self: stretch;
-        padding-left: 16px;
-        border-left: 1px solid var(--line);
-      }
-      .icon-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 28px;
-        height: 28px;
-        border: 1px solid var(--line);
-        border-radius: 5px;
-        color: var(--text-2);
-      }
-      .icon-btn.plain {
-        border-color: transparent;
-      }
-      .icon-btn:hover {
-        background: var(--active);
-      }
-      .col {
-        display: flex;
-        flex-direction: column;
-        min-height: 0;
-        background: var(--panel);
-      }
-      .col.l {
-        border-right: 1px solid var(--line);
-      }
-      .col.r {
-        border-left: 1px solid var(--line);
       }
       .body {
         flex: 0 0 var(--body);
@@ -298,17 +93,8 @@
         flex: 1 1 auto;
         border-bottom: 0;
       }
-      .note {
-        margin: 0;
-        padding: 14px 20px;
-        color: var(--muted);
-      }
 
       /* Row 1: header. */
-      #wordmark {
-        font: 600 14px var(--mono);
-        letter-spacing: 0.32em;
-      }
       #head .l {
         padding: 0 20px;
       }
@@ -478,28 +264,27 @@
         display: none;
       }
 
-      /* Row 2: possession. */
-      #possession .cell {
-        padding: 0 20px;
-        justify-content: space-between;
+      /* Row 2 (50px): column headers under a 6px inset; the possession band rides the top
+         edge of the SWARM cell. */
+      #row2 .cell {
+        padding: 6px 20px 0;
+        gap: 10px;
       }
-      #possession .n {
-        font: 600 18px var(--mono);
+      #row2 .cell.r {
+        padding-right: 12px;
       }
-      #red-held {
-        color: var(--red-text);
-      }
-      #blue-held {
-        color: var(--blue-text);
+      #swarm {
+        position: relative;
+        gap: 14px;
+        padding-right: 0;
       }
       #poss-bar {
-        position: relative;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 6px;
         display: flex;
-        width: 100%;
-        height: 12px;
-        border-radius: 3px;
-        overflow: hidden;
-        background: var(--active);
       }
       #poss-red {
         width: 0;
@@ -518,6 +303,75 @@
         width: 2px;
         margin-left: -1px;
         background: var(--bg);
+      }
+      #legend {
+        display: flex;
+        align-items: center;
+        flex: 0 1 auto;
+        gap: 12px;
+        margin: 0;
+        padding: 0 0 0 14px;
+        list-style: none;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      #legend li {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--text-2);
+      }
+      #legend i {
+        flex: none;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      #legend i.ring-key {
+        width: 5px;
+        height: 5px;
+        border: 1.5px solid var(--amber);
+      }
+      #legend i.iso {
+        width: 5px;
+        height: 5px;
+        border-radius: 0;
+        border: 1.5px dashed var(--text-2);
+      }
+      #legend b {
+        font: 600 12px var(--mono);
+        color: var(--fg);
+      }
+      #legend b.red {
+        color: var(--red-text);
+      }
+      #legend b.green {
+        color: var(--green-text);
+      }
+      /* Camera: flush full-height tabs split by rules. */
+      #cam {
+        display: flex;
+        align-self: stretch;
+        flex: none;
+      }
+      #cam button {
+        display: flex;
+        align-items: center;
+        height: 100%;
+        padding: 0 12px;
+        border-left: 1px solid var(--line);
+        font-weight: 500;
+        color: var(--text-2);
+        white-space: nowrap;
+      }
+      #cam button[aria-pressed="true"] {
+        color: var(--fg);
+        background: var(--raised);
+        box-shadow: inset 0 -2px 0 var(--team);
+      }
+      #cam button:hover {
+        background: var(--raised);
       }
 
       /* Left column: agents, selected. */
@@ -590,13 +444,14 @@
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        height: 24px;
+        height: 26px;
         padding: 0 4px 0 8px;
         border: 1px solid #2c3e66;
         border-radius: 5px;
         background: #121c30;
         font: 500 12px var(--mono);
         color: var(--blue-text);
+        white-space: nowrap;
       }
       .chip button {
         display: flex;
@@ -612,51 +467,7 @@
         color: var(--red-text);
       }
 
-      /* Middle column: swarm strip, viewport, activity. */
-      #legend {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-        white-space: nowrap;
-        overflow: hidden;
-      }
-      #legend li {
-        flex: none;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        color: var(--text-2);
-      }
-      #legend i {
-        flex: none;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-      }
-      #legend i.ring-key {
-        width: 5px;
-        height: 5px;
-        border: 1.5px solid var(--amber);
-      }
-      #legend i.iso {
-        width: 5px;
-        height: 5px;
-        border-radius: 0;
-        border: 1.5px dashed var(--text-2);
-      }
-      #legend b {
-        font: 600 12px var(--mono);
-        color: var(--fg);
-      }
-      #legend b.red {
-        color: var(--red-text);
-      }
-      #legend b.green {
-        color: var(--green-text);
-      }
+      /* Middle column: viewport, activity. */
       #viewport {
         position: relative;
         flex: 0 0 var(--body);
@@ -688,121 +499,81 @@
       #tip-hover {
         color: var(--muted);
       }
+      /* Drone filter selector: a flush cell behind a rule at the right of the ACTIVITY bar. */
+      #drone-filter {
+        position: relative;
+        display: flex;
+        align-self: stretch;
+        flex: none;
+        border-left: 1px solid var(--line);
+      }
       #only-sel {
         display: flex;
         align-items: center;
         gap: 8px;
-        height: 28px;
-        padding: 0 8px 0 10px;
-        border: 1px solid #5a4a22;
-        border-radius: 5px;
-        background: var(--amber-bg);
-        font: 500 12px var(--mono);
-        color: var(--amber);
-        visibility: hidden;
+        height: 100%;
+        padding: 0 14px;
+        font-weight: 500;
+        white-space: nowrap;
       }
-      #only-sel[aria-pressed="true"] {
-        background: #2a2210;
+      #only-sel:hover,
+      #only-sel[aria-expanded="true"] {
+        background: var(--raised);
+      }
+      #only-sel svg {
+        flex: none;
+        color: var(--muted);
+      }
+      #only-val {
+        font: 600 12px var(--mono);
+        color: var(--blue-text);
+      }
+      #drone-list {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 5;
+        width: 200px;
+        max-height: 280px;
+        overflow: auto;
+        margin: 0;
+        padding: 4px 0;
+        list-style: none;
+        border: 1px solid var(--line);
+        border-radius: 0 0 8px 8px;
+        background: var(--raised);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+      }
+      #drone-list button {
+        display: block;
+        width: 100%;
+        height: 32px;
+        padding: 0 14px;
+        font: 500 12px var(--mono);
+        text-align: left;
+      }
+      #drone-list button:first-child {
+        font: 500 13px Inter, system-ui, sans-serif;
+      }
+      #drone-list button:hover,
+      #drone-list [aria-selected="true"] button {
+        background: var(--active);
       }
       /* Team controller: one sticky 32px row at the top of the log. */
       #team-status { position: sticky; top: 0; z-index: 1; background: var(--panel); }
-      .team-operation { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 20px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; }
+      .team-operation { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 20px; border-bottom: 1px solid var(--row-line); white-space: nowrap; overflow: hidden; }
       .team-operation b { flex: none; font: 500 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-2); }
-      .team-operation .dot { background: var(--team-text); }
+      .team-operation .dot { width: 6px; height: 6px; background: var(--green-text); }
       .team-operation[data-stage="blocked"] .dot { background: var(--amber); }
-      .team-operation .operation-stage { flex: none; font-size: 12px; }
-      .team-operation small { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+      .team-operation .operation-stage { flex: none; color: var(--text-2); }
+      .team-operation small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
       #viewport-operation { position: absolute; z-index: 2; left: 14px; bottom: 14px; max-width: calc(100% - 28px); padding: 6px 10px; background: #10151de8; border: 1px solid var(--row-line); color: var(--text-2); font-size: 11px; pointer-events: none; }
       .recent-agent { opacity: .7; }
       .dot.running, .dot.queued { animation: none; }
-      .rows {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-      }
-      /* Activity rows: single line, 32px, whole row tinted by state. */
-      .row {
-        --tint: transparent;
-        --tint-hot: var(--raised);
-        display: grid;
-        grid-template-columns: 64px 56px 104px minmax(0, 1fr);
-        align-items: center;
-        gap: 10px;
-        height: 32px;
-        width: 100%;
-        padding: 0 12px 0 20px;
-        border-bottom: 1px solid var(--bg);
-        background: var(--tint);
-        font-size: 12px;
-        line-height: 1.2;
-        text-align: left;
-        color: var(--fg);
-        cursor: pointer;
-      }
-      .row:disabled { opacity: 1; cursor: default; }
-      .row[data-tone="comp"] { --tint: rgba(255, 90, 95, 0.13); --tint-hot: rgba(255, 90, 95, 0.21); --state: #ff7a7e; }
-      .row[data-tone="blocked"] { --tint: rgba(232, 176, 74, 0.12); --tint-hot: rgba(232, 176, 74, 0.2); --state: #e8b04a; }
-      .row[data-tone="contained"] { --tint: rgba(91, 140, 255, 0.12); --tint-hot: rgba(91, 140, 255, 0.2); --state: #8fb0ff; }
-      .row[data-tone="recovered"] { --tint: rgba(56, 192, 122, 0.12); --tint-hot: rgba(56, 192, 122, 0.2); --state: #5fd495; }
-      .row:hover,
-      .row[aria-pressed="true"] {
-        background: var(--tint-hot);
-      }
-      .row.quiet { color: var(--muted); }
-      .row.quiet .s, .row.quiet .d { color: var(--muted); }
-      .row.group .st::before { content: "▸"; width: 10px; color: var(--muted); }
+      .row.group .st::before { content: "▸"; display: inline-block; width: 10px; color: var(--muted); }
       .row.group[aria-expanded="true"] .st::before { content: "▾"; }
-      .row .aid {
-        font: 500 11px var(--mono);
-        color: var(--blue-text);
-        margin-right: 8px;
-      }
-      .row .t {
-        font: 500 11px var(--mono);
-        color: var(--muted);
-        white-space: nowrap;
-      }
-      .row .d {
-        font: 500 11px var(--mono);
-      }
-      .row .st {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        white-space: nowrap;
-        overflow: hidden;
-        font-weight: 500;
-        color: var(--state, var(--text-2));
-      }
-      .row .s {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: var(--text-2);
-      }
-      .row b {
-        font-weight: 600;
-      }
-      .c-red {
-        color: var(--red-text);
-      }
-      .c-blue {
-        color: var(--blue-text);
-      }
-      .c-amber {
-        color: var(--amber);
-      }
-      .c-grey {
-        color: var(--text-2);
-      }
-      .c-white {
-        color: var(--fg);
-      }
-      .c-team {
-        color: var(--team-text);
-      }
 
-      /* Right column: chat, suggestions, composer. */
+      /* Right column: transcript over a docked composer. */
       #provider {
         color: var(--muted);
         white-space: nowrap;
@@ -810,10 +581,13 @@
         text-overflow: ellipsis;
       }
       #transcript {
+        flex: 1 1 auto;
+        min-height: 0;
         display: flex;
         flex-direction: column;
         gap: 10px;
         padding: 14px 20px;
+        overflow: auto;
       }
       #transcript > :first-child {
         margin-top: auto;
@@ -911,34 +685,44 @@
         font: 500 11px/1.5 var(--mono);
         color: var(--text-2);
       }
-      #chat .body.rest {
+      /* Composer: one box, suggestions stacked above the input row. */
+      #compose {
+        flex: none;
+        margin: 0;
+        padding: 0 20px 16px;
+      }
+      #compose .box {
         display: flex;
         flex-direction: column;
-        overflow: auto;
+        border: 1px solid var(--control-border);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--bg);
       }
       #suggest {
-        flex: 1 0 auto;
+        margin: 0;
+        padding: 4px 0;
+        list-style: none;
+        border-bottom: 1px solid var(--line);
+      }
+      #suggest:empty {
+        display: none;
+      }
+      #suggest li {
         display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 12px 20px;
       }
       #suggest button {
         display: flex;
         align-items: center;
         gap: 10px;
-        flex: none;
         width: 100%;
         height: 36px;
         padding: 0 12px;
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        background: var(--raised);
-        font-weight: 500;
         text-align: left;
       }
+      #suggest li[aria-selected="true"] button,
       #suggest button:hover {
-        background: var(--active);
+        background: var(--raised);
       }
       #suggest button span {
         flex: 1 1 0;
@@ -948,36 +732,28 @@
       }
       #suggest svg {
         flex: none;
-        color: var(--team-text);
-      }
-      #compose {
-        flex: none;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin: 0;
-        padding: 12px 20px 16px;
-        border-top: 1px solid var(--line);
-      }
-      #context-slot {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        height: 24px;
         color: var(--muted);
+      }
+      #suggest .key {
+        font: 500 12px var(--mono);
+        color: var(--faint);
       }
       .field {
         display: flex;
         align-items: stretch;
-        height: 40px;
-        border: 1px solid var(--control-border);
-        border-radius: 6px;
-        overflow: hidden;
-        background: var(--bg);
+        height: 44px;
+      }
+      #context-slot {
+        display: flex;
+        align-items: center;
+        padding-left: 8px;
+      }
+      #context-slot:empty {
+        display: none;
       }
       #say {
         flex: 1 1 0;
-        padding: 0 12px;
+        padding: 0 10px;
         border: 0;
         background: transparent;
         outline: none;
@@ -1123,7 +899,7 @@
           overflow: auto;
         }
         #head,
-        #possession {
+        #row2 {
           display: grid;
         }
         #head {
@@ -1156,25 +932,30 @@
           align-self: end;
           border-left: 0;
         }
-        #possession {
-          grid-template-columns: auto minmax(0, 1fr) auto;
+        #row2 {
+          grid-template-columns: minmax(0, 1fr);
         }
-        #possession .cell {
-          height: 52px;
-          gap: 12px;
+        #row2 .cell {
+          height: 50px;
+          border-left: 0;
+          border-right: 0;
         }
-        #possession .cell.l,
-        #possession .cell.r {
-          flex-direction: column;
-          justify-content: center;
-          gap: 0;
-          padding: 0 16px;
+        #row2 .cell.l,
+        #row2 .cell.r {
+          display: none;
+        }
+        #legend {
+          overflow-x: auto;
+          scrollbar-width: none;
         }
         .col.l,
         .col.r {
           border-left: 0;
           border-right: 0;
           border-bottom: 1px solid var(--line);
+        }
+        .col.r:not([hidden]) {
+          border-top: 1px solid var(--line);
         }
         .body {
           flex-basis: 300px;
@@ -1187,12 +968,9 @@
           flex-basis: auto;
           max-height: 320px;
         }
-        #chat .body.rest {
-          max-height: none;
-        }
-        #legend {
-          overflow-x: auto;
-          scrollbar-width: none;
+        #transcript {
+          min-height: 160px;
+          max-height: 320px;
         }
         #head .match #playback,
         #head .match .clock {
@@ -1211,7 +989,7 @@
   </head>
   <body data-role="defender">
     <div id="head">
-      <div class="cell l"><span id="wordmark">SUDOKO</span></div>
+      <div class="cell l"><span id="wordmark" class="wordmark">SUDOKO</span></div>
       <div class="cell">
         <nav aria-label="Role view">
           <div class="seg" role="group">
@@ -1270,15 +1048,30 @@
         </div>
       </div>
     </div>
-    <div id="possession">
-      <div class="cell l"><span class="label">Red holds</span><span class="n" id="red-held">0</span></div>
-      <div class="cell" aria-label="Fleet possession" role="img">
-        <div id="poss-bar"><div id="poss-red"></div><div id="poss-blue"></div><i></i></div>
+    <div id="row2">
+      <div class="cell l"><h2 id="agents-title">Agents</h2><span class="grow"></span><span class="mono muted" id="agents-count">0</span></div>
+      <div class="cell" id="swarm">
+        <div id="poss-bar" role="img" aria-label="Fleet possession"><div id="poss-red"></div><div id="poss-blue"></div><i></i></div>
+        <h2>Swarm</h2>
+        <ul class="rule" id="legend" aria-label="Drone states"></ul>
+        <span class="grow"></span>
+        <div id="cam" role="group" aria-label="Camera">
+          <button id="follow" aria-pressed="false" title="Ease the camera to drones whose state just changed">Follow</button>
+          <button id="reframe" title="Reframe the fleet (double-click the map)">Fit</button>
+          <button id="camera" aria-pressed="false">Top-down</button>
+        </div>
       </div>
-      <div class="cell r"><span class="n" id="blue-held">0</span><span class="label" id="blue-label">Blue holds</span></div>
+      <div class="cell r" id="chat-head">
+        <h2 id="chat-name">Sentinel</h2>
+        <span id="provider"></span>
+        <span class="grow"></span>
+        <button id="new-chat" class="icon-btn" type="button" aria-label="New chat" title="Start a fresh conversation for this role; keep the fleet" hidden>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        </button>
+      </div>
+      <div class="cell r" id="blue-head" hidden><h2>Blue agents</h2><span class="grow"></span><span class="mono muted" id="blue-count">0</span></div>
     </div>
     <aside id="rail-left" class="col l" aria-label="Agents and selection">
-      <div class="bar"><h2 id="agents-title">Agents</h2><span class="grow"></span><span class="mono muted" id="agents-count">0</span></div>
       <div class="body"><ul class="cards" id="agents"></ul></div>
       <div class="bar btn-r"><h2>Selected</h2><span class="grow"></span>
         <button id="clear-sel" class="icon-btn plain" type="button" aria-label="Clear selection" hidden>
@@ -1288,22 +1081,12 @@
       <div class="body rest" id="selected"></div>
     </aside>
     <section class="col" aria-label="Managed swarm">
-      <div class="bar btn-r">
-        <h2>Swarm</h2>
-        <ul class="rule" id="legend" aria-label="Drone states"></ul>
-        <span class="grow"></span>
-        <div class="seg" id="cam" role="group" aria-label="Camera">
-          <button id="follow" aria-pressed="false" title="Ease the camera to drones whose state just changed">Follow</button>
-          <button id="reframe" title="Reframe the fleet (double-click the map)">Fit</button>
-          <button id="camera" aria-pressed="false">Top-down</button>
-        </div>
-      </div>
       <div id="viewport">
         <div id="viewport-operation" hidden></div>
         <div class="tip" id="tip-sel" hidden></div>
         <div class="tip" id="tip-hover" hidden></div>
       </div>
-      <div class="bar btn-r">
+      <div class="bar flush-r">
         <h2>Activity</h2>
         <div class="rule" id="filter" role="tablist" aria-label="Activity filter">
           <button data-filter="all" role="tab" aria-selected="true">All</button>
@@ -1311,43 +1094,39 @@
           <button data-filter="you" role="tab" aria-selected="false">You</button>
         </div>
         <span class="grow"></span>
-        <button id="only-sel" aria-pressed="false">DR-000 only
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
-        </button>
+        <div id="drone-filter">
+          <button id="only-sel" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter activity by drone: All">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z"></path></svg>
+            <span class="muted">Drone</span>
+            <span id="only-val">All</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+          </button>
+          <ul id="drone-list" role="listbox" aria-label="Filter activity by drone" hidden></ul>
+        </div>
       </div>
       <div class="body rest"><div id="team-status" role="status" aria-label="Live team operations"></div><ul class="rows" id="log"></ul></div>
     </section>
     <aside id="rail-right" class="col r" aria-label="Blue agents and evidence" hidden>
-      <div class="bar"><h2>Blue agents</h2><span class="grow"></span><span class="mono muted" id="blue-count">0</span></div>
       <div class="body"><ul class="cards" id="blue-agents"></ul></div>
       <div class="bar"><h2>Evidence</h2></div>
       <div class="body rest"><ul class="rows" id="evidence"></ul></div>
     </aside>
     <aside id="chat" class="col r" aria-label="Chat">
-      <div class="bar btn-r">
-        <h2 id="chat-name">Sentinel</h2>
-        <span id="provider"></span>
-        <span class="grow"></span>
-        <button id="new-chat" class="icon-btn" type="button" aria-label="New chat" title="Start a fresh conversation for this role; keep the fleet" hidden>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
-        </button>
-      </div>
-      <div class="body" id="transcript" role="log" aria-live="polite"></div>
-      <div class="bar"><h2>Suggested</h2></div>
-      <div class="body rest">
-        <div id="suggest"></div>
-        <form id="compose">
-          <div id="context-slot"></div>
+      <div id="transcript" role="log" aria-live="polite"></div>
+      <form id="compose">
+        <div class="box">
+          <ul id="suggest" role="listbox" aria-label="Suggestions"></ul>
           <div class="field">
-            <input id="say" aria-label="Message agent" autocomplete="off" />
+            <span id="context-slot"></span>
+            <input id="say" aria-label="Message agent" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="suggest" />
             <button id="send" type="submit" aria-label="Send">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </aside>
     <div id="feedback">
       <p id="error" role="status"></p>

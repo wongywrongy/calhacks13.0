@@ -84,7 +84,7 @@ let role: Role = "defender",
   stateConnected = false,
   lastReceived = 0,
   filter: "all" | "problems" | "you" = "all",
-  onlySel = false,
+  filterDrone = 0,
   modalAgent = 0;
 let operationChat: OperationChat | undefined;
 let maincloudReset: ((epoch: number, demo: boolean) => Promise<void>) | undefined;
@@ -360,12 +360,11 @@ function header(d: Derived) {
   // Possession: red share from the left. The attacker only sees discovered drones, so its
   // right-hand number is the discovered count, never a fleet total.
   const red = d.compromised.length;
-  $("red-held").textContent = String(red);
-  $("blue-held").textContent = String(role === "attacker" ? total : total - red);
-  $("blue-label").textContent = role === "attacker" ? "Discovered" : "Blue holds";
   $("poss-red").style.width = `${total ? (red / total) * 100 : 0}%`;
-  $("poss-bar").parentElement!.setAttribute("aria-label",
-    role === "attacker" ? `Red holds ${red} of ${total} discovered drones` : `Red holds ${red} of ${total} drones`);
+  $("poss-bar").setAttribute("aria-label",
+    role === "attacker" ? `Red holds ${red} of ${total} discovered drones` : `Red holds ${red}, blue holds ${total - red} of ${total} drones`);
+  $("chat-head").hidden = $("chat").hidden = role === "observer";
+  $("blue-head").hidden = $("rail-right").hidden = role !== "observer";
 }
 
 /* ---------- rails: agent cards, selected drone, observer evidence ---------- */
@@ -730,7 +729,7 @@ let activityKey="";
 function log(d: Derived) {
   teamStatus();
   if(modelDriven && frame.attempts){
-    const key=JSON.stringify([fleetEpoch,role,selected,selectedEvent,onlySel,filter,[...openGroups],frame.events.map(e=>e.id),frame.attempts.filter(a=>a.stage==="resolved").map(a=>[a.key,a.at]),frame.tasks?.map(t=>[t.agent,t.state,t.stage,t.summary]),operationChat?.operations.map(o=>[o.id,o.state,o.workers.map(w=>w.error)]),operationChat?.turns.map(t=>[t.id,t.state])]);
+    const key=JSON.stringify([fleetEpoch,role,selected,selectedEvent,filterDrone,filter,[...openGroups],frame.events.map(e=>e.id),frame.attempts.filter(a=>a.stage==="resolved").map(a=>[a.key,a.at]),frame.tasks?.map(t=>[t.agent,t.state,t.stage,t.summary]),operationChat?.operations.map(o=>[o.id,o.state,o.workers.map(w=>w.error)]),operationChat?.turns.map(t=>[t.id,t.state])]);
     if(key===activityKey)return;activityKey=key;
   }
   const all = entries(d);
@@ -742,15 +741,14 @@ function log(d: Derived) {
     .forEach((b) =>
       b.setAttribute("aria-selected", String(b.dataset.filter === filter)),
     );
-  const only = $("only-sel");
-  only.style.visibility = selected ? "visible" : "hidden";
-  only.firstChild!.textContent = `${tag(selected)} only`;
-  only.setAttribute("aria-pressed", String(onlySel && !!selected));
+  if (filterDrone && !frame.drones.some((x) => x.id === filterDrone)) filterDrone = 0;
+  $("only-val").textContent = filterDrone ? tag(filterDrone) : "All";
+  $("only-sel").setAttribute("aria-label", `Filter activity by drone: ${filterDrone ? tag(filterDrone) : "All"}`);
   const rows = all
     .filter((e) =>
       filter === "all" ? true : filter === "you" ? e.you : e.problem,
     )
-    .filter((e) => !(onlySel && selected) || e.drone === selected)
+    .filter((e) => !filterDrone || e.drone === filterDrone)
     .slice(-150)
     .reverse();
   const nodes:HTMLElement[] = modelDriven && frame.attempts ? groupActivity(rows).map(group=>{
@@ -890,8 +888,30 @@ function suggestions(_d: Derived) {
   const state={role,selected,drones:frame.drones.map(({id,controller,isolated})=>({id,controller,isolated})),battle:frame.battle ?? [],options:frame.options ?? [],teams:frame.teams ?? [],attempts:(frame.attempts ?? []).filter(a=>a.stage==="resolved")};
   const key=JSON.stringify(state);if(key===suggestionKey)return;suggestionKey=key;
   const offers=stateSuggestions(state);
-  const nodes=offers.map(offer=>{const b=el("button","",offer.text);b.setAttribute("type","button");b.dataset.target=String(offer.target);b.onclick=()=>void say(offer.text,offer.target);return b;});
+  for(const text of templateSuggestions(_d))if(offers.length<3&&!offers.some(o=>o.text===text))offers.push({text,target:selected});
+  const nodes=offers.map((offer,i)=>{
+    const li=el("li");li.setAttribute("role","option");li.setAttribute("aria-selected",String(i===0));
+    const b=el("button");b.setAttribute("type","button");b.dataset.target=String(offer.target);
+    b.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9"></path></svg>';
+    b.append(el("span","",offer.text),el("span","key",i===0?"Tab":""));
+    b.onclick=()=>void say(offer.text,offer.target);li.append(b);return li;});
   $("suggest").replaceChildren(...nodes);
+}
+/** Static per-role templates keyed on the fleet phase and the selected drone; never a model call. */
+function templateSuggestions(d: Derived): string[] {
+  const held = d.compromised.length > 0;
+  const seen = d.accepted.length + d.blocked.length > 0;
+  const pick = role === "attacker" ? d.blocked.at(-1)?.drone : d.compromised[0]?.id ?? d.recovered.at(-1)?.drone;
+  const dr = selected || pick || frame.drones[0]?.id;
+  const x = dr ? tag(dr) : "";
+  const withDrone = (s: string) => (x ? [s.replace("DR-xxx", x)] : []);
+  if (role === "attacker")
+    return held ? ["Hold what we have", ...withDrone("Why was DR-xxx blocked?"), "Try another drone"]
+      : seen ? ["Summarize what got blocked", "Find a new entry point"]
+      : ["Discover drones on FC-01", "What is the fleet controller exposing?", ...withDrone("Command DR-xxx")];
+  return held ? ["Why did these drones flip?", "Isolate the compromised cluster", "Write a guard rule for this exploit"]
+    : d.recovered.length ? ["Summarize what was blocked", "Show the guard rule that held", ...withDrone("Replay the takeover on DR-xxx")]
+    : ["Probe the fleet controller", "What is exposed right now?", ...withDrone("Trace DR-xxx's last 3 commands")];
 }
 function chat(d: Derived) {
   if (role === "observer") return;
@@ -958,7 +978,7 @@ function chat(d: Derived) {
   const slotEl = $("context-slot"),
     s = frame.drones.find((x) => x.id === selected);
   if (!s)
-    slotEl.replaceChildren(el("span", "", "Click a drone to talk about it"));
+    slotEl.replaceChildren();
   else if (
     slotEl.querySelector(".chip")?.firstChild?.textContent !== tag(s.id)
   ) {
@@ -969,7 +989,7 @@ function chat(d: Derived) {
     x.setAttribute("aria-label", `Remove ${tag(s.id)} context`);
     x.onclick = clearSelection;
     chip.append(x);
-    slotEl.replaceChildren(el("span", "", "About"), chip);
+    slotEl.replaceChildren(chip);
   }
 }
 function clearSelection() {
@@ -1808,7 +1828,8 @@ function mapScene(d: Derived) {
       ? [["var(--red)", "Seized", count("comp"), "red"], ["var(--text-2)", "Home", count("home"), ""], ["var(--faint)", "Lost", count("rec"), ""], ["ring-key", "Blocked", blocked, ""]]
       : [["var(--blue)", "Home", count("home"), ""], ["var(--red)", role === "defender" ? "Compromised" : "Unauthorized", count("comp"), "red"],
         ["var(--green)", "Recovered", count("rec"), "green"], ["ring-key", "Blocked", blocked, ""], ["iso", "Isolated", frame.drones.filter((x) => x.isolated).length, ""]];
-  if(!resilienceMode)items.push(["var(--amber)","Exposed",(frame.battle ?? []).filter(h=>h.contamination>0&&frame.drones.find(d=>d.id===h.drone)?.controller!=="attacker").length,""]);
+  // Contamination exists only in model-driven battle frames; fixture runs have no such rows.
+  if(!resilienceMode && frame.battle?.length)items.push(["var(--amber)","Exposed",(frame.battle ?? []).filter(h=>h.contamination>0&&frame.drones.find(d=>d.id===h.drone)?.controller!=="attacker").length,""]);
   patchList($("legend"), items.map(([swatch, label, n, cls]) => {
     const li = el("li");
     const i = el("i", swatch.startsWith("var") ? "" : swatch);
@@ -1828,7 +1849,7 @@ function adoptEpoch(epoch: number) {
   $("error").textContent = webglNote;
   ($("say") as HTMLInputElement).value = "";
   selected = selectedEvent = hovered = 0;
-  onlySel = false;
+  filterDrone = 0;
   filter = "all";
   closeModal();
   clearDrones();
@@ -1894,14 +1915,12 @@ async function workspace(next: Role, reconnect = false) {
   ($("say") as HTMLInputElement).value = "";
   selected = 0;
   selectedEvent = 0;
-  onlySel = false;
+  filterDrone = 0;
   playing = false;
   closeModal();
   typing.hidden = true;
   // The only full transcript rebuild: switching role swaps in that role's conversation.
   $("transcript").replaceChildren(typing);
-  $("rail-right").hidden = role !== "observer";
-  $("chat").hidden = role === "observer";
   $("error").textContent = webglNote;
   render(EMPTY);
   if (recording) {
@@ -1958,8 +1977,6 @@ async function workspace(next: Role, reconnect = false) {
   sandboxName = config.sandbox;
   coordinatorModel = config.models?.coordinator || "";
   inferenceLabel = config.engine === "mocked" ? "Mocked decisions" : "Bitdeer";
-  $("rail-right").hidden = role !== "observer";
-  $("chat").hidden = role === "observer";
   document
     .querySelectorAll<HTMLButtonElement>("nav button")
     .forEach(
@@ -2424,6 +2441,12 @@ document.querySelectorAll<HTMLButtonElement>("nav button").forEach(
         $("error").textContent = e.message;
       })),
 );
+$("say").addEventListener("keydown", (e) => {
+  const first = $("suggest").querySelector<HTMLElement>('[aria-selected="true"] span');
+  if (e.key !== "Tab" || e.shiftKey || !first) return;
+  e.preventDefault();
+  ($("say") as HTMLInputElement).value = first.textContent ?? "";
+});
 ($("compose") as HTMLFormElement).onsubmit = (e) => {
   e.preventDefault();
   const input = $("say") as HTMLInputElement;
@@ -2437,16 +2460,35 @@ document.querySelectorAll<HTMLButtonElement>("#filter button").forEach(
       log(derive(frame));
     }),
 );
-$("only-sel").onclick = () => {
-  onlySel = !onlySel;
-  log(derive(frame));
-};
+/* Drone filter selector: "All drones" then every visible drone ID. */
+const droneList = $("drone-list");
+function showDroneList(open: boolean) {
+  droneList.hidden = !open;
+  $("only-sel").setAttribute("aria-expanded", String(open));
+  if (!open) return;
+  const ids = [0, ...frame.drones.map((x) => x.id).sort((a, b) => a - b)];
+  droneList.replaceChildren(...ids.map((id) => {
+    const li = el("li");
+    li.setAttribute("role", "option");
+    li.setAttribute("aria-selected", String(id === filterDrone));
+    const b = el("button", "", id ? tag(id) : "All drones");
+    b.setAttribute("type", "button");
+    b.onclick = () => { filterDrone = id; showDroneList(false); log(derive(frame)); };
+    li.append(b);
+    return li;
+  }));
+}
+$("only-sel").onclick = () => showDroneList(droneList.hidden);
+document.addEventListener("pointerdown", (e) => {
+  if (!droneList.hidden && !$("drone-filter").contains(e.target as Node)) showDroneList(false);
+});
 $("modal-close").onclick = closeModal;
 $("modal").onclick = (e) => {
   if (e.target === $("modal")) closeModal();
 };
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !menu.hidden) showMenu(false);
+  if (e.key === "Escape" && !droneList.hidden) showDroneList(false);
   if ((e.key === "p" || e.key === "P") && !(e.target instanceof HTMLInputElement) && !e.metaKey && !e.ctrlKey && !e.altKey) togglePresenter();
   if (e.key === "Escape" && modalAgent) closeModal();
   if (e.key === "Tab" && modalAgent) {

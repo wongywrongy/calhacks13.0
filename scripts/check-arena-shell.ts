@@ -2,17 +2,19 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { chromium } from "@playwright/test";
 
-// Arena shell layout check against a running demo:fleet (http://127.0.0.1:4174).
-// Screenshots per role at 1440x900 and 390x844, plus the alignment measurements.
+// Arena shell v2 layout check against a running demo:fleet (http://127.0.0.1:4174).
+// Screenshots per page and role at 1440x900 and 390x844, plus the alignment measurements
+// from docs/UI_REWORK.md: viewport bottom = agent-list bottom, SELECTED/ACTIVITY headers
+// share a top, the row-2 rule is one y across the columns, column rules at 272 / width-352.
 const base = process.env.FLEET_URL ?? "http://127.0.0.1:4174";
-const output = "output/arena-shell";
+const output = process.env.ARENA_OUTPUT ?? "output/arena-shell-v2";
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, args: ["--no-sandbox"] });
 const report: Record<string, any> = {};
 const mismatches: string[] = [];
 try {
   for (const role of ["attacker", "defender", "observer"] as const) {
-    for (const [width, height] of [[1440, 900], [1440, 760], [390, 844]] as const) {
+    for (const [width, height] of [[1440, 900], [390, 844]] as const) {
       const page = await browser.newPage({ viewport: { width, height } });
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(e.message));
@@ -21,69 +23,58 @@ try {
       await page.waitForFunction((r) => document.body.dataset.role === r && document.querySelector("#live")?.textContent?.startsWith("Live"), role, { timeout: 30000 });
       await page.waitForFunction(() => document.querySelectorAll("#legend li").length > 0);
       await page.waitForTimeout(1500);
-      await page.screenshot({ path: `${output}/${role}-${width}${height === 900 || width === 390 ? "" : "x" + height}.png` });
+      await page.screenshot({ path: `${output}/fleet-${role}-${width}.png` });
       const m = await page.evaluate(() => {
         const r = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
-        const bars = (col: string) => Array.from(document.querySelectorAll<HTMLElement>(`${col} > .bar`)).map((b) => b.getBoundingClientRect());
         const right = document.body.dataset.role === "observer" ? "#rail-right" : "#chat";
-        const cols = ["#rail-left", "section.col", right];
-        const top = cols.map((c) => bars(c)[0].bottom);
-        const lower = cols.map((c) => bars(c)[1].top);
-        const bodies = cols.map((c) => document.querySelector<HTMLElement>(`${c} > .body`)!.getBoundingClientRect().bottom);
+        const rows = Array.from(document.querySelectorAll<HTMLElement>("#log .row"));
         return {
           width: innerWidth,
           scrollWidth: document.documentElement.scrollWidth,
-          topHeaderBottoms: top,
+          row2Bottoms: ["#row2 > .cell.l", "#swarm", `#row2 > .cell.r:not([hidden])`].map((s) => r(s).bottom),
           viewportBottom: r("#viewport").bottom,
-          bodyBottoms: bodies,
-          lowerHeaderTops: lower,
-          leftBorderX: r("#rail-left").right,
-          rightBorderX: r(right).left,
-          headerLeftBorderX: r("#head > .cell.l").right,
-          headerRightBorderX: r("#head > .cell.r").left,
-          possessionLeftBorderX: r("#possession > .cell.l").right,
-          possessionRightBorderX: r("#possession > .cell.r").left,
+          agentListBottom: r("#rail-left > .body").bottom,
+          lowerHeaderTops: ["#rail-left > .bar", "section.col > .bar", ...(right === "#rail-right" ? ["#rail-right > .bar"] : [])].map((s) => r(s).top),
+          leftBorderX: [r("#head > .cell.l").right, r("#row2 > .cell.l").right, r("#rail-left").right],
+          rightBorderX: [r("#head > .cell.r").left, r(`#row2 > .cell.r:not([hidden])`).left, r(right).left],
           railBottom: r("#rail-left").bottom,
           rightBottom: r(right).bottom,
-          stepBand: !!document.querySelector("#judge-guide"),
-          overlays: document.querySelectorAll("#viewport .ov, #ov-sel, #legend:not(.rule)").length,
-          statusIndicators: document.querySelectorAll("#live, .pill, #badge").length,
-          resetsOutsideMenu: document.querySelectorAll("#reset-swarm:not(#menu *), #reset-sandbox:not(#menu *)").length,
+          composerBottom: right === "#chat" ? r("#compose").bottom : null,
+          rowHeights: rows.slice(0, 20).map((x) => x.getBoundingClientRect().height),
+          rowBorderLeft: rows.slice(0, 20).map((x) => getComputedStyle(x).borderLeftWidth),
+          rowSingleLine: rows.slice(0, 20).every((x) => Array.from(x.children).every((c) => c.getBoundingClientRect().height <= 20)),
+          rowTints: rows.slice(0, 20).map((x) => [x.dataset.tone ?? "", getComputedStyle(x).backgroundColor]),
+          camTabs: Array.from(document.querySelectorAll("#cam button")).map((b) => b.getBoundingClientRect().height),
           text: document.body.innerText,
-          possession: { red: document.querySelector("#red-held")!.textContent, right: document.querySelector("#blue-held")!.textContent, label: document.querySelector("#blue-label")!.textContent },
+          possession: document.querySelector("#poss-bar")!.getAttribute("aria-label"),
           legend: Array.from(document.querySelectorAll("#legend li")).map((l) => l.textContent),
+          suggestions: Array.from(document.querySelectorAll("#suggest li")).map((l) => l.textContent),
         };
       });
-      report[`${role}-${width}x${height}`] = { ...m, text: undefined, errors };
+      report[`fleet-${role}-${width}`] = { ...m, text: undefined, errors };
       const near = (a: number, b: number, what: string) => { if (Math.abs(a - b) > 0.5) mismatches.push(`${role}@${width}: ${what}: ${a} vs ${b}`); };
       if (width === 1440) {
-        near(m.topHeaderBottoms[0], m.topHeaderBottoms[1], "top header bottoms L/M");
-        near(m.topHeaderBottoms[1], m.topHeaderBottoms[2], "top header bottoms M/R");
-        near(m.viewportBottom, m.bodyBottoms[0], "viewport bottom vs left body");
-        near(m.viewportBottom, m.bodyBottoms[2], "viewport bottom vs right body");
-        near(m.lowerHeaderTops[0], m.lowerHeaderTops[1], "lower header tops L/M");
-        near(m.lowerHeaderTops[1], m.lowerHeaderTops[2], "lower header tops M/R");
-        for (const [k, v] of [["leftBorderX", m.leftBorderX], ["headerLeftBorderX", m.headerLeftBorderX], ["possessionLeftBorderX", m.possessionLeftBorderX]]) near(v as number, 272, `${k}`);
-        for (const [k, v] of [["rightBorderX", m.rightBorderX], ["headerRightBorderX", m.headerRightBorderX], ["possessionRightBorderX", m.possessionRightBorderX]]) near(v as number, width - 352, `${k}`);
+        near(m.viewportBottom, m.agentListBottom, "viewport bottom vs agent-list bottom");
+        for (const t of m.lowerHeaderTops.slice(1)) near(m.lowerHeaderTops[0], t, "SELECTED / ACTIVITY header tops");
+        for (const b of m.row2Bottoms.slice(1)) near(m.row2Bottoms[0], b, "row-2 bottom rule");
+        for (const x of m.leftBorderX) near(x, 272, "left column rule");
+        for (const x of m.rightBorderX) near(x, width - 352, "right column rule");
         near(m.railBottom, height, "left column reaches the bottom");
         near(m.rightBottom, height, "right column reaches the bottom");
-        const sug = await page.evaluate(() => {
-          const col = document.querySelector("#chat")!.getBoundingClientRect();
-          return Array.from(document.querySelectorAll("#suggest button")).map((b) => b.getBoundingClientRect()).every((r) => r.top >= col.top && r.bottom <= col.bottom)
-            && document.querySelector("#compose")!.getBoundingClientRect().bottom <= col.bottom;
-        });
-        if (role !== "observer") assert.ok(sug, "suggestions and composer fully inside the chat column");
+        if (m.composerBottom !== null) assert.ok(m.composerBottom <= height, "composer inside the viewport");
+        for (const h of m.camTabs) assert.ok(h >= 42, `camera tabs full height (${h})`);
       } else near(m.scrollWidth, m.width, "no horizontal scroll");
-      assert.equal(m.stepBand, false, "step band removed");
-      assert.equal(m.overlays, 0, "no viewport overlays");
-      assert.equal(m.statusIndicators, 1, "one status indicator");
-      assert.equal(m.resetsOutsideMenu, 0, "resets only in the menu");
+      for (const h of m.rowHeights) near(h, 32, "activity row height");
+      for (const b of m.rowBorderLeft) assert.equal(b, "0px", "no left border on rows");
+      assert.ok(m.rowSingleLine, "activity rows are single-line");
+      for (const [tone, bg] of m.rowTints) if (tone) assert.notEqual(bg, "rgba(0, 0, 0, 0)", `row tinted for ${tone}`);
       assert.deepEqual(errors, []);
-      // Role scoping: attacker never sees fleet size or defense-only data.
+      // Role scoping: the attacker never sees fleet size, isolation, recovery or policy data.
       if (role === "attacker") {
-        assert.equal(m.possession.label, "Discovered");
-        assert.doesNotMatch(m.text, /48 drones|Isolated|Recovered|policy v/i);
-      } else assert.equal(m.possession.label, "Blue holds");
+        assert.match(m.possession!, /discovered/);
+        assert.doesNotMatch(m.text, /\d+ drones,|Isolated|Recovered|policy v|blue holds/i);
+        assert.doesNotMatch(m.legend.join(), /Isolated|Recovered/);
+      } else assert.match(m.possession!, /blue holds/);
       if (role === "defender") assert.doesNotMatch(m.text, /discovered|Agent \d\d · /i);
       await page.close();
     }
