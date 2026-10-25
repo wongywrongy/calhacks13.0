@@ -13,10 +13,11 @@ test("fleet and conversation resets fence stale work and survive reconnect", { s
     if (String(input) !== "https://api-inference.bitdeer.ai/v1/chat/completions") return original(input, init);
     const body = JSON.parse(init.body), system = JSON.parse(body.messages[0].content), context = JSON.parse(body.messages[1].content);
     while (blocked === "all" || (blocked === "specialists" && !system.agents)) await delay(20, undefined, { signal: init.signal });
-    const tasks = [1, 2].map((target) => ({ target, name: "Scout " + target, specialty: "testing", objective: "Assess assigned drone" }));
+    const tasks = [1, 2].map((target) => ({ target, name: "Scout " + target, specialty: "testing", goal: system.role === "attacker" ? "capture" : "recover", objective: "Assess assigned drone" }));
     const value = system.agents ? system.task.startsWith("Route")
       ? { intent: "deploy", answer: "Prepare specialists", evidenceIds: [], tasks } : { tasks }
       : { kind: system.role === "attacker" ? context.observation.discovered === false ? "discover" : "command" : context.observation.isolated ? "verify" : "isolate" };
+    if (!system.agents && system.allowed && !system.allowed.includes(value.kind)) value.kind=system.allowed.find((k:string)=>k!=="wait") ?? "wait";
     return Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(value) } }] });
   });
   const env: NodeJS.ProcessEnv = { ...db.env, BITDEER_API_KEY: "mock-reset", SUDOKO_DEMO_MODE: "1", SUDOKO_ATTACKER_TOKEN: "reset-test-attacker-00000000000000000000" };

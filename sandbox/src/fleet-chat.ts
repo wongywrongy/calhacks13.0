@@ -1,3 +1,4 @@
+import { goalActions, goalSatisfied, validGoal, type Goal } from "./fleet-goals.ts";
 import prompts from "../../shared/fleet-prompts.json" with { type: "json" };
 import { resilienceContext, resilienceActions, RESILIENCE_COORDINATOR, RESILIENCE_SPECIALIST } from "./resilience.ts";
 import { randomUUID, randomInt } from "node:crypto";
@@ -7,7 +8,7 @@ import { RunStore, StoreError } from "./run-store.ts";
 import { DecisionPool } from "./decision-pool.ts";
 import { fleetInference, DecisionError, decisionError as errorCode } from "./fleet-inference.ts";
 export type ChatRole = "attacker" | "defender";
-type Task = { agentId: number; name: string; specialty: string; target: number; objective: string };
+type Task = { agentId: number; name: string; specialty: string; target: number; objective: string; goal: Goal };
 export const CHAT_LIMITS = {
   maxAgents: 4,
   maxDecisionsPerAgent: 8,
@@ -72,10 +73,10 @@ export class FleetChat {
       const lifecycle = records
         .filter((v: any) => v.type === "worker" && v.agentId === task.agentId)
         .at(-1);
-      let state = lifecycle?.state || "paused";
-      if (state === "working" && !["planning", "running"].includes(r.state))
-        state = r.state === "failed" ? "failed" : "paused";
-      return { ...task, state, operationId: r.id, deployedAt: records.find((v: any) => v.type === "worker" && v.agentId === task.agentId)?.at, error: lifecycle?.error };
+      let state = lifecycle?.state || "queued";
+      state = ({working:"running",done:"completed",paused:"cancelled"} as Record<string,string>)[state] ?? state;
+      if (["queued","running"].includes(state) && !activeState(r.state)) state = r.state === "cancelled" ? "cancelled" : "failed";
+      return { ...task, state, operationId: r.id, deployedAt: records.find((v: any) => v.type === "worker" && v.agentId === task.agentId)?.at, error: lifecycle?.error, reason:lifecycle?.reason, stage:lifecycle?.stage };
     });
     const outcome = fleetOutcome({ state: r.state, role: r.role, tasks: config.tasks, results: records });
     return {
@@ -268,6 +269,8 @@ export class FleetChat {
                 : `Your operation is ${op.state}; no new instruction was applied.`;
           } else reply = pending.length ? "Stopped pending conversation work. No deployment will follow it." : "No active operation to stop.";
           if (/pause/i.test(message)) reply += " Pause cancels pending work; Continue requests a new bounded operation using the recent context.";
+        } else if (current && /^(?:continue|keep going|continue (?:the )?operation)[.!]?$/i.test(message.trim())) {
+          reply = "Your current operation is continuing within its existing attempt and time budgets. See Activity for progress.";
         } else if (status) {
           if (/fleet|swarm/i.test(message)) {
             const drones = await this.store.query("SELECT * FROM fleet_drone");
@@ -280,7 +283,7 @@ export class FleetChat {
               op.results.filter(
                 (r: any) => r.status === "executed" && r.outcome === kind,
               ).length;
-            reply = activeState(op.state) ? `${op.workers.filter((w: any) => w.state === "working").length} agents are working. ${n("recovery_verified")} recoveries verified so far.` : `${op.outcome.status}. ${op.outcome.summary}`;
+            reply = activeState(op.state) ? `${op.workers.filter((w: any) => ["queued","running"].includes(w.state)).length} agents are working. ${n("recovery_verified")} recoveries verified so far.` : `${op.outcome.status}. ${op.outcome.summary}`;
           } else reply = "No operation has been started for your role.";
         } else {
           return this.acceptTurn(role, message, requestKey, epoch!, conversation!, target);
@@ -328,7 +331,7 @@ export class FleetChat {
     try {
       if (!this.env.BITDEER_API_KEY) throw new DecisionError("provider_not_configured");
       const contextBegan = Date.now();
-      const [history, operations, sessions, drones, discoveries, evidence, battle] = await Promise.all([
+      const [history, operations, sessions, drones, discoveries, evidence, battle, options] = await Promise.all([
         this.store.query(`SELECT * FROM backend_chat_message WHERE role=${sql(role)}`),
         this.store.query(`SELECT * FROM backend_chat WHERE role=${sql(role)}`),
         this.store.query("SELECT * FROM fleet_session"),
@@ -336,6 +339,7 @@ export class FleetChat {
         this.store.query("SELECT * FROM fleet_discovery"),
         this.store.query("SELECT * FROM fleet_evidence"),
         this.store.query("SELECT * FROM battle_drone"),
+        this.store.query("SELECT * FROM battle_options"),
       ]);
       const fleet = sessions[0];
       const resilience = await resilienceContext(this.store, role);
@@ -360,8 +364,8 @@ export class FleetChat {
       const recent = history.filter((m: any) => messageGeneration(m.key) === config.conversation && !m.key.endsWith(":accepted")).sort((a: any, b: any) => a.id - b.id).slice(-12)
         .map((m: any) => ({ speaker: m.speaker, text: m.text.slice(0, 700), target: m.target }));
       const taskSchema = {
-        type: "object", additionalProperties: false, required: ["name", "specialty", "target", "objective"],
-        properties: { name: { type: "string" }, specialty: { type: "string" }, target: { type: "integer", minimum: 1, maximum: fleet?.drones || 256 }, objective: { type: "string" } },
+        type: "object", additionalProperties: false, required: ["name", "specialty", "target", "objective", "goal"],
+        properties: { name: { type: "string" }, specialty: { type: "string" }, target: { type: "integer", minimum: 1, maximum: fleet?.drones || 256 }, objective: { type: "string" }, goal: { type: "string", enum: ["recon","capture","spread","contain","recover","restore","harden"] } },
       };
       const schema = { type: "object", additionalProperties: false, required: ["intent", "answer", "evidenceIds", "tasks"], properties: {
         intent: { type: "string", enum: ["answer", "clarify", "deploy", "replace"] }, answer: { type: "string" },
@@ -375,6 +379,7 @@ export class FleetChat {
           role, agents: { min: 2, max: 4 }, targets: { min: 1, max: fleet?.drones || 256 },
           allowed: resilience ? ["discover", ...resilienceActions(role)] : role === "attacker" ? ["discover", "prepare", "command", "spread", "wait"] : ["prepare", "isolate", "harden", "verify", "release", "wait"],
         }, input: { message: config.message, selectedTarget: config.target, history: recent,
+          eligibleOptions: options.filter((o:any)=>o.role===role).map(({drone,actions,reachable,blocker}:any)=>({target:drone,actions,reachable,blocker})),
           session: { active: fleet?.active ?? false, epoch: fleet?.epoch ?? null },
           catalog: { targetIds: Array.from({ length: fleet?.drones || 256 }, (_, i) => i + 1), communicationGraph: "16-column grid; links join horizontal neighbors in the same row and IDs 16 apart; isolation breaks incident links", discoveryAvailableBeforeObservation: role === "attacker" },
           observations, battle: battle.filter((h: any) => role === "defender" || known.has(h.drone)).map((h: any) => ({ drone: h.drone, contamination: h.contamination,
@@ -385,8 +390,8 @@ export class FleetChat {
             : !["answer", "clarify", "deploy", "replace"].includes(v.intent) ? "intent"
             : typeof v.answer !== "string" || !v.answer.trim() || v.answer.length > 2000 ? "answer"
             : !Array.isArray(v.evidenceIds) || v.evidenceIds.length > 16 || !v.evidenceIds.every((n: any) => Number.isSafeInteger(n) && evidenceIdsAllowed.has(n)) ? "evidence_references"
-            : !Array.isArray(v.tasks) || (["deploy", "replace"].includes(v.intent) ? !this.validTasks(v.tasks, fleet?.drones || 256, config.target) : v.tasks.length !== 0) ? "assignments" : undefined;
-          if (metric.validationFailure === "assignments") metric.assignmentValidation = { intent: v.intent, count: v.tasks?.length, tasks: Array.isArray(v.tasks) ? v.tasks.slice(0, 4).map((t: any) => ({ fields: object(t, ["name", "specialty", "target", "objective"]), nameFormat: typeof t.name === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,27}$/.test(t.name) && t.name.trim() === t.name, specialtyFormat: typeof t.specialty === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,47}$/.test(t.specialty), objectiveLength: typeof t.objective === "string" ? t.objective.length : null, targetInRange: Number.isInteger(t.target) && t.target >= 1 && t.target <= (fleet?.drones || 256), targetMatches: config.target === null || config.target === t.target })) : [] };
+            : !Array.isArray(v.tasks) || (["deploy", "replace"].includes(v.intent) ? !this.validTasks(v.tasks, fleet?.drones || 256, config.target, role) : v.tasks.length !== 0) ? "assignments" : undefined;
+          if (metric.validationFailure === "assignments") metric.assignmentValidation = { intent: v.intent, count: v.tasks?.length, tasks: Array.isArray(v.tasks) ? v.tasks.slice(0, 4).map((t: any) => ({ fields: object(t, ["name", "specialty", "target", "objective", "goal"]), nameFormat: validGoal(role,t.goal) && typeof t.name === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,27}$/.test(t.name) && t.name.trim() === t.name, specialtyFormat: typeof t.specialty === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,47}$/.test(t.specialty), objectiveLength: typeof t.objective === "string" ? t.objective.length : null, targetInRange: Number.isInteger(t.target) && t.target >= 1 && t.target <= (fleet?.drones || 256), targetMatches: config.target === null || config.target === t.target })) : [] };
           return !metric.validationFailure;
         },
       });
@@ -414,9 +419,9 @@ export class FleetChat {
       }
     }
   }
-  private validTasks(tasks: any[], max: number, target: number | null) {
-    return tasks.length >= 2 && tasks.length <= 4 && tasks.every((t: any) => object(t, ["name", "specialty", "target", "objective"]) &&
-      typeof t.name === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,27}$/.test(t.name) && t.name.trim() === t.name &&
+  private validTasks(tasks: any[], max: number, target: number | null, role: ChatRole) {
+    return tasks.length >= 2 && tasks.length <= 4 && tasks.every((t: any) => object(t, ["name", "specialty", "target", "objective", "goal"]) &&
+      validGoal(role,t.goal) && typeof t.name === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,27}$/.test(t.name) && t.name.trim() === t.name &&
       typeof t.specialty === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,47}$/.test(t.specialty) &&
       typeof t.objective === "string" && t.objective.trim() && t.objective.length <= 300 &&
       Number.isInteger(t.target) && t.target >= 1 && t.target <= max && (target === null || t.target === target));
@@ -560,7 +565,7 @@ export class FleetChat {
                     items: {
                       type: "object",
                       additionalProperties: false,
-                      required: ["name", "specialty", "target", "objective"],
+                      required: ["name", "specialty", "target", "objective", "goal"],
                       properties: {
                         name: { type: "string", minLength: 1, maxLength: 28 },
                         specialty: { type: "string", minLength: 1, maxLength: 48 },
@@ -569,6 +574,7 @@ export class FleetChat {
                           minimum: config.target ?? 1,
                           maximum: config.target ?? (system as any).targets.max,
                         },
+                        goal: { type: "string", enum: ["recon","capture","spread","contain","recover","restore","harden"] },
                         objective: {
                           type: "string",
                           minLength: 1,
@@ -599,6 +605,7 @@ export class FleetChat {
         ),
       );
       const battle = await this.store.query("SELECT * FROM battle_drone");
+      const options=await this.store.query("SELECT * FROM battle_options");
       const observation =
         role === "defender"
           ? drones.map((d: any) => ({ id: d.id, controller: d.controller, isolated: d.isolated, policy_version: d.policy_version }))
@@ -610,7 +617,7 @@ export class FleetChat {
         "coordinator",
         0,
         {
-          task: resilience ? RESILIENCE_COORDINATOR + " Return only {tasks:[{name,specialty,target,objective}]}." : "Plan assignments for an explicit deployment. " + prompts.coordinator + " In this stage return only {tasks:[{name,specialty,target,objective}]}; routing was already requested by the operator.",
+          task: resilience ? RESILIENCE_COORDINATOR + " Return only {tasks:[{name,specialty,target,objective,goal}]}." : "Plan assignments for an explicit deployment. " + prompts.coordinator + " In this stage return only {tasks:[{name,specialty,target,objective,goal}]}; routing was already requested by the operator.",
           role,
           agents: { min: 2, max: CHAT_LIMITS.maxAgents },
           targets: {
@@ -623,6 +630,7 @@ export class FleetChat {
               : ["prepare", "isolate", "harden", "verify", "release", "wait"],
         },
         { message: config.message, selectedTarget: config.target, observation, resilience,
+          eligibleOptions:options.filter((o:any)=>o.role===role).map(({drone,actions,reachable,blocker}:any)=>({target:drone,actions,reachable,blocker})),
           battle: battle.filter((h: any) => role === "defender" || discovery.has(h.drone)).map((h: any) => ({ drone: h.drone, contamination: h.contamination,
             prepared: role === "attacker" ? h.attack_prepared : h.defense_prepared, ...(role === "defender" ? { readiness: h.readiness } : {}) })) },
         (v) =>
@@ -632,8 +640,8 @@ export class FleetChat {
           v.tasks.length <= 4 &&
           v.tasks.every(
             (t: any) =>
-              object(t, ["name", "specialty", "target", "objective"]) &&
-              typeof t.name === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,27}$/.test(t.name) &&
+              object(t, ["name", "specialty", "target", "objective", "goal"]) &&
+              validGoal(role,t.goal) && typeof t.name === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,27}$/.test(t.name) &&
               t.name.trim() === t.name &&
               typeof t.specialty === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,47}$/.test(t.specialty) &&
               Number.isInteger(t.target) &&
@@ -671,7 +679,8 @@ export class FleetChat {
             type: "worker",
             agentId: task.agentId,
             target: task.target,
-            state: "working",
+            state: "queued",
+            stage: "queued",
             at: Date.now(),
           };
           records.push(worker);
@@ -707,17 +716,27 @@ export class FleetChat {
                 prepared: role === "attacker" ? battleHealth.attack_prepared : battleHealth.defense_prepared,
                 ...(role === "defender" ? { readiness: battleHealth.readiness } : {}) });
               const resilience = await resilienceContext(this.store, role, task.target);
+              const [options] = resilience ? [] : await this.store.query(`SELECT * FROM battle_options WHERE key=${sql(role+":"+task.target)}`);
+              const eligible = goalActions(role,task.goal,options?.actions ?? (!discovery.length && role === "attacker" ? ["discover"] : []));
+              if (!resilience && goalSatisfied(task.goal,drone,battleHealth,!!discovery.length,attempt)) {
+                worker.state = "completed"; worker.reason = "Objective satisfied."; worker.at=Date.now(); break;
+              }
+              if (!resilience && !eligible.length) {
+                const pending = await this.store.query(`SELECT * FROM battle_attempt WHERE operation=${sql(id)}`);
+                if (pending.some((a:any)=>a.agent!==task.agentId && a.stage!=="resolved")) {
+                  worker.state="queued"; worker.stage="waiting"; worker.reason="Waiting for an active operation."; await save();
+                  await delay(500,undefined,{signal}); step--; continue;
+                }
+                worker.state="failed"; worker.reason=options?.blocker || "No valid useful action remains within this objective."; worker.at=Date.now(); failed=true; break;
+              }
               const allowed = resilience ? role === "attacker" && !discovery.length ? ["discover", "wait"] : resilienceActions(role) :
-                role === "attacker"
-                  ? discovery.length
-                    ? ["prepare", "command", "spread", "wait"]
-                    : ["discover", "wait"]
-                  : ["prepare", "isolate", "harden", "verify", "release", "wait"];
+                [...eligible,"wait"];
               const memory = records.filter(
                 (r) =>
                   r.agentId === task.agentId &&
                   !["inference", "worker"].includes(r.type),
               );
+              worker.state="running"; worker.stage=attempt?.simulation?.succeeded===0 ? "reassessing" : "assessing"; worker.reason=worker.stage==="reassessing" ? "Preparing a revised attempt." : "Assessing permitted actions."; worker.at=Date.now();
               const action = await infer(
                 "specialist",
                 task.agentId,
@@ -728,6 +747,7 @@ export class FleetChat {
                 },
                 {
                   assignment: task,
+                  options,
                   observation,
                   resilience,
                   memory,
@@ -808,30 +828,29 @@ export class FleetChat {
                 const effects = await this.store.query(`SELECT * FROM fleet_evidence WHERE actor=${task.agentId} AND drone=${task.target}`);
                 attempt.verifiedEffectEvidenceId = effects.find((e: any) => e.kind === "challenge_effect" && e.id > receipt.evidence_id)?.id;
               }
-              if (!resilience && action.kind === "wait") worker.state = "paused";
-              else if (
-                !resilience && (["command", "spread", "release"].includes(action.kind) ||
-                evidence?.kind === "recovery_verified" || action.kind === "verify" && attempt.simulation?.succeeded > 0)
-              )
-                worker.state = "done";
+              if (!resilience && action.kind === "wait") {
+                worker.state="failed"; worker.reason="Agent stopped without completing its objective."; failed=true; break;
+              }
+              worker.state="queued"; worker.stage="reassessing"; worker.reason="Evaluating the result before the next bounded decision."; worker.at=Date.now();
               await save();
-              // End once this assignment has a measured result; no model calls on animation ticks.
-              if (
-                !resilience && action.kind === "wait" ||
-                !resilience && (["command", "spread", "release"].includes(action.kind) ||
-                evidence?.kind === "recovery_verified" || action.kind === "verify" && attempt.simulation?.succeeded > 0)
-              )
-                break;
               await delay(resilience ? action.kind === "wait" ? 1000 : 350 : 250, undefined, { signal });
             }
-            if (worker.state === "working") worker.state = resilience ? "done" : "paused";
+            if (["queued","running"].includes(worker.state)) {
+              const [drone]=await this.store.query(`SELECT * FROM fleet_drone WHERE id=${task.target}`);
+              const [health]=await this.store.query(`SELECT * FROM battle_drone WHERE drone=${task.target}`);
+              const known=await this.store.query(`SELECT * FROM fleet_discovery WHERE drone=${task.target}`);
+              worker.state=resilience || goalSatisfied(task.goal,drone,health,!!known.length,attempt) ? "completed" : "failed";
+              worker.reason=worker.state==="completed" ? "Objective satisfied." : "Attempt budget exhausted.";
+            }
+            worker.at=Date.now(); if(worker.state==="failed") failed=true;
             await save();
           } catch (error) {
             failed = true;
             worker.state =
               signal.aborted && signal.reason?.name !== "TimeoutError"
-                ? "paused"
+                ? "cancelled"
                 : "failed";
+            worker.reason=explainFleetError(errorCode(error,signal)); worker.at=Date.now();
             worker.error = errorCode(error, signal);
             if (attempt?.status === "queued")
               Object.assign(attempt, { status: "failed", error: worker.error });

@@ -1,0 +1,76 @@
+import assert from "node:assert/strict";
+import {randomUUID} from "node:crypto";
+import {readFile,mkdir,writeFile} from "node:fs/promises";
+import {setTimeout as delay} from "node:timers/promises";
+import {build} from "esbuild";
+import {chromium,type Page} from "@playwright/test";
+import {testDatabase} from "../sandbox/test/spacetime-helper.ts";
+import {startService} from "../sandbox/src/service.ts";
+const output="output/activity-check";await mkdir(output,{recursive:true});
+const bundle=await build({stdin:{contents:await readFile("web/fleet.ts","utf8")+"\nObject.assign(globalThis,{activityCheck:()=>({frame,role,epoch:fleetEpoch})});",resolveDir:process.cwd()+"/web",loader:"ts"},bundle:true,format:"esm",write:false});
+const original=globalThis.fetch;let calls=0,releaseSpread=false;const inputs:any[]=[];
+globalThis.fetch=async(input:any,init?:any)=>{
+ if(String(input)!=="https://api-inference.bitdeer.ai/v1/chat/completions")return original(input,init);
+ calls++;const body=JSON.parse(init.body),system=JSON.parse(body.messages[0].content),context=JSON.parse(body.messages[1].content);inputs.push({system,context});
+ if(!system.agents&&context.assignment?.goal==="spread")while(!releaseSpread)await delay(10,undefined,{signal:init.signal});
+ await delay(40,undefined,{signal:init.signal});
+ let value:any;
+ if(system.agents){
+  const goal=system.role==="attacker" ? /spread/i.test(context.message)?"spread":"capture" : /recover/i.test(context.message)?"restore":"contain";
+  const tasks=[18,1].map(target=>({name:(system.role==="attacker"?"Scout ":"Guard ")+target,specialty:"simulation",target,goal,objective:goal+" assigned synthetic drone"}));
+  value=/\?/.test(context.message)?{intent:"answer",answer:"No operation is currently assigned. Effects are simulated.",evidenceIds:[],tasks:[]} : system.task.startsWith("Route")?{intent:"deploy",answer:"Prepare bounded specialists",evidenceIds:[],tasks}:{tasks};
+ }else value={kind:["discover","spread","command","isolate","verify","release","prepare","harden"].find(k=>system.allowed.includes(k))??"wait"};
+ return Response.json({choices:[{finish_reason:"stop",message:{content:JSON.stringify(value)}}]});
+};
+const db=await testDatabase();const env:NodeJS.ProcessEnv={...db.env,BITDEER_API_KEY:"mock-ui-continuity",SUDOKO_DEMO_MODE:"1",FLEET_PUBLIC_URI:db.env.SPACETIME_URI};
+const service=await startService({operatorToken:randomUUID()+randomUUID(),env});
+const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH??"/home/kyle/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome",args:["--no-sandbox","--disable-webgl"],headless:true});
+const report:any={engine:"mocked model decisions + real seeded reducers",checks:[],errors:[]};
+const wait=async(fn:()=>Promise<any>,ms=30000)=>{const until=Date.now()+ms;while(Date.now()<until){const r=await fn();if(r)return r;await delay(60)}throw Error("Activity check timed out")};
+const state=(page:Page)=>page.evaluate(()=>(globalThis as any).activityCheck());
+const send=async(page:Page,message:string)=>{await page.locator("#say").fill(message);const response=page.waitForResponse(r=>r.url().endsWith("/api/chat/messages")&&r.request().method()==="POST");await page.locator("#say").press("Enter");const r=await response;assert.equal(r.status(),202,await r.text());};
+try{
+ await service.store.call("start_fleet",[120,0,0,false]);await service.store.call("enable_fleet_chat",[]);await service.store.call("set_battle_seed",[2]);
+ const pages:Record<string,Page>={};
+ for(const role of ["attacker","defender"]){
+  const identity:any=await original(db.env.SPACETIME_URI+"/v1/identity",{method:"POST"}).then(r=>r.json());await service.store.call("grant_fleet_view",[identity.identity,role]);env[`SUDOKO_DEMO_${role.toUpperCase()}_VIEWER_TOKEN`]=identity.token;
+  const context=await browser.newContext({viewport:{width:1440,height:900}});await context.addInitScript(r=>sessionStorage.setItem("sudoko.role",r),role);await context.route("**/fleet.js",r=>r.fulfill({contentType:"text/javascript",body:bundle.outputFiles[0].text}));
+  const page=await context.newPage();page.on("pageerror",e=>report.errors.push(e.message));await page.goto(service.url);await page.waitForFunction(()=>document.querySelector("#live")?.textContent==="Live");pages[role]=page;
+ }
+ const {attacker,defender}=pages;
+ await send(attacker,"What is the current operation?");await wait(async()=>(await attacker.locator(".interaction-response").innerText()).includes("No operation"));assert.equal((await service.store.query("SELECT * FROM fleet_agent")).length,0);
+ report.checks.push("Ordinary question answers without spawning agents");
+ await attacker.evaluate(()=>{(globalThis as any).statusRow=document.querySelector("#team-status [data-team=attacker]");});
+ await send(attacker,"Capture the assigned drones");await wait(async()=>await attacker.locator("#agents-count").textContent()==="2");
+ assert.equal(await attacker.locator("#team-status [data-team]").count(),1);
+ assert.ok((await attacker.locator("#suggest").innerText()).includes("Explain the current operation"));
+ await wait(async()=>(await state(attacker)).frame.attempts.some((a:any)=>a.stage!=="resolved"));
+ assert.ok((await attacker.locator("#team-status").innerText()).includes("Attempt in progress"));
+ await send(attacker,"Continue");assert.equal((await service.store.query("SELECT * FROM fleet_agent")).length,2);
+ await wait(async()=>await attacker.locator("#agents-count").textContent()==="0");await delay(4200);
+ assert.equal(await attacker.locator("#agents [data-agent-id]").count(),0);
+ assert.ok((await attacker.locator("#log").innerText()).includes("closed agent tasks"));
+ assert.equal(await attacker.locator("#log .activity-major").count(),2,"Ownership events are not duplicated as evidence entries");
+ assert.ok((await attacker.locator("#suggest").innerText()).includes("Attempt spread through DR-"));
+ assert.ok(await attacker.evaluate(()=>document.querySelector("#team-status [data-team=attacker]")===(globalThis as any).statusRow),"Persistent team row updates in place");
+ report.checks.push("Live row follows authoritative stages; Continue reuses two agents; counts close immediately and terminal rows disappear; results stay in history; feed deduplicates evidence");
+ await send(attacker,"Attempt spread through the captured relays");await wait(async()=>inputs.some(i=>i.context.assignment?.goal==="spread"));
+ await send(defender,"Contain the affected relays");
+ await wait(async()=>inputs.some(i=>i.context.assignment?.goal==="contain"));releaseSpread=true;
+ await wait(async()=>(await state(attacker)).frame.attempts.some((a:any)=>a.kind==="spread"&&a.stage==="resolved"&&/interrupt/.test(a.report)));
+ await wait(async()=>await attacker.locator("#agents-count").textContent()==="0");await wait(async()=>await defender.locator("#agents-count").textContent()==="0");
+ assert.ok(!(await attacker.locator("#suggest").innerText()).includes("Attempt spread through DR-018"));
+ await wait(async()=>(await defender.locator("#suggest").innerText()).includes("recovery"),5000);
+ assert.ok((await state(defender)).frame.attempts.every((a:any)=>a.role==="defender"));
+ report.checks.push("Countermeasure interrupts ongoing spread; suggestions remove isolated routes and offer recovery; opponent plans stay hidden");
+ await attacker.screenshot({path:output+"/desktop.png",fullPage:true});
+ await defender.setViewportSize({width:390,height:844});await defender.screenshot({path:output+"/mobile.png",fullPage:true});
+ for(const page of [attacker,defender])assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),"No horizontal overflow");
+ const before=await attacker.locator("#log > li").count();await delay(2000);assert.equal(await attacker.locator("#log > li").count(),before,"Idle ticks do not append feed entries");
+ const session=await attacker.context().newCDPSession(attacker);await session.send("Performance.enable");const metrics1=await session.send("Performance.getMetrics");await delay(2000);const metrics2=await session.send("Performance.getMetrics");const metric=(r:any,name:string)=>r.metrics.find((m:any)=>m.name===name)?.value??0;report.idleMainThreadPercent=Math.round(100*(metric(metrics2,"TaskDuration")-metric(metrics1,"TaskDuration"))/2);report.rendering="Canvas fallback in headless Chromium; no hardware GPU benchmark";
+ await send(defender,"Recover and restore the affected drones");await wait(async()=>(await state(defender)).frame.attempts.some((a:any)=>a.kind==="verify"&&a.stage!=="resolved"));
+ const epoch=(await state(defender)).epoch;const reset=await defender.request.post(service.url+"/api/chat/reset-demo",{headers:{origin:service.url,"x-sudoko-role":"defender"},data:{epoch,confirm:true}});assert.equal(reset.status(),200,await reset.text());
+ await wait(async()=>(await state(defender)).epoch===epoch+1);await delay(4500);
+ const clean=(await state(defender)).frame;assert.equal(clean.tasks.length,0);assert.equal(clean.attempts.length,0);assert.ok(clean.drones.every((d:any)=>d.controller==="defender"&&!d.isolated));assert.equal(await defender.locator("#agents-count").textContent(),"0");
+ assert.deepEqual(report.errors,[]);report.checks.push("Reset during recovery clears tasks, attempts, chat and ownership; no late result reappears; desktop/mobile have no horizontal overflow or runtime errors");report.passed=true;
+}catch(e:any){report.error=e.stack;process.exitCode=1;}finally{await writeFile(output+"/report.json",JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));await browser.close();await service.close();await db.close();globalThis.fetch=original;}

@@ -227,8 +227,8 @@ export function fleetWeb(options: {
     if (url.pathname === "/api/chat/state" && req.method === "GET") {
       const reader = new RunStore({ ...fleet, token: viewer.token });
       const [fleetState] = await store.query("SELECT * FROM fleet_session WHERE id=0");
-      const [drones, agents, profiles, events, missions, resilience, budgets, battle, attempts] = await Promise.all(
-        ["visible_drones", "visible_agents", "visible_agent_profiles", "visible_evidence", "visible_resilience_mission", "visible_resilience_drones", "visible_resilience_budget", "visible_battle_drones", "visible_battle_attempts"].map((table) => reader.query(`SELECT * FROM ${table}`)),
+      const [drones, agents, profiles, events, missions, resilience, budgets, battle, attempts, options, tasks, teams] = await Promise.all(
+        ["visible_drones", "visible_agents", "visible_agent_profiles", "visible_evidence", "visible_resilience_mission", "visible_resilience_drones", "visible_resilience_budget", "visible_battle_drones", "visible_attempt_activity", "visible_battle_options", "visible_agent_tasks", "visible_team_activity"].map((table) => reader.query(`SELECT * FROM ${table}`)),
       );
       const [current] = await store.query("SELECT * FROM fleet_session WHERE id=0");
       if (current?.epoch !== fleetState?.epoch) throw new StoreError(409, "Fleet session changed; retry snapshot");
@@ -237,7 +237,7 @@ export function fleetWeb(options: {
         conversation: viewer.role === "observer" ? 1 : await chat.generation(viewer.role),
         active: current?.active,
         drones,
-        ...(battle.length ? { battle, attempts } : {}),
+        battle, attempts, options, tasks, teams,
         ...(missions.length ? { mission: missions[0], resilience, budgets } : {}),
         agents: agents.map((agent: any) => ({ ...agent, ...profiles.find((profile: any) => profile.id === agent.id) })),
         events: events.sort((a: any, b: any) => a.id - b.id),

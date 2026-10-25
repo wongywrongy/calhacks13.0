@@ -16,7 +16,7 @@ if (!real) globalThis.fetch = async (input: any, init?: any) => {
   const body = JSON.parse(init.body), system = JSON.parse(body.messages[0].content), context = JSON.parse(body.messages[1].content);
   inputs.push({ role: system.role, context });
   await delay(60, undefined, { signal: init.signal });
-  const tasks = [1, 2].map((target) => ({ name: (system.role === "attacker" ? "Challenge " : "Defense ") + target, specialty: "resilience", target, objective: system.role === "attacker" ? "Disrupt survey work and adapt to rejection" : "Investigate and restore survey participation" }));
+  const tasks = [1, 2].map((target) => ({ name: (system.role === "attacker" ? "Challenge " : "Defense ") + target, specialty: "resilience", target, goal: system.role === "attacker" ? "capture" : "recover", objective: system.role === "attacker" ? "Disrupt survey work and adapt to rejection" : "Investigate and restore survey participation" }));
   const steps = system.role === "attacker" ? ["discover", "telemetry", "telemetry", "communications", "malfunction", "invalid_command", "mission_conflict", "wait"]
     : ["cross_check", "switch_route", "reject_invalid", "reassign", "cross_check", "restore", "wait", "wait"];
   const value = system.agents ? system.task.startsWith("Route") ? { intent: "deploy", answer: "Prepare bounded resilience specialists.", evidenceIds: [], tasks } : { tasks }

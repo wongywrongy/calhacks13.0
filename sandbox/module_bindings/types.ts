@@ -70,6 +70,20 @@ export const Attempt = __t.object("Attempt", {
 });
 export type Attempt = __Infer<typeof Attempt>;
 
+export const AttemptActivity = __t.object("AttemptActivity", {
+  key: __t.string(),
+  epoch: __t.u64(),
+  operation: __t.string(),
+  role: __t.string(),
+  agent: __t.u32(),
+  target: __t.u32(),
+  kind: __t.string(),
+  stage: __t.string(),
+  at: __t.i64(),
+  report: __t.string(),
+});
+export type AttemptActivity = __Infer<typeof AttemptActivity>;
+
 export const Battle = __t.object("Battle", {
   id: __t.u32(),
   epoch: __t.u64(),
@@ -341,6 +355,17 @@ export const Observation = __t.object("Observation", {
 });
 export type Observation = __Infer<typeof Observation>;
 
+export const Options = __t.object("Options", {
+  key: __t.string(),
+  epoch: __t.u64(),
+  role: __t.string(),
+  drone: __t.u32(),
+  actions: __t.array(__t.string()),
+  reachable: __t.array(__t.u32()),
+  blocker: __t.string(),
+});
+export type Options = __Infer<typeof Options>;
+
 export const Principal = __t.object("Principal", {
   identity: __t.identity(),
   role: __t.string(),
@@ -385,6 +410,34 @@ export const Session = __t.object("Session", {
   deadline: __t.i64(),
 });
 export type Session = __Infer<typeof Session>;
+
+export const TaskActivity = __t.object("TaskActivity", {
+  agent: __t.u32(),
+  epoch: __t.u64(),
+  role: __t.string(),
+  operation: __t.string(),
+  name: __t.string(),
+  specialty: __t.string(),
+  target: __t.u32(),
+  goal: __t.string(),
+  state: __t.string(),
+  stage: __t.string(),
+  summary: __t.string(),
+  updatedAt: __t.i64(),
+  finishedAt: __t.i64(),
+});
+export type TaskActivity = __Infer<typeof TaskActivity>;
+
+export const TeamActivity = __t.object("TeamActivity", {
+  role: __t.string(),
+  operation: __t.string(),
+  objective: __t.string(),
+  targets: __t.array(__t.u32()),
+  stage: __t.string(),
+  summary: __t.string(),
+  activeAgents: __t.u32(),
+});
+export type TeamActivity = __Infer<typeof TeamActivity>;
 
 export const Viewer = __t.object("Viewer", {
   identity: __t.identity(),

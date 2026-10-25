@@ -33,6 +33,8 @@ export type Worker = {
   operationId: string;
   deployedAt?: number;
   error?: string;
+  reason?: string;
+  stage?: string;
 };
 export type Operation = {
   id: string;

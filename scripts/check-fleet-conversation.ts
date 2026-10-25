@@ -31,7 +31,7 @@ if (!real) globalThis.fetch = async (input: any, init?: any) => {
   if (mode === "failure") return new Response("{}", { status: 429 });
   let value: any;
   if (system.agents) {
-    let tasks = [1, 2].map((target, i) => ({ name: i ? "Kestrel" : "Scout", specialty: system.role === "attacker" ? "recon" : "containment", objective: system.role === "attacker" ? "Discover then command" : "Isolate then verify", target: context.selectedTarget ?? target }));
+    let tasks = [1, 2].map((target, i) => ({ name: i ? "Kestrel" : "Scout", specialty: system.role === "attacker" ? "recon" : "containment", goal: system.role === "attacker" ? "capture" : "recover", objective: system.role === "attacker" ? "Discover then command" : "Isolate then verify", target: context.selectedTarget ?? target }));
     if (system.task.startsWith("Route")) {
       const previous = context.operations.at(-1);
       if (/focus|continue|two agents/i.test(context.message) && previous?.tasks?.length) tasks = previous.tasks.map((t: any, i: number) => ({ ...tasks[i], target: t.target }));
@@ -43,6 +43,7 @@ if (!real) globalThis.fetch = async (input: any, init?: any) => {
       if (active && /focus/i.test(context.message)) value = { intent: "replace", answer: "Replace the running plan", evidenceIds: [], tasks };
     } else value = { tasks };
   } else value = { kind: system.role === "attacker" ? context.observation.discovered === false ? "discover" : "command" : context.observation.isolated ? "verify" : "isolate" };
+  if (!system.agents && system.allowed && !system.allowed.includes(value.kind)) value.kind=system.allowed.find((k:string)=>k!=="wait") ?? "wait";
   return Response.json({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(value) } }], usage: { prompt_tokens: 40, completion_tokens: 30, total_tokens: 70 } });
 };
 const db = await testDatabase();

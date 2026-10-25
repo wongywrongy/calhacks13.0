@@ -1,0 +1,9 @@
+{
+  "recon": { "role": "attacker", "actions": ["discover"] },
+  "capture": { "role": "attacker", "actions": ["discover", "prepare", "command"] },
+  "spread": { "role": "attacker", "actions": ["discover", "prepare", "command", "spread"] },
+  "contain": { "role": "defender", "actions": ["prepare", "isolate", "harden"] },
+  "recover": { "role": "defender", "actions": ["prepare", "isolate", "harden", "verify"] },
+  "restore": { "role": "defender", "actions": ["prepare", "isolate", "harden", "verify", "release"] },
+  "harden": { "role": "defender", "actions": ["prepare", "harden"] }
+}

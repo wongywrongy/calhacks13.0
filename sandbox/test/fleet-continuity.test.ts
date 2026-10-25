@@ -1,0 +1,53 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {randomUUID} from "node:crypto";
+import {setTimeout as delay} from "node:timers/promises";
+import {testDatabase} from "./spacetime-helper.ts";
+import {RunStore} from "../src/run-store.ts";
+import {FleetChat} from "../src/fleet-chat.ts";
+import {DecisionPool} from "../src/decision-pool.ts";
+test("bounded reassessment reuses agents, Continue reuses work, closed tasks stay in history, reset fences pending attempts",{skip:!process.env.SPACETIME_BINARY,timeout:65000},async(t)=>{
+ const db=await testDatabase(), original=globalThis.fetch;
+ const store=new RunStore({uri:db.env.SPACETIME_URI,database:db.env.SPACETIME_DATABASE,token:db.env.SPACETIME_TOKEN});
+ let blocked=true,calls=0;const choices:any[]=[];
+ t.mock.method(globalThis,"fetch",async(input:any,init?:any)=>{
+  if(String(input)!=="https://api-inference.bitdeer.ai/v1/chat/completions")return original(input,init);
+  calls++;const body=JSON.parse(init.body),system=JSON.parse(body.messages[0].content),context=JSON.parse(body.messages[1].content);
+  if(!system.agents)while(blocked)await delay(20,undefined,{signal:init.signal});
+  const value=system.agents ? {tasks:[8,10].map(target=>({name:"Scout "+target,specialty:"entry",target,goal:"capture",objective:"Attempt entry on the assigned drone"}))} : {kind:["discover","command","prepare"].find(k=>system.allowed.includes(k))??"wait"};
+  if(!system.agents)choices.push({agent:context.assignment.agentId,allowed:system.allowed,kind:value.kind});
+  return Response.json({choices:[{finish_reason:"stop",message:{content:JSON.stringify(value)}}]});
+ });
+ const chat=new FleetChat(store,new DecisionPool(2),{BITDEER_API_KEY:"mock-continuity"});
+ const heartbeat=setInterval(()=>void store.heartbeat().catch(()=>{}),5000);
+ const wait=async(check:()=>Promise<any>)=>{const end=Date.now()+30000;while(Date.now()<end){const result=await check();if(result)return result;await delay(50)}assert.fail("Continuity check timed out")};
+ const rows=(table:string)=>store.query("SELECT * FROM "+table);
+ try{
+  await store.call("acquire_backend",[store.session,2,8]);await store.call("start_fleet",[32,0,0,false]);await store.call("enable_fleet_chat",[]);await store.call("set_battle_seed",[4]);
+  const identity:any=await original(db.env.SPACETIME_URI+"/v1/identity",{method:"POST"}).then(r=>r.json());await store.call("grant_fleet_view",[identity.identity,"attacker"]);
+  const viewer=new RunStore({uri:db.env.SPACETIME_URI,database:db.env.SPACETIME_DATABASE,token:identity.token});
+  const op=await chat.start("attacker","Attempt entry on drones 8 and 10",randomUUID());
+  await wait(async()=>calls===3);
+  const before=calls, agents=(await rows("fleet_agent")).map((a:any)=>a.id);
+  await chat.message("attacker","Continue",randomUUID());assert.equal(calls,before);assert.deepEqual((await rows("fleet_agent")).map((a:any)=>a.id),agents);
+  blocked=false;
+  const done=await wait(async()=>{const value=await chat.get(op.id,"attacker");return !["planning","running"].includes(value.state)&&value});
+  assert.equal(done.tasks.length,2);assert.ok(done.workers.every((w:any)=>["completed","failed"].includes(w.state)));
+  const failed=done.results.find((r:any)=>r.target===8&&r.kind==="command"&&r.simulation?.succeeded===0);
+  assert.ok(failed,"Selected entry fails under seeded conditions");
+  assert.ok(done.results.some((r:any)=>r.agentId===failed.agentId&&r.kind==="prepare"&&r.step>failed.step),"Same agent chooses materially different eligible preparation after failure");
+  assert.equal((await rows("fleet_agent")).length,2,"No replacement agents are spawned by retries");
+  assert.ok(choices.every(c=>c.allowed.includes(c.kind)));assert.ok(done.results.every((r:any)=>!r.step||r.step<=8));assert.ok(calls<=17);
+  const tasks=await viewer.query("SELECT * FROM visible_agent_tasks");assert.equal(tasks.length,2);assert.ok(tasks.every((t:any)=>!["queued","running"].includes(t.state)&&t.summary));
+  const team=(await viewer.query("SELECT * FROM visible_team_activity"))[0];assert.equal(team.active_agents,0);assert.equal(team.operation,"");
+  const idle=calls;await delay(800);assert.equal(calls,idle,"No model work after terminal state");
+  await store.call("start_fleet",[32,0,0,false]);await store.call("enable_fleet_chat",[]);await store.call("set_battle_seed",[4]);
+  const pending=await chat.start("attacker","Attempt entry again",randomUUID());
+  await wait(async()=>(await rows("battle_attempt")).some((a:any)=>a.stage!=="resolved"));
+  const epoch=(await rows("fleet_session"))[0].epoch;await chat.endFleet(epoch,true);await delay(4500);
+  assert.deepEqual(await viewer.query("SELECT * FROM visible_agent_tasks"),[]);
+  assert.equal((await viewer.query("SELECT * FROM visible_team_activity"))[0].active_agents,0);
+  for(const table of ["battle_attempt","battle_options","battle_schedule","fleet_agent"])assert.deepEqual(await rows(table),[],table);
+  assert.equal((await chat.get(pending.id,"attacker")).state,"cancelled");
+ }finally{clearInterval(heartbeat);await chat.close();await db.close();}
+});

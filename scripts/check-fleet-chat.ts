@@ -44,6 +44,7 @@ if (mocked)
               name: "Kestrel",
               specialty: system.role === "attacker" ? "reconnaissance" : "containment",
               target: context.selectedTarget ?? i + 1,
+              goal: system.role === "attacker" ? "capture" : "recover",
               objective: "Assess assigned drone <img src=x onerror=alert(1)>",
             })),
         }

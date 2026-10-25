@@ -59,7 +59,8 @@ test(
           tasks: [0, 1].map((i: number) => ({
               name: "Kestrel",
               specialty: system.role === "attacker" ? "reconnaissance" : "containment",
-              target: context.selectedTarget ?? i + 1,
+              target: context.selectedTarget ?? i + (["repeat-discovery","out-of-scope"].includes(mode) ? 3 : 1),
+              goal: system.role === "attacker" ? "capture" : mode === "blocked-specialists" ? "harden" : "recover",
               objective: "Assess assigned drone <img src=x onerror=alert(1)>",
             })),
         };
@@ -74,6 +75,7 @@ test(
                 ? "verify"
                 : "isolate",
         };
+      if (!system.agents && system.allowed && !system.allowed.includes(value.kind)) value.kind=system.allowed.find((k:string)=>k!=="wait") ?? "wait";
       if (mode === "declined-plan" && system.agents)
         value.tasks.forEach((task: any) => (task.objective = "declined"));
       if (mode === "repeat-discovery" && !system.agents)
@@ -130,6 +132,7 @@ test(
       for (let i = 0; i < 700; i++) {
         const r = await request(`/v1/chat/operations/${id}`, token);
         if (predicate(r.body)) return r.body;
+        if (["failed","cancelled"].includes(r.body.state)) throw Error("Unexpected terminal state: "+JSON.stringify(r.body));
         await delay(50);
       }
       throw Error("Operation did not reach expected state");
@@ -182,7 +185,7 @@ test(
       assert.equal((await browser("/api/chat/state", "none")).status, 401);
       const attackerSnapshot = await browser("/api/chat/state", "attacker");
       assert.equal(attackerSnapshot.status, 200);
-      assert.deepEqual(attackerSnapshot.body, { epoch: fleet.epoch, conversation: 1, active: true, drones: [], agents: [], events: [] });
+      assert.deepEqual(attackerSnapshot.body, { epoch: fleet.epoch, conversation: 1, active: true, drones: [], agents: [], events: [], battle:[],attempts:[],options:[],tasks:[],teams:[{role:"attacker",operation:"",objective:"",targets:[],stage:"idle",summary:"Waiting for user instructions",active_agents:0}] });
       assert.equal((await browser("/api/chat/state", "defender")).body.drones.length, 4);
       assert.equal(
         (
@@ -530,11 +533,12 @@ test(
       const scopedDone = await poll(
         scopedOperation.id,
         attacker,
-        (o) => o.state === "completed",
+        (o) => ["completed","failed"].includes(o.state),
       );
       assert.ok(scopedDone.tasks.every((task: any) => task.target === 1));
       assert.ok(scopedDone.results.every((r: any) => r.target === 1));
-      assert.ok(scopedDone.workers.every((w: any) => w.state === "done"));
+      assert.ok(scopedDone.workers.every((w: any) => ["completed","failed"].includes(w.state)));
+      assert.ok(scopedDone.workers.every((w:any)=>w.reason),"Blocked assignments close with a reason");
       // Reducers independently enforce the selected context even for trusted Node calls.
       const scopedId = randomUUID();
       await service.store.call("create_chat_operation", [
@@ -889,6 +893,13 @@ test(
       assert.ok(restored.body.messages.some((m: any) => m.text === message));
       assert.equal(saved.body.state, "completed");
       assert.equal(saved.body.results.length, attacked.results.length);
+      // Make fresh, eligible probe targets visible before testing rejected model choices.
+      const discoveryId=randomUUID(), knownAgents=new Set((await service.store.query("SELECT * FROM fleet_agent")).map((a:any)=>a.id));
+      const probeTasks=[3,4].map(target=>{let agentId=1;while(knownAgents.has(agentId))agentId++;knownAgents.add(agentId);return {agentId,target,name:"Probe "+target,specialty:"recon",objective:"Discover the assigned probe",goal:"recon"};});
+      await service.store.call("create_chat_operation",[service.store.session,discoveryId,discoveryId,"attacker",fleet.epoch,JSON.stringify({conversation:1,message:"Discover probe targets",target:null,tasks:[],maxDecisionsPerAgent:8,maxModelCalls:33,createdAt:Date.now(),deadline:Date.now()+75000})]);
+      await service.store.call("plan_chat_operation",[service.store.session,discoveryId,JSON.stringify(probeTasks)]);
+      for(const task of probeTasks)await service.store.call("execute_fleet_chat_action",[service.store.session,discoveryId,1,task.agentId,task.target,"discover",0]);
+      await service.store.call("update_chat_operation",[service.store.session,discoveryId,"completed",JSON.stringify(probeTasks.map(t=>({type:"worker",agentId:t.agentId,target:t.target,state:"completed",reason:"Discovery completed.",at:Date.now()})))]);
       for (const [failure, code] of [
         ["refuse", "provider_refused"],
         ["declined-plan", "provider_refused"],

@@ -98,12 +98,11 @@ Replay requires the same seed **and ordered actions/conditions**, not just the s
 Concurrent model outputs and wall-clock ordering are not promised to reproduce. The seed
 stays in the private `battle_state` row rather than model observations.
 
-## Backend contract for the UI owner
+## Live UI contract
 
-No UI files were changed for this implementation. The UI owner can regenerate the web
-bindings from the WASM when ready; only `sandbox/module_bindings` was regenerated here.
+The web client subscribes to the authoritative battle and task views. Both browser and sandbox bindings are regenerated from the module. Controller, contamination and availability remain distinct in drone details and viewport markers.
 
-Existing role-scoped subscriptions can add:
+Role-scoped subscriptions include:
 
 - `visible_battle_drones`: `{drone, contamination, operational, readiness}`. Join on drone
   ID to existing controller state. Attackers see only discovered drones, and readiness is
@@ -113,7 +112,7 @@ Existing role-scoped subscriptions can add:
   Only own attempts are returned, except the observer can see both. Opponent plans are
   private; defenders see local command/limited-access evidence from the existing views.
 
-`GET /api/chat/state` adds `battle` and `attempts` arrays when battle health exists. Existing
+`GET /api/chat/state` includes `battle`, enriched `attempts`, `options`, `tasks` and `teams` arrays. Existing
 operation result objects also carry `stage` and parsed `simulation` reports while pending
 and after resolution. A report contains `simulated:true`, concise `summary`, `outcome`,
 `succeeded`, `partial`, `total`, and per-target `results` with eligibility, reason, numeric
@@ -121,9 +120,7 @@ chance factors and the roll (null for ineligible targets). `status:executed` mea
 attempt resolved, not that it succeeded. Spread receipts may cover multiple target IDs;
 the original assigned target is the relay. Use `simulation.results` for affected drones.
 
-Persisted chat messages with `speaker:simulation` carry stage and resolution summaries.
-The Node API classifies these as progress/outcome, linked to the originating operation.
-They remain separate from the real provider decision/usage/error records. `fleetOutcome`
+Stage and resolution summaries are supplied through authoritative attempt/activity views instead of appending chat messages for each stage. Provider decision/usage/error records remain separate from simulated effects. `fleetOutcome`
 counts resolved effects, keeps containment separate from completed recovery, and distinguishes partial completion. A provider
 refusal/error remains a provider failure and never falls back to a simulated choice.
 

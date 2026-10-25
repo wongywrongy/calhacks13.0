@@ -66,11 +66,14 @@ import UpdateChatTurnReducer from "./update_chat_turn_reducer";
 // Import all table schema definitions
 import ArenaSnapshotRow from "./arena_snapshot_table";
 import VisibleAgentProfilesRow from "./visible_agent_profiles_table";
+import VisibleAgentTasksRow from "./visible_agent_tasks_table";
 import VisibleAgentsRow from "./visible_agents_table";
+import VisibleAttemptActivityRow from "./visible_attempt_activity_table";
 import VisibleBackendEventsRow from "./visible_backend_events_table";
 import VisibleBackendRunsRow from "./visible_backend_runs_table";
 import VisibleBattleAttemptsRow from "./visible_battle_attempts_table";
 import VisibleBattleDronesRow from "./visible_battle_drones_table";
+import VisibleBattleOptionsRow from "./visible_battle_options_table";
 import VisibleChatMessagesRow from "./visible_chat_messages_table";
 import VisibleChatOperationsRow from "./visible_chat_operations_table";
 import VisibleChatTurnsRow from "./visible_chat_turns_table";
@@ -81,6 +84,7 @@ import VisibleFleetSessionRow from "./visible_fleet_session_table";
 import VisibleResilienceBudgetRow from "./visible_resilience_budget_table";
 import VisibleResilienceDronesRow from "./visible_resilience_drones_table";
 import VisibleResilienceMissionRow from "./visible_resilience_mission_table";
+import VisibleTeamActivityRow from "./visible_team_activity_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -104,6 +108,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, VisibleAgentProfilesRow),
+  visibleAgentTasks: __table({
+    name: 'visible_agent_tasks',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleAgentTasksRow),
   visibleAgents: __table({
     name: 'visible_agents',
     indexes: [
@@ -111,6 +122,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, VisibleAgentsRow),
+  visibleAttemptActivity: __table({
+    name: 'visible_attempt_activity',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleAttemptActivityRow),
   visibleBackendEvents: __table({
     name: 'visible_backend_events',
     indexes: [
@@ -139,6 +157,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, VisibleBattleDronesRow),
+  visibleBattleOptions: __table({
+    name: 'visible_battle_options',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleBattleOptionsRow),
   visibleChatMessages: __table({
     name: 'visible_chat_messages',
     indexes: [
@@ -209,6 +234,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, VisibleResilienceMissionRow),
+  visibleTeamActivity: __table({
+    name: 'visible_team_activity',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleTeamActivityRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -251,8 +283,12 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "arena_snapshot": Omit<typeof tablesSchema.schemaType.tables["arenaSnapshot"], "accessorName"> & { readonly accessorName: "arena_snapshot" };
     /** @deprecated Use `visibleAgentProfiles` instead. This alias will be removed in the next major version. */
     readonly "visible_agent_profiles": Omit<typeof tablesSchema.schemaType.tables["visibleAgentProfiles"], "accessorName"> & { readonly accessorName: "visible_agent_profiles" };
+    /** @deprecated Use `visibleAgentTasks` instead. This alias will be removed in the next major version. */
+    readonly "visible_agent_tasks": Omit<typeof tablesSchema.schemaType.tables["visibleAgentTasks"], "accessorName"> & { readonly accessorName: "visible_agent_tasks" };
     /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
     readonly "visible_agents": Omit<typeof tablesSchema.schemaType.tables["visibleAgents"], "accessorName"> & { readonly accessorName: "visible_agents" };
+    /** @deprecated Use `visibleAttemptActivity` instead. This alias will be removed in the next major version. */
+    readonly "visible_attempt_activity": Omit<typeof tablesSchema.schemaType.tables["visibleAttemptActivity"], "accessorName"> & { readonly accessorName: "visible_attempt_activity" };
     /** @deprecated Use `visibleBackendEvents` instead. This alias will be removed in the next major version. */
     readonly "visible_backend_events": Omit<typeof tablesSchema.schemaType.tables["visibleBackendEvents"], "accessorName"> & { readonly accessorName: "visible_backend_events" };
     /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
@@ -261,6 +297,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "visible_battle_attempts": Omit<typeof tablesSchema.schemaType.tables["visibleBattleAttempts"], "accessorName"> & { readonly accessorName: "visible_battle_attempts" };
     /** @deprecated Use `visibleBattleDrones` instead. This alias will be removed in the next major version. */
     readonly "visible_battle_drones": Omit<typeof tablesSchema.schemaType.tables["visibleBattleDrones"], "accessorName"> & { readonly accessorName: "visible_battle_drones" };
+    /** @deprecated Use `visibleBattleOptions` instead. This alias will be removed in the next major version. */
+    readonly "visible_battle_options": Omit<typeof tablesSchema.schemaType.tables["visibleBattleOptions"], "accessorName"> & { readonly accessorName: "visible_battle_options" };
     /** @deprecated Use `visibleChatMessages` instead. This alias will be removed in the next major version. */
     readonly "visible_chat_messages": Omit<typeof tablesSchema.schemaType.tables["visibleChatMessages"], "accessorName"> & { readonly accessorName: "visible_chat_messages" };
     /** @deprecated Use `visibleChatOperations` instead. This alias will be removed in the next major version. */
@@ -281,6 +319,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "visible_resilience_drones": Omit<typeof tablesSchema.schemaType.tables["visibleResilienceDrones"], "accessorName"> & { readonly accessorName: "visible_resilience_drones" };
     /** @deprecated Use `visibleResilienceMission` instead. This alias will be removed in the next major version. */
     readonly "visible_resilience_mission": Omit<typeof tablesSchema.schemaType.tables["visibleResilienceMission"], "accessorName"> & { readonly accessorName: "visible_resilience_mission" };
+    /** @deprecated Use `visibleTeamActivity` instead. This alias will be removed in the next major version. */
+    readonly "visible_team_activity": Omit<typeof tablesSchema.schemaType.tables["visibleTeamActivity"], "accessorName"> & { readonly accessorName: "visible_team_activity" };
   };
 };
 
@@ -301,11 +341,14 @@ const REMOTE_MODULE = {
 const tableAccessorAliases = {
   "arena_snapshot": "arenaSnapshot",
   "visible_agent_profiles": "visibleAgentProfiles",
+  "visible_agent_tasks": "visibleAgentTasks",
   "visible_agents": "visibleAgents",
+  "visible_attempt_activity": "visibleAttemptActivity",
   "visible_backend_events": "visibleBackendEvents",
   "visible_backend_runs": "visibleBackendRuns",
   "visible_battle_attempts": "visibleBattleAttempts",
   "visible_battle_drones": "visibleBattleDrones",
+  "visible_battle_options": "visibleBattleOptions",
   "visible_chat_messages": "visibleChatMessages",
   "visible_chat_operations": "visibleChatOperations",
   "visible_chat_turns": "visibleChatTurns",
@@ -316,6 +359,7 @@ const tableAccessorAliases = {
   "visible_resilience_budget": "visibleResilienceBudget",
   "visible_resilience_drones": "visibleResilienceDrones",
   "visible_resilience_mission": "visibleResilienceMission",
+  "visible_team_activity": "visibleTeamActivity",
 } as const;
 
 function __withTableAccessorAliases<T extends object>(target: T, freeze = false): T {
@@ -340,8 +384,12 @@ export type DbView = __DbViewBase & {
   readonly "arena_snapshot": __DbViewBase["arenaSnapshot"];
   /** @deprecated Use `visibleAgentProfiles` instead. This alias will be removed in the next major version. */
   readonly "visible_agent_profiles": __DbViewBase["visibleAgentProfiles"];
+  /** @deprecated Use `visibleAgentTasks` instead. This alias will be removed in the next major version. */
+  readonly "visible_agent_tasks": __DbViewBase["visibleAgentTasks"];
   /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
   readonly "visible_agents": __DbViewBase["visibleAgents"];
+  /** @deprecated Use `visibleAttemptActivity` instead. This alias will be removed in the next major version. */
+  readonly "visible_attempt_activity": __DbViewBase["visibleAttemptActivity"];
   /** @deprecated Use `visibleBackendEvents` instead. This alias will be removed in the next major version. */
   readonly "visible_backend_events": __DbViewBase["visibleBackendEvents"];
   /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
@@ -350,6 +398,8 @@ export type DbView = __DbViewBase & {
   readonly "visible_battle_attempts": __DbViewBase["visibleBattleAttempts"];
   /** @deprecated Use `visibleBattleDrones` instead. This alias will be removed in the next major version. */
   readonly "visible_battle_drones": __DbViewBase["visibleBattleDrones"];
+  /** @deprecated Use `visibleBattleOptions` instead. This alias will be removed in the next major version. */
+  readonly "visible_battle_options": __DbViewBase["visibleBattleOptions"];
   /** @deprecated Use `visibleChatMessages` instead. This alias will be removed in the next major version. */
   readonly "visible_chat_messages": __DbViewBase["visibleChatMessages"];
   /** @deprecated Use `visibleChatOperations` instead. This alias will be removed in the next major version. */
@@ -370,6 +420,8 @@ export type DbView = __DbViewBase & {
   readonly "visible_resilience_drones": __DbViewBase["visibleResilienceDrones"];
   /** @deprecated Use `visibleResilienceMission` instead. This alias will be removed in the next major version. */
   readonly "visible_resilience_mission": __DbViewBase["visibleResilienceMission"];
+  /** @deprecated Use `visibleTeamActivity` instead. This alias will be removed in the next major version. */
+  readonly "visible_team_activity": __DbViewBase["visibleTeamActivity"];
 };
 
 type __TablesBase = __QueryBuilder<typeof tablesSchema.schemaType>;
@@ -378,8 +430,12 @@ export type Tables = __TablesBase & {
   readonly "arena_snapshot": __TablesBase["arenaSnapshot"];
   /** @deprecated Use `visibleAgentProfiles` instead. This alias will be removed in the next major version. */
   readonly "visible_agent_profiles": __TablesBase["visibleAgentProfiles"];
+  /** @deprecated Use `visibleAgentTasks` instead. This alias will be removed in the next major version. */
+  readonly "visible_agent_tasks": __TablesBase["visibleAgentTasks"];
   /** @deprecated Use `visibleAgents` instead. This alias will be removed in the next major version. */
   readonly "visible_agents": __TablesBase["visibleAgents"];
+  /** @deprecated Use `visibleAttemptActivity` instead. This alias will be removed in the next major version. */
+  readonly "visible_attempt_activity": __TablesBase["visibleAttemptActivity"];
   /** @deprecated Use `visibleBackendEvents` instead. This alias will be removed in the next major version. */
   readonly "visible_backend_events": __TablesBase["visibleBackendEvents"];
   /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
@@ -388,6 +444,8 @@ export type Tables = __TablesBase & {
   readonly "visible_battle_attempts": __TablesBase["visibleBattleAttempts"];
   /** @deprecated Use `visibleBattleDrones` instead. This alias will be removed in the next major version. */
   readonly "visible_battle_drones": __TablesBase["visibleBattleDrones"];
+  /** @deprecated Use `visibleBattleOptions` instead. This alias will be removed in the next major version. */
+  readonly "visible_battle_options": __TablesBase["visibleBattleOptions"];
   /** @deprecated Use `visibleChatMessages` instead. This alias will be removed in the next major version. */
   readonly "visible_chat_messages": __TablesBase["visibleChatMessages"];
   /** @deprecated Use `visibleChatOperations` instead. This alias will be removed in the next major version. */
@@ -408,6 +466,8 @@ export type Tables = __TablesBase & {
   readonly "visible_resilience_drones": __TablesBase["visibleResilienceDrones"];
   /** @deprecated Use `visibleResilienceMission` instead. This alias will be removed in the next major version. */
   readonly "visible_resilience_mission": __TablesBase["visibleResilienceMission"];
+  /** @deprecated Use `visibleTeamActivity` instead. This alias will be removed in the next major version. */
+  readonly "visible_team_activity": __TablesBase["visibleTeamActivity"];
 };
 
 /** The tables available in this remote SpacetimeDB module. Each table reference doubles as a query builder. */

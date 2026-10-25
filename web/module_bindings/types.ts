@@ -54,6 +54,51 @@ export const ArenaSnapshot = __t.object("ArenaSnapshot", {
 });
 export type ArenaSnapshot = __Infer<typeof ArenaSnapshot>;
 
+export const Attempt = __t.object("Attempt", {
+  key: __t.string(),
+  epoch: __t.u64(),
+  operation: __t.string(),
+  role: __t.string(),
+  agent: __t.u32(),
+  target: __t.u32(),
+  kind: __t.string(),
+  stage: __t.string(),
+  started: __t.u64(),
+  sources: __t.string(),
+  targets: __t.string(),
+  report: __t.string(),
+});
+export type Attempt = __Infer<typeof Attempt>;
+
+export const AttemptActivity = __t.object("AttemptActivity", {
+  key: __t.string(),
+  epoch: __t.u64(),
+  operation: __t.string(),
+  role: __t.string(),
+  agent: __t.u32(),
+  target: __t.u32(),
+  kind: __t.string(),
+  stage: __t.string(),
+  at: __t.i64(),
+  report: __t.string(),
+});
+export type AttemptActivity = __Infer<typeof AttemptActivity>;
+
+export const Battle = __t.object("Battle", {
+  id: __t.u32(),
+  epoch: __t.u64(),
+  seed: __t.u64(),
+  tick: __t.u64(),
+});
+export type Battle = __Infer<typeof Battle>;
+
+export const BattleSchedule = __t.object("BattleSchedule", {
+  id: __t.u64(),
+  epoch: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type BattleSchedule = __Infer<typeof BattleSchedule>;
+
 export const Budget = __t.object("Budget", {
   role: __t.string(),
   epoch: __t.u64(),
@@ -210,6 +255,17 @@ export const FleetSessionState = __t.object("FleetSessionState", {
 });
 export type FleetSessionState = __Infer<typeof FleetSessionState>;
 
+export const Health = __t.object("Health", {
+  drone: __t.u32(),
+  epoch: __t.u64(),
+  contamination: __t.u32(),
+  readiness: __t.u32(),
+  attackPrepared: __t.bool(),
+  defensePrepared: __t.bool(),
+  countermeasure: __t.u64(),
+});
+export type Health = __Infer<typeof Health>;
+
 export const Hold = __t.object("Hold", {
   drone: __t.u32(),
   epoch: __t.u64(),
@@ -299,6 +355,17 @@ export const Observation = __t.object("Observation", {
 });
 export type Observation = __Infer<typeof Observation>;
 
+export const Options = __t.object("Options", {
+  key: __t.string(),
+  epoch: __t.u64(),
+  role: __t.string(),
+  drone: __t.u32(),
+  actions: __t.array(__t.string()),
+  reachable: __t.array(__t.u32()),
+  blocker: __t.string(),
+});
+export type Options = __Infer<typeof Options>;
+
 export const Principal = __t.object("Principal", {
   identity: __t.identity(),
   role: __t.string(),
@@ -310,6 +377,11 @@ export const Publisher = __t.object("Publisher", {
   identity: __t.identity(),
 });
 export type Publisher = __Infer<typeof Publisher>;
+
+export const Retry = __t.object("Retry", {
+  key: __t.string(),
+});
+export type Retry = __Infer<typeof Retry>;
 
 export const Run = __t.object("Run", {
   id: __t.string(),
@@ -339,7 +411,53 @@ export const Session = __t.object("Session", {
 });
 export type Session = __Infer<typeof Session>;
 
+export const TaskActivity = __t.object("TaskActivity", {
+  agent: __t.u32(),
+  epoch: __t.u64(),
+  role: __t.string(),
+  operation: __t.string(),
+  name: __t.string(),
+  specialty: __t.string(),
+  target: __t.u32(),
+  goal: __t.string(),
+  state: __t.string(),
+  stage: __t.string(),
+  summary: __t.string(),
+  updatedAt: __t.i64(),
+  finishedAt: __t.i64(),
+});
+export type TaskActivity = __Infer<typeof TaskActivity>;
+
+export const TeamActivity = __t.object("TeamActivity", {
+  role: __t.string(),
+  operation: __t.string(),
+  objective: __t.string(),
+  targets: __t.array(__t.u32()),
+  stage: __t.string(),
+  summary: __t.string(),
+  activeAgents: __t.u32(),
+});
+export type TeamActivity = __Infer<typeof TeamActivity>;
+
 export const Viewer = __t.object("Viewer", {
   identity: __t.identity(),
 });
 export type Viewer = __Infer<typeof Viewer>;
+
+export const VisibleAttempt = __t.object("VisibleAttempt", {
+  key: __t.string(),
+  agent: __t.u32(),
+  target: __t.u32(),
+  kind: __t.string(),
+  stage: __t.string(),
+  report: __t.string(),
+});
+export type VisibleAttempt = __Infer<typeof VisibleAttempt>;
+
+export const VisibleHealth = __t.object("VisibleHealth", {
+  drone: __t.u32(),
+  contamination: __t.u32(),
+  operational: __t.bool(),
+  readiness: __t.u32(),
+});
+export type VisibleHealth = __Infer<typeof VisibleHealth>;

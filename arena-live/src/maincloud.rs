@@ -66,16 +66,28 @@ pub fn send_maincloud_message(ctx:&ReducerContext,key:String,message:String,targ
         let v:Value=serde_json::from_str(&t.config).map_err(|_|"Invalid stored turn")?;
         return if v["message"]==message&&v["target"].as_u64().unwrap_or(0)==target as u64{Ok(())}else{Err("Idempotency conflict".into())}
     }
-    if ctx.db.backend_chat_turn().role().filter(role.as_str()).any(|t|["queued","running"].contains(&t.state.as_str())) {
-        if !["stop","cancel","pause"].contains(&message.trim().to_ascii_lowercase().as_str()){return Err("Conversation already pending".into())}
+    let continuing=["continue","keep going","continue operation","continue the operation"].contains(&message.trim().trim_end_matches(['.','!']).to_ascii_lowercase().as_str());
+    let pending_turn=ctx.db.backend_chat_turn().role().filter(role.as_str()).find(|t|["queued","running"].contains(&t.state.as_str()));
+    if pending_turn.is_some() {
+        if !continuing&&!["stop","cancel","pause"].contains(&message.trim().to_ascii_lowercase().as_str()){return Err("Conversation already pending".into())}
     }
     let id=ctx.new_uuid_v4().map_err(|_|"Identity generation failed")?.to_string();
     let config=json!({"epoch":epoch,"conversation":generation,"message":message,"target":if target==0{Value::Null}else{json!(target)},"createdAt":now(ctx),"deadline":now(ctx)+30000});
     append_chat_message(ctx,generation,format!("{}:user",request_key),&role,"","operator",message.clone(),target)?;
+    if continuing {
+        if let Some(op)=ctx.db.backend_chat().role().filter(role.as_str()).find(|r|r.epoch==epoch&&["planning","running"].contains(&r.state.as_str())){
+            append_chat_message(ctx,generation,format!("{}:reply",id),&role,"","coordinator","Your current operation is continuing within its existing budget. No duplicate agents were created.".into(),0)?;
+            ctx.db.backend_chat_turn().insert(ChatTurn{id,request_key,role:role.clone(),state:"completed".into(),config:config.to_string(),result:json!({"intent":"answer","operationId":op.id}).to_string(),created:now(ctx),updated:now(ctx)});return Ok(())
+        }
+        if pending_turn.is_some(){
+            append_chat_message(ctx,generation,format!("{}:reply",id),&role,"","coordinator","Your existing request is pending. No duplicate work was scheduled.".into(),0)?;
+            ctx.db.backend_chat_turn().insert(ChatTurn{id,request_key,role:role.clone(),state:"completed".into(),config:config.to_string(),result:json!({"intent":"answer"}).to_string(),created:now(ctx),updated:now(ctx)});return Ok(())
+        }
+    }
     if ["stop","cancel","pause"].contains(&message.trim().to_ascii_lowercase().as_str()) {
         cancel_role(ctx,&role);
         append_chat_message(ctx,generation,format!("{}:reply",id),&role,"","coordinator","Stopped your pending work. In-flight results cannot apply.".into(),0)?;
-        ctx.db.backend_chat_turn().insert(ChatTurn{id,request_key,role,state:"completed".into(),config:config.to_string(),result:json!({"intent":"answer"}).to_string(),created:now(ctx),updated:now(ctx)});
+        ctx.db.backend_chat_turn().insert(ChatTurn{id,request_key,role:role.clone(),state:"completed".into(),config:config.to_string(),result:json!({"intent":"answer"}).to_string(),created:now(ctx),updated:now(ctx)});
         return Ok(())
     }
     append_chat_message(ctx,generation,format!("{}:accepted",id),&role,"","coordinator","Planning…".into(),target)?;
@@ -85,7 +97,7 @@ pub fn send_maincloud_message(ctx:&ReducerContext,key:String,message:String,targ
 }
 fn cancel_role(ctx:&ReducerContext,role:&str) {
     for mut t in ctx.db.backend_chat_turn().role().filter(role).filter(|t|["queued","running"].contains(&t.state.as_str())) {t.state="cancelled".into();t.updated=now(ctx);ctx.db.backend_chat_turn().id().update(t);}
-    for mut r in ctx.db.backend_chat().iter().filter(|r|r.role==role&&["planning","running"].contains(&r.state.as_str())) {r.state="cancelled".into();chat_transition(ctx,&r.id,"cancelled");ctx.db.backend_chat().id().update(r);}
+    for mut r in ctx.db.backend_chat().iter().filter(|r|r.role==role&&["planning","running"].contains(&r.state.as_str())) {r.state="cancelled".into();chat_transition(ctx,&r.id,"cancelled");cleanup_operation(ctx,&r.id);ctx.db.backend_chat().id().update(r);}
 }
 #[reducer]
 pub fn new_maincloud_chat(ctx:&ReducerContext,epoch:u64,generation:u64)->Result<(),String>{
@@ -100,7 +112,7 @@ pub fn reset_maincloud_fleet(ctx:&ReducerContext,epoch:u64,demo:bool)->Result<()
 fn insert_job(ctx:&ReducerContext,j:Job){
     alarm(ctx,&j.id,now(ctx),false);alarm(ctx,&j.id,j.deadline,true);ctx.db.hosted_job().insert(j);
 }
-fn tasks_schema(max:u64)->Value {json!({"type":"array","maxItems":4,"items":{"type":"object","additionalProperties":false,"required":["name","specialty","target","objective"],"properties":{"name":{"type":"string"},"specialty":{"type":"string"},"target":{"type":"integer","minimum":1,"maximum":max},"objective":{"type":"string"}}}})}
+fn tasks_schema(max:u64)->Value {json!({"type":"array","maxItems":4,"items":{"type":"object","additionalProperties":false,"required":["name","specialty","target","objective","goal"],"properties":{"goal":{"type":"string","enum":["recon","capture","spread","contain","recover","restore","harden"]},"name":{"type":"string"},"specialty":{"type":"string"},"target":{"type":"integer","minimum":1,"maximum":max},"objective":{"type":"string"}}}})}
 fn prompt(ctx:&ReducerContext,j:&Job)->Result<Value,String> {
     let prompts:Value=serde_json::from_str(include_str!("../../shared/fleet-prompts.json")).unwrap();
     let mut input=fleet::hosted_context(ctx,&j.role,j.target);
@@ -108,6 +120,7 @@ fn prompt(ctx:&ReducerContext,j:&Job)->Result<Value,String> {
     let (system,schema)=if j.agent==0 {
         let t=ctx.db.backend_chat_turn().id().find(&j.turn).ok_or("Turn missing")?;
         let v:Value=serde_json::from_str(&t.config).map_err(|_|"Invalid turn")?;
+        input["eligibleOptions"]=json!((1..=max as u32).filter_map(|target|{let o=fleet::battle_options(ctx,&j.role,target);if o["actions"].as_array().map(|a|!a.is_empty()).unwrap_or(false){Some(json!({"target":target,"options":o}))}else{None}}).collect::<Vec<_>>());
         input["message"]=v["message"].clone(); input["selectedTarget"]=v["target"].clone();
         let mut history:Vec<_>=ctx.db.backend_chat_message().role().filter(j.role.as_str()).filter(|m|m.key.starts_with(&format!("epoch:{}:chat:{}:",j.epoch,j.generation))&&!m.key.ends_with(":accepted")).collect();
         history.sort_by_key(|m|m.id);
@@ -121,7 +134,11 @@ fn prompt(ctx:&ReducerContext,j:&Job)->Result<Value,String> {
         input["memory"]=json!(serde_json::from_str::<Vec<Value>>(&r.result).unwrap_or_default().into_iter().filter(|r|r["agentId"]==j.agent&&r["type"]!="inference").collect::<Vec<_>>());
         input["decisionsRemaining"]=json!(9-j.step);
         let discovered=input["observations"].as_array().map(|a|!a.is_empty()).unwrap_or(false);
-        let allowed=if j.role=="attacker"{if discovered{vec!["prepare","command","spread","wait"]}else{vec!["discover","wait"]}}else{vec!["prepare","isolate","harden","verify","release","wait"]};
+        let task=&input["assignment"];let goal=task_goal(task,&j.role);
+        let options=goal_options(ctx,&j.role,j.target,goal);
+        input["options"]=options.clone();
+        let mut allowed:Vec<String>=options["actions"].as_array().unwrap().iter().filter_map(|a|a.as_str().map(str::to_string)).collect();
+        if j.role=="attacker"&&!discovered{allowed=vec!["discover".into()]};allowed.push("wait".into());
         (prompts["specialist"].clone(),json!({"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"type":"string","enum":allowed}}}))
     };
     let model=if j.agent==0{ctx.env.BITDEER_COORDINATOR_MODEL()}else{ctx.env.BITDEER_SPECIALIST_MODEL()}.unwrap_or(MODEL.into());
@@ -133,11 +150,24 @@ fn reserve(ctx:&ReducerContext,id:&str)->Result<Option<Job>,String>{
     current(ctx,&j)?;
     if ctx.db.hosted_job().iter().filter(|j|j.state=="running").count()>=4{alarm(ctx,id,now(ctx)+250,false);return Ok(None)}
     if j.agent>0 {
+        let operation=ctx.db.backend_chat().id().find(&j.operation).ok_or("Operation missing")?;
+        let config:Value=serde_json::from_str(&operation.config).map_err(|_|"Invalid operation")?;
+        let task=config["tasks"].as_array().unwrap().iter().find(|t|t["agentId"]==j.agent).ok_or("Assignment missing")?;
+        let goal=task_goal(task,&j.role);
+        let records:Vec<Value>=serde_json::from_str(&operation.result).unwrap_or_default();
+        let last=records.iter().rev().find(|r|r["agentId"]==j.agent&&r["actionId"].is_string()).cloned().unwrap_or(Value::Null);
+        if fleet::battle_goal_done(ctx,goal,j.target,&last){close_worker(ctx,&j,"completed","Objective already satisfied.");return Ok(None)}
+        let options=goal_options(ctx,&j.role,j.target,goal);
+        if options["actions"].as_array().map(|a|a.is_empty()).unwrap_or(true){
+            if fleet::battle_has_pending(ctx,&j.operation,j.agent){worker_state(ctx,&j,"queued","Waiting for an active operation.");alarm(ctx,id,now(ctx)+500,false);return Ok(None)}
+            close_worker(ctx,&j,"failed",options["blocker"].as_str().unwrap_or("No valid route remains."));return Ok(None)
+        }
         let mut b=ctx.db.hosted_budget().operation().find(&j.operation).ok_or("Budget missing")?;
         if b.calls>=33{return Err("model_budget_exhausted".into())} b.calls+=1;ctx.db.hosted_budget().operation().update(b);
         j.policy=fleet::hosted_policy(ctx,j.target)?;
     }
     j.request=prompt(ctx,&j)?.to_string();j.state="running".into();j.started=now(ctx);
+    if j.agent>0{worker_state(ctx,&j,"running","Assessing permitted actions.");}
     ctx.db.hosted_job().id().update(j.clone());Ok(Some(j))
 }
 fn parse_provider(raw:&str)->Result<Value,String>{
@@ -201,7 +231,7 @@ fn fail(ctx:&ReducerContext,j:&Job,error:&str){
         if let Some(mut t)=ctx.db.backend_chat_turn().id().find(&j.turn){if t.state!="running"{return}t.state="failed".into();t.updated=now(ctx);t.result=json!({"error":error,"metric":metric(ctx,j,Some(error))}).to_string();ctx.db.backend_chat_turn().id().update(t);let _=append_chat_message(ctx,j.generation,format!("{}:reply",j.turn),&j.role,"","coordinator",format!("Decision failed: {}. No fixture fallback was used.",error),0);}
     }else if let Some(mut r)=ctx.db.backend_chat().id().find(&j.operation){
         if r.state!="running"{return}
-        let mut records:Vec<Value>=serde_json::from_str(&r.result).unwrap_or_default();records.push(metric(ctx,j,Some(error)));records.push(json!({"type":"worker","agentId":j.agent,"target":j.target,"state":"failed","error":error,"at":now(ctx)}));r.result=json!(records).to_string();ctx.db.backend_chat().id().update(r);finish_operation(ctx,&j.operation);
+        let mut records:Vec<Value>=serde_json::from_str(&r.result).unwrap_or_default();records.push(metric(ctx,j,Some(error)));records.push(json!({"type":"worker","agentId":j.agent,"target":j.target,"state":"failed","error":error,"at":now(ctx)}));r.result=json!(records).to_string();ctx.db.backend_chat().id().update(r);cleanup_agent(ctx,&j.operation,j.agent);finish_operation(ctx,&j.operation);
     }
 }
 fn commit_plan(ctx:&ReducerContext,j:&Job,v:&Value)->Result<(),String>{
@@ -217,7 +247,7 @@ fn commit_plan(ctx:&ReducerContext,j:&Job,v:&Value)->Result<(),String>{
         let active=ctx.db.backend_chat().iter().find(|r|r.role==j.role&&["planning","running"].contains(&r.state.as_str()));
         if let Some(mut r)=active {
             if intent!="replace"{return Err("Role operation already active".into())}
-            r.state="cancelled".into();chat_transition(ctx,&r.id,"cancelled");ctx.db.backend_chat().id().update(r);
+            r.state="cancelled".into();chat_transition(ctx,&r.id,"cancelled");cleanup_operation(ctx,&r.id);ctx.db.backend_chat().id().update(r);
         }
         operation=ctx.new_uuid_v4().map_err(|_|"Identity generation failed")?.to_string();
         let t=ctx.db.backend_chat_turn().id().find(&j.turn).ok_or("Turn missing")?;
@@ -228,7 +258,7 @@ fn commit_plan(ctx:&ReducerContext,j:&Job,v:&Value)->Result<(),String>{
         let mut assignments=tasks.clone();
         let first_agent=fleet::hosted_next_agent(ctx)?;
         for (index,task) in assignments.iter_mut().enumerate() {
-            if task.as_object().map(|t|t.len())!=Some(4)||task["objective"].as_str().map(|s|s.len()>300).unwrap_or(true){return Err("provider_malformed_output".into())}
+            if task.as_object().map(|t|t.len())!=Some(5)||!goal_valid(&j.role,task["goal"].as_str().unwrap_or(""))||task["objective"].as_str().map(|s|s.len()>300).unwrap_or(true){return Err("provider_malformed_output".into())}
             let id=first_agent.checked_add(index as u32).ok_or("Agent identity exhausted")?;
             task["agentId"]=json!(id);
         }
@@ -237,7 +267,7 @@ fn commit_plan(ctx:&ReducerContext,j:&Job,v:&Value)->Result<(),String>{
         let mut records=vec![metric(ctx,j,None)];
         for task in &assignments {
             let agent=task["agentId"].as_u64().unwrap() as u32;let target=task["target"].as_u64().unwrap() as u32;
-            records.push(json!({"type":"worker","agentId":agent,"target":target,"state":"working","at":now(ctx)}));
+            records.push(json!({"type":"worker","agentId":agent,"target":target,"state":"queued","at":now(ctx)}));
             insert_job(ctx,Job{id:format!("{}:{}:1",operation,agent),operation:operation.clone(),turn:j.turn.clone(),identity:j.identity,role:j.role.clone(),epoch:j.epoch,generation:j.generation,agent,target,step:1,deadline:now(ctx)+75000,state:"queued".into(),policy:0,request:String::new(),result:String::new(),started:0,finished:0});
         }
         update_chat_operation(ctx,SESSION.into(),operation.clone(),"running".into(),json!(records).to_string())?;
@@ -262,14 +292,23 @@ fn commit_action(ctx:&ReducerContext,j:&Job,v:&Value)->Result<(),String>{
 fn complete_action(ctx:&ReducerContext,j:&Job,kind:&str,mut receipt:Value)->Result<(),String>{
     let pending=receipt["stage"].as_str().map(|s|s!="resolved").unwrap_or(false);
     receipt["agentId"]=json!(j.agent);receipt["target"]=json!(j.target);receipt["step"]=json!(j.step);receipt["kind"]=json!(kind);receipt["status"]=json!(if pending{"queued"}else{"executed"});receipt["actionId"]=json!(j.id);receipt["at"]=json!(now(ctx));
-    let done=!pending&&(kind=="wait"||["command","spread","release"].contains(&kind)||receipt["simulation"]["succeeded"].as_u64().unwrap_or(0)>0&&kind=="verify"||j.step>=8);
+    let op=ctx.db.backend_chat().id().find(&j.operation).ok_or("Operation missing")?;
+    let config:Value=serde_json::from_str(&op.config).map_err(|_|"Invalid operation")?;
+    let task=config["tasks"].as_array().unwrap().iter().find(|t|t["agentId"]==j.agent).ok_or("Assignment missing")?;
+    let goal=task_goal(task,&j.role);
+    let satisfied=!pending&&fleet::battle_goal_done(ctx,goal,j.target,&receipt);
+    let options=goal_options(ctx,&j.role,j.target,goal);
+    let exhausted=options["actions"].as_array().map(|a|a.is_empty()).unwrap_or(true)&&!fleet::battle_has_pending(ctx,&j.operation,j.agent);
+    let done=!pending&&(satisfied||kind=="wait"||j.step>=8||exhausted);
     let mut r=ctx.db.backend_chat().id().find(&j.operation).ok_or("Operation missing")?;
     let mut records:Vec<Value>=serde_json::from_str(&r.result).map_err(|_|"Invalid results")?;
     if let Some(old)=records.iter_mut().find(|v|v["actionId"]==j.id){*old=receipt}else{records.push(receipt)}
-    if done {records.push(json!({"type":"worker","agentId":j.agent,"target":j.target,"state":if kind=="wait"{"paused"}else{"done"},"at":now(ctx)}));}
+    if done {records.push(json!({"type":"worker","agentId":j.agent,"target":j.target,"state":if satisfied{"completed"}else{"failed"},"reason":if satisfied{"Objective satisfied."}else if j.step>=8{"Attempt budget exhausted."}else if kind=="wait"{"Agent stopped without completing its objective."}else{options["blocker"].as_str().unwrap_or("No valid route remains.")},"at":now(ctx)}));}
     r.result=json!(records).to_string();ctx.db.backend_chat().id().update(r);
-    let mut saved=ctx.db.hosted_job().id().find(&j.id).ok_or("Job missing")?;saved.state=if pending{"attempt"}else{"done"}.into();ctx.db.hosted_job().id().update(saved);
+    let mut saved=ctx.db.hosted_job().id().find(&j.id).ok_or("Job missing")?;saved.state=if pending{"attempt"}else{"done"}.into();if !pending{saved.finished=now(ctx);}ctx.db.hosted_job().id().update(saved);
+    if done{cleanup_agent(ctx,&j.operation,j.agent);}
     if !pending&&!done {
+        worker_state(ctx,j,"queued","Preparing a revised attempt within the same assignment.");
         let mut next=j.clone();next.step+=1;next.id=format!("{}:{}:{}",j.operation,j.agent,next.step);next.state="queued".into();next.started=0;next.finished=0;next.request.clear();next.result.clear();insert_job(ctx,next);
     }
     if !pending{finish_operation(ctx,&j.operation);}Ok(())
@@ -286,8 +325,8 @@ pub(super) fn clear_jobs(ctx:&ReducerContext){
 fn finish_operation(ctx:&ReducerContext,id:&str){
     let Some(r)=ctx.db.backend_chat().id().find(id.to_string())else{return};if r.state!="running"{return}
     let config:Value=serde_json::from_str(&r.config).unwrap();let records:Vec<Value>=serde_json::from_str(&r.result).unwrap();
-    let all=config["tasks"].as_array().unwrap().iter().all(|t|records.iter().rev().find(|r|r["type"]=="worker"&&r["agentId"]==t["agentId"]).map(|r|r["state"]!="working").unwrap_or(false));
-    if all {let state=if records.iter().any(|r|r["type"]=="worker"&&r["state"]=="failed"){"failed"}else{"completed"};let _=update_chat_operation(ctx,SESSION.into(),id.into(),state.into(),r.result);}
+    let all=config["tasks"].as_array().unwrap().iter().all(|t|records.iter().rev().find(|r|r["type"]=="worker"&&r["agentId"]==t["agentId"]).map(|r|!["working","running","queued"].contains(&r["state"].as_str().unwrap_or(""))).unwrap_or(false));
+    if all {let state=if config["tasks"].as_array().unwrap().iter().any(|t|records.iter().rev().find(|r|r["type"]=="worker"&&r["agentId"]==t["agentId"]).map(|r|r["state"]=="failed").unwrap_or(false)){"failed"}else{"completed"};let _=update_chat_operation(ctx,SESSION.into(),id.into(),state.into(),r.result);}
 }
 #[view(accessor=visible_chat_operations,public)]
 pub fn visible_chat_operations(ctx:&ViewContext)->Vec<ChatOperation>{let r=fleet::view_role(ctx);let g=visible_conversation_generation(ctx,&r);ctx.db.backend_chat().role().filter(r.as_str()).filter(|o|config_generation(&o.config)==g).collect()}
@@ -311,3 +350,20 @@ pub(super) fn battle_authorized(ctx:&ReducerContext,operation:&str)->bool {
  let jobs:Vec<_>=ctx.db.hosted_job().iter().filter(|j|j.operation==operation).collect();
  jobs.is_empty()||jobs.iter().any(|j|current(ctx,j).is_ok())
 }
+
+fn cleanup_agent(ctx:&ReducerContext,operation:&str,agent:u32){
+ for alarm in ctx.db.hosted_alarm().iter(){if let Some(job)=ctx.db.hosted_job().id().find(&alarm.job){if job.operation==operation&&job.agent==agent&&job.state!="running"{ctx.db.hosted_alarm().id().delete(alarm.id);}}}
+}
+fn worker_state(ctx:&ReducerContext,j:&Job,state:&str,reason:&str){
+ if let Some(mut op)=ctx.db.backend_chat().id().find(&j.operation){let mut rows:Vec<Value>=serde_json::from_str(&op.result).unwrap_or_default();if rows.iter().rev().find(|r|r["type"]=="worker"&&r["agentId"]==j.agent).map(|r|r["state"]==state&&r["reason"]==reason).unwrap_or(false){return}rows.push(json!({"type":"worker","agentId":j.agent,"target":j.target,"state":state,"reason":reason,"at":now(ctx)}));op.result=json!(rows).to_string();ctx.db.backend_chat().id().update(op);}
+}
+fn close_worker(ctx:&ReducerContext,j:&Job,state:&str,reason:&str){
+ worker_state(ctx,j,state,reason);
+ if let Some(mut saved)=ctx.db.hosted_job().id().find(&j.id){saved.state="done".into();saved.finished=now(ctx);ctx.db.hosted_job().id().update(saved);}
+ cleanup_agent(ctx,&j.operation,j.agent);finish_operation(ctx,&j.operation);
+}
+pub(super) fn cleanup_operation(ctx:&ReducerContext,id:&str){
+ for alarm in ctx.db.hosted_alarm().iter(){if let Some(job)=ctx.db.hosted_job().id().find(&alarm.job){if job.operation==id&&!(job.state=="running"&&alarm.watchdog){ctx.db.hosted_alarm().id().delete(alarm.id);}}}
+ for mut job in ctx.db.hosted_job().iter().filter(|j|j.operation==id&&["queued","attempt"].contains(&j.state.as_str())){job.state="cancelled".into();job.finished=now(ctx);ctx.db.hosted_job().id().update(job);}
+}
+pub(super) fn view_job(ctx:&ViewContext,id:&str)->Value{ctx.db.hosted_job().id().find(id.to_string()).map(|j|json!({"state":j.state,"started":j.started,"finished":j.finished})).unwrap_or(Value::Null)}

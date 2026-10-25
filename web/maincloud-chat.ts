@@ -43,7 +43,9 @@ export class MaincloudChat implements ChatTransport {
       const config = JSON.parse(r.config), records = JSON.parse(r.result), tasks = config.tasks ?? [];
       const workers = tasks.map((task: any) => {
         const lifecycle = records.filter((v: any) => v.type === "worker" && v.agentId === task.agentId).at(-1);
-        return { ...task, operationId:r.id, state: ["planning","running"].includes(r.state) ? lifecycle?.state ?? "working" : lifecycle?.state === "working" ? r.state === "failed" ? "failed" : "paused" : lifecycle?.state ?? "paused", error:lifecycle?.error };
+        let state=({working:"running",done:"completed",paused:"cancelled"} as Record<string,string>)[lifecycle?.state] ?? lifecycle?.state ?? "queued";
+        if (["queued","running"].includes(state) && !["planning","running"].includes(r.state)) state=r.state==="cancelled" ? "cancelled" : "failed";
+        return {...task, operationId:r.id, state, error:lifecycle?.error, reason:lifecycle?.reason,stage:lifecycle?.stage};
       });
       return { id:r.id, role:r.role, epoch:r.epoch, state:r.state, ...config, workers, outcome:fleetOutcome({state:r.state, role:r.role, tasks, results:records}), results:records.filter((v: any) => !["inference","worker","timing"].includes(v.type)), inferences:records.filter((v: any) => v.type === "inference"), timings:[], deployment:{ summary:`${tasks.length} agents deployed.`, assignments:tasks.map((t: any) => ({...t,summary:t.objective})) } };
     }).sort((a,b) => a.createdAt-b.createdAt);

@@ -135,6 +135,7 @@ pub fn execute_fleet_chat_action(ctx:&ReducerContext,session:String,operation:St
  owner(ctx)?;
  let mut a=ctx.db.fleet_agent().id().find(agent).ok_or("Agent missing")?;
  let role=crate::backend::chat_authority(ctx,&session,&operation,agent,target,a.epoch)?;
+ if !resilience::enabled(ctx){crate::backend::check_goal_action(ctx,&operation,agent,&kind)?;}
  if !live(ctx,a.epoch)||a.role!=role||!(1..=8).contains(&sequence) {return Err("Invalid agent action".into())}
  let key=format!("{}:{}:{}",operation,agent,sequence);
  if let Some(old)=ctx.db.fleet_chat_action().key().find(&key){return if old.kind==kind&&old.target==target&&old.version==version {Ok(())}else{Err("Action idempotency conflict".into())}}
@@ -159,7 +160,7 @@ pub fn execute_fleet_chat_action(ctx:&ReducerContext,session:String,operation:St
  }
  }
  let waiting=kind=="wait";a.target=target;a.step+=1;a.last_action=kind.clone();
- ctx.db.fleet_agent().id().update(a);ctx.db.fleet_drone().id().update(d);let evidence_id=if waiting {0}else{ctx.db.fleet_evidence().iter().filter(|e|e.actor==agent&&e.drone==target).map(|e|e.id).max().unwrap_or(0)};ctx.db.fleet_chat_action().insert(ChatAction{key,evidence_id,kind,target,version,unauthorized_evidence_id,authorized_evidence_id});Ok(())
+ ctx.db.fleet_agent().id().update(a);ctx.db.fleet_drone().id().update(d);let evidence_id=if waiting {0}else{ctx.db.fleet_evidence().iter().filter(|e|e.actor==agent&&e.drone==target).map(|e|e.id).max().unwrap_or(0)};ctx.db.fleet_chat_action().insert(ChatAction{key,evidence_id,kind:kind.clone(),target,version,unauthorized_evidence_id,authorized_evidence_id});if kind=="discover"&&battle::enabled(ctx){battle::refresh(ctx);}Ok(())
 }
 
 pub(crate) fn validate_chat_fleet(ctx:&ReducerContext,epoch:u64)->Result<(),String>{
@@ -242,3 +243,9 @@ pub(crate) fn hosted_reset(ctx:&ReducerContext,epoch:u64,demo:bool)->Result<(),S
 pub(crate) fn view_role(ctx:&ViewContext)->String{role(ctx)}
 pub(crate) fn hosted_policy(ctx:&ReducerContext,target:u32)->Result<u32,String>{ctx.db.fleet_drone().id().find(target).map(|d|d.policy_version).ok_or("Drone missing".into())}
 pub(crate) fn hosted_next_agent(ctx:&ReducerContext)->Result<u32,String>{ctx.db.fleet_agent().iter().map(|a|a.id).chain(ctx.db.fleet_agent_profile().iter().map(|a|a.id)).max().unwrap_or(0).checked_add(1).ok_or("Agent identity exhausted".into())}
+
+pub(crate) fn battle_options(ctx:&ReducerContext,role:&str,target:u32)->serde_json::Value{battle::options(ctx,role,target)}
+pub(crate) fn battle_goal_done(ctx:&ReducerContext,goal:&str,target:u32,report:&serde_json::Value)->bool{battle::goal_done(ctx,goal,target,report)}
+
+pub(crate) fn battle_phase(ctx:&ViewContext,key:&str)->serde_json::Value{battle::phase(ctx,key)}
+pub(crate) fn battle_has_pending(ctx:&ReducerContext,operation:&str,agent:u32)->bool{battle::has_pending(ctx,operation,agent)}

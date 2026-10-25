@@ -426,7 +426,7 @@ pub fn plan_chat_operation(ctx:&ReducerContext,session:String,id:String,tasks:St
     for t in entries {
         let a=t["agentId"].as_u64().filter(|n|*n<=u32::MAX as u64).ok_or("Invalid agent")? as u32;
         let d=t["target"].as_u64().filter(|n|*n<=u32::MAX as u64).ok_or("Invalid target")? as u32;
-        if !used.insert(a)||t.as_object().map(|o|o.len())!=Some(5)||t["objective"].as_str().map(|s|s.trim().is_empty()||s.len()>1200).unwrap_or(true) {return Err("Invalid assignment".into())}
+        if !used.insert(a)||!matches!(t.as_object().map(|o|o.len()),Some(5)|Some(6))||!goal_valid(&r.role,if t.get("goal").is_some(){t["goal"].as_str().unwrap_or("")}else{task_goal(t,&r.role)})||t.as_object().unwrap().keys().any(|k|!["agentId","name","specialty","target","objective","goal"].contains(&k.as_str()))||t["objective"].as_str().map(|s|s.trim().is_empty()||s.len()>1200).unwrap_or(true) {return Err("Invalid assignment".into())}
         if let Some(target)=v["target"].as_u64(){if target!=d as u64{return Err("Outside selected target".into())}}
         let name=t["name"].as_str().ok_or("Missing name")?;
         let specialty=t["specialty"].as_str().ok_or("Missing specialty")?;
@@ -451,6 +451,7 @@ pub fn update_chat_operation(ctx: &ReducerContext, session: String, id: String, 
       chat_transition(ctx,&id,&state);
       if !["planning","running"].contains(&state.as_str()){append_chat_message(ctx,config_generation(&r.config),format!("{}:terminal",id),&r.role,&id,"coordinator",chat_summary(&state,&result),0)?;}
     }
+    if !["planning","running"].contains(&state.as_str()){hosted::cleanup_operation(ctx,&id);}
     r.state=state;r.result=result;ctx.db.backend_chat().id().update(r);Ok(())
 }
 pub(crate) fn chat_authority(ctx:&ReducerContext, session:&str, id:&str, agent:u32, target:u32, epoch:u64)->Result<String,String>{
@@ -461,6 +462,14 @@ pub(crate) fn chat_authority(ctx:&ReducerContext, session:&str, id:&str, agent:u
     if now(ctx)>=v["deadline"].as_i64().ok_or("Missing deadline")? {return Err("Operation expired".into())}
     if !v["tasks"].as_array().ok_or("Missing tasks")?.iter().any(|t| t["agentId"].as_u64()==Some(agent as u64)&&t["target"].as_u64()==Some(target as u64)){return Err("Outside assignment".into())}
     Ok(r.role)
+}
+
+pub(crate) fn check_goal_action(ctx:&ReducerContext,id:&str,agent:u32,kind:&str)->Result<(),String>{
+ let op=ctx.db.backend_chat().id().find(id.to_string()).ok_or("Operation missing")?;
+ let config:serde_json::Value=serde_json::from_str(&op.config).map_err(|_|"Invalid assignment")?;
+ let task=config["tasks"].as_array().unwrap().iter().find(|t|t["agentId"]==agent).ok_or("Assignment missing")?;
+ if let Some(goal)=task["goal"].as_str(){let goals:serde_json::Value=serde_json::from_str(include_str!("../../shared/fleet-goals.json")).unwrap();if kind!="wait"&&!goals[goal]["actions"].as_array().map(|a|a.iter().any(|a|a==kind)).unwrap_or(false){return Err("Outside assignment objective".into())}}
+ Ok(())
 }
 
 #[table(accessor=backend_chat_message)]
@@ -570,9 +579,40 @@ pub(crate) fn battle_operation_active(ctx:&ReducerContext,id:&str,epoch:u64)->bo
  ctx.db.backend_chat().id().find(id.to_string()).map(|r|r.epoch==epoch&&r.state=="running"&&hosted::battle_authorized(ctx,id)&&serde_json::from_str::<serde_json::Value>(&r.config).ok().and_then(|v|v["deadline"].as_i64()).map(|d|now(ctx)<d).unwrap_or(false)).unwrap_or(false)
 }
 pub(crate) fn battle_message(ctx:&ReducerContext,operation:&str,key:&str,stage:&str,report:&str){
- if let Some(r)=ctx.db.backend_chat().id().find(operation.to_string()) {
-  if !battle_operation_active(ctx,operation,r.epoch){return}
-  let summary=serde_json::from_str::<serde_json::Value>(report).ok().and_then(|v|v["summary"].as_str().map(str::to_string)).unwrap_or_default();
-  let _=append_chat_message(ctx,config_generation(&r.config),format!("{}:{}",key,stage),&r.role,operation,"simulation",format!("Simulation: {}",summary),0);
+ if let Some(mut r)=ctx.db.backend_chat().id().find(operation.to_string()) {
+  if r.epoch!=chat_epoch(ctx){return}
+  let report:serde_json::Value=serde_json::from_str(report).unwrap_or_default();
+  if stage=="resolved"{
+   let mut records:Vec<serde_json::Value>=serde_json::from_str(&r.result).unwrap_or_default();
+   if let Some(record)=records.iter_mut().find(|v|v["actionId"]==key){record["stage"]=serde_json::json!(stage);record["simulation"]=report.clone();record["status"]=serde_json::json!("executed");if let Some(outcome)=report["outcome"].as_str(){record["outcome"]=serde_json::json!(outcome);}}
+   r.result=serde_json::json!(records).to_string();ctx.db.backend_chat().id().update(r);
+  }
+ }
+}
+
+#[path="activity.rs"]
+mod activity;
+
+pub(crate) fn task_goal<'a>(task:&'a serde_json::Value,role:&str)->&'a str{task["goal"].as_str().unwrap_or(if role=="attacker"{"capture"}else{"recover"})}
+pub(crate) fn goal_valid(role:&str,goal:&str)->bool{let goals:serde_json::Value=serde_json::from_str(include_str!("../../shared/fleet-goals.json")).unwrap();goals[goal]["role"].as_str()==Some(role)}
+pub(crate) fn goal_options(ctx:&ReducerContext,role:&str,target:u32,goal:&str)->serde_json::Value{
+ let mut options=crate::fleet::battle_options(ctx,role,target);
+ let goals:serde_json::Value=serde_json::from_str(include_str!("../../shared/fleet-goals.json")).unwrap();
+ let permitted=goals[goal]["actions"].as_array().cloned().unwrap_or_default();
+ if let Some(actions)=options["actions"].as_array_mut(){actions.retain(|a|permitted.contains(a));}
+ if options["actions"].as_array().map(|a|a.is_empty()).unwrap_or(true)&&options["blocker"].as_str().unwrap_or("").is_empty(){options["blocker"]=serde_json::json!("No useful action remains within this assignment's objective.");}
+ options
+}
+pub(crate) fn expire_chat_operations(ctx:&ReducerContext){
+ let epoch=chat_epoch(ctx);
+ for mut op in ctx.db.backend_chat().iter().filter(|r|r.epoch==epoch&&["planning","running"].contains(&r.state.as_str())){
+  let config:serde_json::Value=serde_json::from_str(&op.config).unwrap_or_default();
+  if config["deadline"].as_i64().map(|d|now(ctx)>=d).unwrap_or(false){
+   let mut records:Vec<serde_json::Value>=serde_json::from_str(&op.result).unwrap_or_default();
+   for task in config["tasks"].as_array().unwrap_or(&vec![]){let agent=task["agentId"].clone();let last=records.iter().rev().find(|r|r["type"]=="worker"&&r["agentId"]==agent);if last.map(|r|["working","running","queued"].contains(&r["state"].as_str().unwrap_or(""))).unwrap_or(true){records.push(serde_json::json!({"type":"worker","agentId":agent,"target":task["target"],"state":"failed","reason":"Operation time budget exhausted.","at":now(ctx)}));}}
+   op.state="failed".into();op.result=serde_json::json!(records).to_string();chat_transition(ctx,&op.id,"failed");
+   let _=append_chat_message(ctx,config_generation(&op.config),format!("{}:terminal",op.id),&op.role,&op.id,"coordinator","Operation stopped: time budget exhausted.".into(),0);
+   hosted::cleanup_operation(ctx,&op.id);ctx.db.backend_chat().id().update(op);
+  }
  }
 }

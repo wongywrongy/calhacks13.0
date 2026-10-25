@@ -1,3 +1,4 @@
+import { attemptOutcome, attemptReport, groupActivity, stateSuggestions, taskActive, type BattleHealth, type BattleOption, type AttemptActivity, type AgentTask, type TeamActivity } from "./fleet-activity.ts";
 import { MaincloudChat } from "./maincloud-chat.ts";
 import { explainFleetError, fleetOutcome } from "../sandbox/src/fleet-outcome.ts";
 import { OperationChat, activeOperation, replyBlocks, type Worker, type ChatMessage } from "./fleet-chat.ts";
@@ -44,7 +45,7 @@ type Ev = {
 };
 type Mission = { epoch: number; state: string; delivered_ms: number; goal_ms: number; lost_ms: number; unnecessary_isolation_ms: number; detection_us: number; detections: number; recovery_us: number; recoveries: number };
 type ResilienceDrone = { drone: number; delivered_ms: number; anomaly: boolean };
-type Frame = { mission?: Mission; resilience?: ResilienceDrone[]; budgets?: { role: string; remaining: number }[]; epoch?: number; conversation?: number; active?: boolean; drones: Drone[]; agents: Agent[]; events: Ev[] };
+type Frame = { battle?:BattleHealth[]; options?:BattleOption[]; attempts?:AttemptActivity[]; tasks?:AgentTask[]; teams?:TeamActivity[]; mission?: Mission; resilience?: ResilienceDrone[]; budgets?: { role: string; remaining: number }[]; epoch?: number; conversation?: number; active?: boolean; drones: Drone[]; agents: Agent[]; events: Ev[] };
 type Msg = { who: "you" | "agent"; text: string; id: number };
 const $ = (id: string) => document.getElementById(id)!;
 const el = (tag: string, cls = "", text: unknown = "") => {
@@ -54,7 +55,7 @@ const el = (tag: string, cls = "", text: unknown = "") => {
   return n;
 };
 const tag = (id: number) => "DR-" + String(id).padStart(3, "0");
-const agentName = (id: number) => frame.agents.find((a) => a.id === id)?.name || workerFor(id)?.name || "Agent " + String(id).padStart(2, "0");
+const agentName = (id: number) => frame.agents.find((a) => a.id === id)?.name || frame.tasks?.find(t=>t.agent===id)?.name || workerFor(id)?.name || "Agent " + String(id).padStart(2, "0");
 const clock = (s: number) => Number.isFinite(s)
   ? `${s < 0 ? "−" : ""}${Math.floor(Math.abs(s) / 60)}:${String(Math.floor(Math.abs(s) % 60)).padStart(2, "0")}` : "Time unavailable";
 const eventTime = (at: number) => Number.isFinite(at) && at > 0
@@ -289,6 +290,8 @@ function oneLine(drone: Drone, d: Derived) {
 /** Agent card state and sentence from its last_action (values set in arena-live/src/fleet.rs). */
 function agentLine(a: Agent, d: Derived): [string, string] {
   if (modelDriven) {
+    const task=frame.tasks?.find(t=>t.agent===a.id);
+    if(task) return [task.state,task.summary || task.stage];
     const w = workerFor(a.id);
     return w
       ? [
@@ -394,7 +397,7 @@ function agentCards(host: HTMLElement, agents: Agent[], d: Derived, mission = fa
   const nodes: HTMLElement[] = [];
   if (mission && frame.mission) nodes.push(missionStats());
   if (!agents.length)
-    nodes.push(el("li", "note", role === "observer" ? "None deployed." : `None deployed. ${agentOf()} deploys specialists when you send an objective.`));
+    nodes.push(el("li", "note", role === "observer" ? "None deployed." : `No active specialists. Send ${agentOf()} an objective to assign work.`));
   for (const a of [...agents].sort((x, y) => x.id - y.id)) {
     const [state, doing] = agentLine(a, d);
     const b = el("button", "agent");
@@ -417,9 +420,10 @@ function agentCards(host: HTMLElement, agents: Agent[], d: Derived, mission = fa
   patchList(host, nodes);
 }
 function rails(d: Derived) {
-  const red = frame.agents.filter((a) => a.role === "attacker"),
-    blue = frame.agents.filter((a) => a.role === "defender");
-  const mine = role === "observer" ? red : frame.agents;
+  const roster=modelDriven ? frame.agents.filter(a=>frame.tasks?.some(t=>t.agent===a.id && taskActive(t))) : frame.agents;
+  const red = roster.filter((a) => a.role === "attacker"),
+    blue = roster.filter((a) => a.role === "defender");
+  const mine = role === "observer" ? red : roster;
   $("agents-title").textContent = role === "observer" ? "Red agents" : "Agents";
   $("agents-count").textContent = String(mine.length);
   agentCards($("agents"), mine, d, true);
@@ -427,6 +431,7 @@ function rails(d: Derived) {
     $("blue-count").textContent = String(blue.length);
     agentCards($("blue-agents"), blue, d);
   }
+  recentAgents();
   const sel = frame.drones.find((x) => x.id === selected);
   $("clear-sel").hidden = !sel;
   const body: HTMLElement[] = [];
@@ -435,6 +440,8 @@ function rails(d: Derived) {
     const id = el("div", "id", tag(sel.id));
     id.append(el("span", "tag " + cls, label));
     body.push(id, el("p", "", oneLine(sel, d)));
+    const health=frame.battle?.find(h=>h.drone===sel.id);
+    if(health)body.push(el("p","",`Control: ${sel.controller}. Contamination: ${health.contamination}%. ${health.operational ? "Available for mission" : "Isolated · unavailable for mission"}.`));
   } else body.push(el("p", "muted", "Click a drone, an activity row or a chip to select it."));
   patchList($("selected"), body);
   if (role === "observer") {
@@ -539,8 +546,10 @@ type Entry = {
   actionId?: string;
   evidenceIds?: number[];
   status?: string;
+  major?:boolean; group?:string; detail?:unknown;
 };
 function entries(d: Derived): Entry[] {
+  if(modelDriven && frame.attempts) return battleEntries();
   const teamOf = new Map(frame.agents.map((a) => [a.id, a.role]));
   const own = (e: Ev) =>
     role === "observer"
@@ -676,7 +685,7 @@ function rowEl(e: Entry, d: Derived, clickable = true) {
   li.dataset.agentId = String(e.actorId);
   li.setAttribute("aria-selected", String(!!e.id && e.id === selectedEvent));
   const s = el("span", "s");
-  s.append(el("b", e.cls, e.actor), e.text);
+  s.append(el("b", e.cls, e.actor), e.text.startsWith(" ") ? e.text : " "+e.text);
   s.title = e.actor + e.text;
   const t = el("span", "t", clickable ? eventTime(e.at).replace(" UTC", "") : eventTime(e.at));
   t.title = eventTime(e.at);
@@ -700,7 +709,13 @@ function rowEl(e: Entry, d: Derived, clickable = true) {
   } else li.style.cursor = "default";
   return li;
 }
+let activityKey="";
 function log(d: Derived) {
+  teamStatus();
+  if(modelDriven && frame.attempts){
+    const key=JSON.stringify([fleetEpoch,role,selected,selectedEvent,onlySel,filter,frame.events.map(e=>e.id),frame.attempts.filter(a=>a.stage==="resolved").map(a=>[a.key,a.at]),frame.tasks?.map(t=>[t.agent,t.state,t.stage,t.summary]),operationChat?.operations.map(o=>[o.id,o.state,o.workers.map(w=>w.error)]),operationChat?.turns.map(t=>[t.id,t.state])]);
+    if(key===activityKey)return;activityKey=key;
+  }
   const all = entries(d);
   $("problems").textContent = all.filter((e) => e.problem).length
     ? String(all.filter((e) => e.problem).length)
@@ -721,9 +736,97 @@ function log(d: Derived) {
     .filter((e) => !(onlySel && selected) || e.drone === selected)
     .slice(-150)
     .reverse();
-  const nodes = rows.map((e) => rowEl(e, d));
-  if ($("log").innerHTML !== nodes.map((n) => n.outerHTML).join(""))
-    $("log").replaceChildren(...nodes);
+  const nodes:HTMLElement[] = modelDriven && frame.attempts ? groupActivity(rows).map(group=>{
+    const item=el("li",group.major?"activity-major":"activity-quiet"), details=document.createElement("details");
+    details.dataset.activityKey=group.key;
+    const summary=el("summary");
+    const first=group.items[0];
+    if(group.items.length===1 && group.major){const row=rowEl(first,d,false);row.querySelector(".t")!.textContent=eventTime(first.at).replace(" UTC","");const div=el("div","row");div.append(...Array.from(row.childNodes));summary.append(div);}
+    else summary.textContent=`${group.items.length} ${group.major ? first.state[0].toLowerCase()+" results" : "routine checks / minor results"} · ${first.actor} · ${first.drone?tag(first.drone):"team"}`;
+    details.append(summary);
+    for(const e of group.items){
+      const info=el("div","activity-detail");info.append(el("b","",`${e.actor} · ${e.drone?tag(e.drone):"team"}`),el("p","",e.text.trim()));
+      if(e.drone){const select=el("button","chip",`Inspect ${tag(e.drone)}`);select.onclick=()=>pull(e.drone);info.append(select);}
+      if(e.detail)info.append(technicalDetails(e.detail,"Factors and recorded evidence"));
+      details.append(info);
+    }
+    item.append(details);return item;
+  }) : rows.map((e) => rowEl(e, d));
+  if(modelDriven && frame.tasks?.some(t=>!taskActive(t))){
+    const item=el("li","activity-quiet"),history=document.createElement("details");history.dataset.activityKey="agent-history";
+    const closed=frame.tasks.filter(t=>!taskActive(t)).sort((a,b)=>b.finished_at-a.finished_at);
+    history.append(el("summary","",`${closed.length} completed / closed agent tasks`));
+    for(const task of closed){const info=el("div","activity-detail");info.append(el("b","",`${task.name} · ${tag(task.target)} · ${task.state}`),el("p","",task.summary),technicalDetails(task,"Assignment and identity"));history.append(info);}
+    item.append(history);nodes.push(item);
+  }
+  const opened=new Set(Array.from($("log").querySelectorAll<HTMLDetailsElement>("details[data-activity-key][open]")).map(n=>n.dataset.activityKey));
+  const scroll=$("log").parentElement!.scrollTop;
+  for(const node of nodes)node.querySelectorAll<HTMLDetailsElement>("details[data-activity-key]").forEach(n=>n.open=opened.has(n.dataset.activityKey));
+  if ($("log").innerHTML !== nodes.map((n) => n.outerHTML).join("")) $("log").replaceChildren(...nodes);
+  $("log").parentElement!.scrollTop=scroll;
+}
+
+const recentTasks=new Map<number,{state:string;until:number}>();
+let rosterTimer:ReturnType<typeof setTimeout>|undefined;
+function recentAgents(){
+  clearTimeout(rosterTimer);
+  const now=Date.now();let next=Infinity;
+  for(const task of frame.tasks ?? []){
+    const previous=recentTasks.get(task.agent);
+    const until=taskActive(task) ? 0 : previous && ["queued","running"].includes(previous.state) ? now+4000 : previous?.until ?? 0;
+    recentTasks.set(task.agent,{state:task.state,until});
+    if(until>now){
+      const row=el("li","note recent-agent",`${task.name} · ${task.state}: ${task.summary}`);row.dataset.agentId=String(task.agent);row.dataset.state=task.state;
+      const host=role==="observer"&&task.role==="defender"?$("blue-agents"):$("agents");host.append(row);next=Math.min(next,until);
+    }
+  }
+  if(Number.isFinite(next)){const current=version;rosterTimer=setTimeout(()=>{if(current===version&&!resetting)rails(derive(frame));},Math.max(1,next-now));}
+}
+function teamStatus(){
+  const host=$("team-status");host.hidden=!modelDriven;
+  const teams=frame.teams ?? [];
+  for(const row of Array.from(host.children) as HTMLElement[])if(!teams.some(t=>t.role===row.dataset.team))row.remove();
+  for(const team of teams){
+    let row=host.querySelector<HTMLElement>(`[data-team="${team.role}"]`);
+    if(!row){row=el("div","team-operation");row.dataset.team=team.role;row.append(el("b"),el("span","operation-stage"),el("small"));host.append(row);}
+    const attempt=frame.attempts?.find(a=>a.operation===team.operation&&a.stage!=="resolved");
+    row.dataset.stage=team.stage;row.dataset.operationId=team.operation;
+    row.children[0].textContent=team.role==="attacker"?"Crimson · team controller":"Sentinel · team controller";
+    row.children[1].textContent=!stateConnected&&live&&team.operation ? "Connection lost · operation state unavailable" : team.summary;
+    row.children[2].textContent=attempt ? `${attempt.kind} · ${tag(attempt.target)} · ${attempt.stage}` : team.targets.length ? `Targets: ${team.targets.map(tag).join(", ")} · ${team.active_agents} active` : team.objective;
+    row.title=team.objective;
+  }
+  const active=teams.filter(t=>t.operation);
+  $("viewport-operation").textContent=active.map(t=>`${t.role==="attacker"?"Red":"Blue"} · ${t.summary}${t.targets.length?" · "+t.targets.map(tag).join(", "):""}`).join(" | ");
+  $("viewport-operation").hidden=!active.length;
+}
+function battleEntries():Entry[]{
+  const claimed=new Set<number>(), out:Entry[]=[];
+  for(const a of frame.attempts ?? []){
+    if(a.stage!=="resolved")continue;
+    const outcome=attemptOutcome(a),{report,label,major,failed,evidenceIds}=outcome;
+    evidenceIds.forEach(id=>claimed.add(id));
+    const task=frame.tasks?.find(t=>t.agent===a.agent && t.operation===a.operation);
+    const current=frame.attempts?.find(next=>next.agent===a.agent&&next.operation===a.operation&&next.stage!=="resolved");
+    const next=current ? `Next: ${current.kind} attempt on ${tag(current.target)} (${current.stage}).` : task&&taskActive(task) ? `Next: ${task.stage==="waiting" ? "waiting for an active operation" : "reassessing permitted actions"} within the same objective.` : "";
+    out.push({at:a.at,id:evidenceIds[0]??0,drone:a.target,actorId:a.agent,actor:agentName(a.agent),cls:"c-team",text:`Attempted ${a.kind} on ${tag(a.target)}. Simulated result: ${report.summary ?? label}${next?" "+next:""}`,state:[label,failed?"c-amber":label==="Recovered"?"c-green":"c-team"],problem:failed,you:true,operationId:a.operation,actionId:a.key,evidenceIds,status:failed?"failed":"resolved",major,group:failed?`${a.operation}:${a.kind}:${a.target}:failed`:major?a.key:`${a.operation}:${a.kind}:${a.target}:routine`,detail:{attempt:a,report,assignment:task,...(next?{next}:{} )}});
+  }
+  for(const e of frame.events){
+    if(claimed.has(e.id)||e.kind==="attempt_resolved")continue;
+    const major=[ACCEPTED,RECOVERED,"mission_restored","limited_access"].includes(e.kind);
+    const label=e.kind===ACCEPTED?"Control changed":e.kind===RECOVERED?"Recovered":e.kind==="limited_access"?"New foothold":e.kind===BLOCKED?"Resisted":e.kind==="mission_restored"?"Mission restored":e.kind.replaceAll("_"," ");
+    out.push({at:e.at,id:e.id,drone:e.drone,actorId:e.actor,actor:e.actor?agentName(e.actor):"Observed telemetry",cls:e.kind===ACCEPTED?"c-red":"c-team",text:`${label} on ${tag(e.drone)} (simulated).`,state:[label,e.kind===ACCEPTED?"c-red":e.kind===RECOVERED?"c-green":"c-grey"],problem:e.kind===BLOCKED||e.kind===ACCEPTED&&role!=="attacker",you:false,major,group:major?`evidence:${e.id}`:`evidence:${e.kind}:${e.drone}`,detail:e});
+  }
+  for(const op of operationChat?.operations ?? [])if(op.epoch===fleetEpoch && op.state==="failed"){
+    const error=op.workers.find(w=>w.error)?.error ?? op.results.find(r=>r.error)?.error;
+    const own=(frame.attempts ?? []).filter(a=>a.operation===op.id&&a.stage==="resolved");
+    if(error || !own.length){
+      const reason=error ? explainFleetError(error) : op.workers.map(w=>w.reason).filter(Boolean).join("; ") || "No permitted action completed the objective.";
+      out.push({at:Math.max(op.createdAt,...op.results.map(r=>r.at??0))*1000,id:0,drone:0,actorId:0,actor:agentOf(),cls:"c-amber",text:`Operation stopped: ${reason}`,state:["Blocked","c-amber"],problem:true,you:true,major:true,operationId:op.id,group:`${op.id}:closed`,detail:{operation:op.id,reason,workers:op.workers}});
+    }
+  }
+  for(const turn of operationChat?.turns ?? [])if(turn.state==="failed"&&turn.error)out.push({at:turn.updatedAt*1000,id:0,drone:0,actorId:0,actor:agentOf(),cls:"c-amber",text:explainFleetError(turn.error),state:["Request failed","c-amber"],problem:true,you:false,major:true,group:turn.id,detail:turn});
+  return out.sort((a,b)=>a.at-b.at||a.id-b.id);
 }
 
 /* ---------- chat: operator messages and agent replies only ---------- */
@@ -739,7 +842,7 @@ function pull(id: number) {
     : 0;
   render(frame);
 }
-async function say(text: string) {
+async function say(text: string, target=selected) {
   text = text.trim();
   if (!text || role === "observer" || resetting) return;
   if (!operationChat) {
@@ -750,7 +853,7 @@ async function say(text: string) {
   if (operationChat.sending) return;
   chatError = "";
   const client = operationChat;
-  const sending = client.submit(text, selected || undefined);
+  const sending = client.submit(text, target || undefined);
   chat(derive(frame));
   try {
     await sending;
@@ -777,47 +880,13 @@ function bubble(m: Msg) {
   return b;
 }
 /** Chat state for the single header status cell. */
-function chatState() {
-  const op = operationChat?.operation;
-  const turn = operationChat?.pendingTurn;
-  const latestTurn = operationChat?.turns.at(-1);
-  return chatError || (turn ? "Planning" : latestTurn?.state === "failed" && (!op || latestTurn.createdAt > op.createdAt) ? "Failed" : op ? (op.outcome ?? fleetOutcome(op)).status : "Awaiting objective");
-}
-/** Suggestion chips: a static template map keyed on fleet phase and the selected drone. */
-const SUGGESTIONS = {
-  defender: {
-    idle: ["Probe the fleet controller", "What is exposed right now?", "Trace DR-xxx's last 3 commands"],
-    contested: ["Why did these drones flip?", "Isolate the compromised cluster", "Write a guard rule for this exploit"],
-    recovered: ["Summarize what was blocked", "Show the guard rule that held", "Replay the takeover on DR-xxx"],
-  },
-  attacker: {
-    idle: ["Discover drones on FC-01", "What is the fleet controller exposing?", "Command DR-xxx"],
-    engaged: ["Hold what we have", "Why was DR-xxx blocked?", "Try another drone"],
-    repelled: ["Summarize what got blocked", "Find a new entry point"],
-  },
-};
-function suggestions(d: Derived) {
-  const held = d.compromised.length;
-  const phase = role === "attacker"
-    ? held ? "engaged" : d.accepted.length || d.blocked.length ? "repelled" : "idle"
-    : held ? "contested" : d.recovered.length ? "recovered" : "idle";
-  const texts = role === "attacker" ? SUGGESTIONS.attacker[phase as keyof typeof SUGGESTIONS.attacker] : SUGGESTIONS.defender[phase as keyof typeof SUGGESTIONS.defender];
-  // Name the selected drone; otherwise the first drone with a problem, else the first visible one.
-  const drone = selected || (role === "attacker" ? d.blocked.at(-1)?.drone : d.compromised[0]?.id ?? d.recovered.at(-1)?.drone) || frame.drones[0]?.id;
-  const nodes = texts
-    .filter((t) => drone || !t.includes("DR-xxx"))
-    .map((t) => {
-      const text = t.replaceAll("DR-xxx", tag(drone!));
-      const b = el("button", "", "");
-      b.setAttribute("type", "button");
-      b.append(el("span", "", text));
-      b.innerHTML += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>';
-      b.onclick = () => void say(text);
-      return b;
-    });
-  patchList($("suggest"), nodes);
-  // patchList compares markup, so handlers on kept nodes stay; re-bind in case a node was reused.
-  $("suggest").querySelectorAll<HTMLButtonElement>("button").forEach((b) => (b.onclick = () => void say(b.textContent!)));
+let suggestionKey="";
+function suggestions(_d: Derived) {
+  const state={role,selected,drones:frame.drones.map(({id,controller,isolated})=>({id,controller,isolated})),battle:frame.battle ?? [],options:frame.options ?? [],teams:frame.teams ?? [],attempts:(frame.attempts ?? []).filter(a=>a.stage==="resolved")};
+  const key=JSON.stringify(state);if(key===suggestionKey)return;suggestionKey=key;
+  const offers=stateSuggestions(state);
+  const nodes=offers.map(offer=>{const b=el("button","",offer.text);b.setAttribute("type","button");b.dataset.target=String(offer.target);b.onclick=()=>void say(offer.text,offer.target);return b;});
+  $("suggest").replaceChildren(...nodes);
 }
 function chat(d: Derived) {
   if (role === "observer") return;
@@ -852,20 +921,13 @@ function chat(d: Derived) {
       group.dataset.operationId = ownOp?.id ?? "";
       const pending = activeOperation(ownOp) || !!ownTurn && ["queued", "running"].includes(ownTurn.state);
       const progress = group.querySelector<HTMLElement>(".interaction-progress")!;
-      progress.hidden = !pending;
+      progress.hidden = !pending || !!ownOp;
       progress.setAttribute("role", "status");
-      progress.textContent = ownOp?.state === "running" ? `Running · ${ownOp.workers.filter((w) => w.state === "working").length} agents working` : "Planning · Preparing your request…";
+      progress.textContent = ownTurn?.state === "running" ? "Assessing your request" : "Request queued";
       const response: HTMLElement[] = [];
       const reply = linked.find((m) => m.kind === "answer");
-      if (ownOp?.deployment?.assignments.length) {
-        const card = el("div", "bubble deployment");
-        if (reply) card.dataset.messageId = String(reply.id);
-        card.append(el("p", "", ownOp.deployment.summary));
-        const list = el("ul");
-        for (const a of ownOp.deployment.assignments) list.append(el("li", "", `${a.name} → ${tag(a.target)} · ${a.summary}`));
-        card.append(list);
-        response.push(card);
-      } else if (!ownOp && reply) response.push(bubble({ who: "agent", text: ownTurn?.error ? explainFleetError(ownTurn.error) : reply.text, id: reply.id }));
+      if (ownOp) response.push(bubble({who:"agent",text:"Objective accepted; follow progress in Activity.",id:reply?.id ?? user.id}));
+      else if (reply) response.push(bubble({ who: "agent", text: ownTurn?.error ? explainFleetError(ownTurn.error) : reply.text, id: reply.id }));
       if (resilienceMode && ownOp) for (const r of ownOp.results.filter((r) => r.status === "executed" && r.kind !== "wait").slice(-6)) {
         const action = el("div", "bubble action-card");
         action.dataset.actionId = r.actionId ?? "";
@@ -878,17 +940,6 @@ function chat(d: Derived) {
       }
       patchContent(group.querySelector<HTMLElement>(".interaction-response")!, response);
       const outcomes: HTMLElement[] = [];
-      if (ownOp && !activeOperation(ownOp)) {
-        const outcome = ownOp.outcome ?? fleetOutcome(ownOp);
-        const card = el("div", "bubble outcome");
-        card.dataset.status = outcome.status;
-        card.append(el("b", "", outcome.status), ...replyContent(outcome.summary));
-        if (outcome.succeeded < outcome.total) card.append(el("p", "", `${outcome.succeeded} of ${outcome.total} assignments succeeded.`));
-        const error = ownOp.workers.find((w) => w.error)?.error ?? ownOp.results.find((r) => r.error)?.error;
-        if (error) card.append(el("p", "", explainFleetError(error)));
-        if (outcome.evidenceIds.length) card.append(el("span", "evidence", `Evidence ${outcome.evidenceIds.map((id) => "#" + id).join(" · ")}`));
-        outcomes.push(card);
-      }
       patchContent(group.querySelector<HTMLElement>(".interaction-outcome")!, outcomes);
       const detailData = { turn: ownTurn, operation: ownOp, messages: [user, ...linked] };
       patchContent(group.querySelector<HTMLElement>(".interaction-details")!, [technicalDetails(detailData, "Details and evidence")]);
@@ -1566,7 +1617,7 @@ function placeTip(tip: HTMLElement, id: number) {
   const [x, y, z] = screen(d);
   tip.hidden = z > 1;
   tip.style.transform = `translate(${x}px, ${y}px) translate(-50%, calc(-100% - 16px))`;
-  tip.textContent = `${tag(id)} · ${stateWord(derived?.state(d) ?? "home")}`;
+  tip.textContent = `${tag(id)} · ${stateWord(derived?.state(d) ?? "home")}${(frame.battle?.find(h=>h.drone===id)?.contamination ?? 0)>0 ? " · contaminated" : ""}${d.isolated ? " · isolated" : ""}`;
 }
 let derived: Derived | undefined;
 function draw() {
@@ -1731,7 +1782,8 @@ function mapScene(d: Derived) {
     u.tone = tone;
     const blockedAt = d.lastBlockedAt.get(x.id);
     u.ring.visible = st === "comp";
-    u.ripple.visible =
+    u.contamination=frame.battle?.find(h=>h.drone===x.id)?.contamination ?? 0;
+    u.ripple.visible = u.contamination>0 && st!=="comp" ||
       st !== "comp" &&
       blockedAt !== undefined &&
       (d.latest - blockedAt) / 1e6 < RECENT_S;
@@ -1739,7 +1791,7 @@ function mapScene(d: Derived) {
       u.ring.scale.setScalar(1);
       u.ripple.scale.setScalar(1);
     }
-    u.iso.visible = role !== "attacker" && x.isolated;
+    u.iso.visible = x.isolated;
     u.sel.visible = x.id === selected;
     u.craft.scale.setScalar(x.id === selected ? 1.15 : 1);
   }
@@ -1764,6 +1816,7 @@ function mapScene(d: Derived) {
       ? [["var(--red)", "Seized", count("comp"), "red"], ["var(--text-2)", "Home", count("home"), ""], ["var(--faint)", "Lost", count("rec"), ""], ["ring-key", "Blocked", blocked, ""]]
       : [["var(--blue)", "Home", count("home"), ""], ["var(--red)", role === "defender" ? "Compromised" : "Unauthorized", count("comp"), "red"],
         ["var(--green)", "Recovered", count("rec"), "green"], ["ring-key", "Blocked", blocked, ""], ["iso", "Isolated", frame.drones.filter((x) => x.isolated).length, ""]];
+  if(!resilienceMode)items.push(["var(--amber)","Exposed",(frame.battle ?? []).filter(h=>h.contamination>0&&frame.drones.find(d=>d.id===h.drone)?.controller!=="attacker").length,""]);
   patchList($("legend"), items.map(([swatch, label, n, cls]) => {
     const li = el("li");
     const i = el("i", swatch.startsWith("var") ? "" : swatch);
@@ -1790,6 +1843,7 @@ function adoptEpoch(epoch: number) {
   fitted = "";
   userMoved = false;
   frame = EMPTY;
+  suggestionKey="";activityKey=""; recentTasks.clear(); clearTimeout(rosterTimer);
 }
 
 function render(next: Frame) {
@@ -1818,24 +1872,23 @@ function render(next: Frame) {
   redraw();
 }
 let statusTitle = "Loading…", statusKind: "live" | "stale" | "replay" = "stale";
-/** The one status indicator: connection word, then the chat state for attacker and defender. */
+/** Connection health is independent of the operational lifecycle. */
 function setStatus(text: string, kind: "live" | "stale" | "replay") {
   statusTitle = text;
   statusKind = kind;
   const word = kind === "live" && modelDriven && operationChat?.fleet?.active === false ? "Fleet ended"
     : kind === "live" ? "Live" : kind === "stale" ? text.startsWith("Disconnected") ? "Disconnected" : text.startsWith("Connecting") ? "Connecting" : "Stale" : "Replay";
-  const state = kind === "live" && modelDriven && role !== "observer" ? chatState() : "";
   const p = $("live");
-  const sub = el("span", "", state);
-  sub.id = "chat-sub";
-  p.replaceChildren(el("b", "", word), ...(state ? [" · ", sub] : []));
+  p.replaceChildren(el("b", "", word));
   p.title = text;
   $("status-dot").className = "dot " + (kind === "live" ? "" : kind);
+  if(modelDriven)teamStatus();
 }
 async function workspace(next: Role, reconnect = false) {
   if (resetting) return;
   if (next === role && operationChat && !reconnect) return;
   const v = ++version;
+  clearTimeout(rosterTimer);recentTasks.clear();suggestionKey="";activityKey="";
   fitted = "";
   userMoved = false;
   close();
@@ -1952,8 +2005,14 @@ async function workspace(next: Role, reconnect = false) {
   const pollState = () => {
     if (config.maincloud) {
       close();
-      const timer = setTimeout(() => { if (v === version) void workspace(role, true).catch(e => { $("error").textContent = String(e); }); }, 1500);
-      close = () => clearTimeout(timer);
+      const retry=(expected:number)=>{
+        const timer=setTimeout(()=>{
+          if(expected!==version)return;
+          void workspace(role,true).catch(()=>{if(version===expected+1){setStatus("Disconnected · retrying connection","stale");retry(version);}});
+        },1500);
+        close=()=>clearTimeout(timer);
+      };
+      retry(v);
       return;
     }
     ++attempt;
@@ -2024,6 +2083,11 @@ async function workspace(next: Role, reconnect = false) {
               mission: [...c.db.visibleResilienceMission.iter()].map(snake)[0] as Mission | undefined,
               resilience: [...c.db.visibleResilienceDrones.iter()].map(snake) as ResilienceDrone[],
               budgets: [...c.db.visibleResilienceBudget.iter()].map(snake) as { role: string; remaining: number }[],
+              battle:[...c.db.visibleBattleDrones.iter()].map(snake) as BattleHealth[],
+              options:[...c.db.visibleBattleOptions.iter()].map(snake) as BattleOption[],
+              attempts:[...c.db.visibleAttemptActivity.iter()].map(snake) as AttemptActivity[],
+              tasks:[...c.db.visibleAgentTasks.iter()].map(snake) as AgentTask[],
+              teams:[...c.db.visibleTeamActivity.iter()].map(snake) as TeamActivity[],
               drones: [...c.db.visibleDrones.iter()].map(snake) as Drone[],
               agents: [...c.db.visibleAgents.iter()].map((a) => ({ ...snake(a), ...snake([...c.db.visibleAgentProfiles.iter()].find((p) => p.id === a.id) ?? {}) })) as Agent[],
               events: ([...c.db.visibleEvidence.iter()].map(snake) as Ev[]).sort(
@@ -2041,6 +2105,7 @@ async function workspace(next: Role, reconnect = false) {
           c.db.visibleResilienceMission,
           c.db.visibleResilienceDrones,
           c.db.visibleResilienceBudget,
+          c.db.visibleBattleDrones,c.db.visibleBattleOptions,c.db.visibleAttemptActivity,c.db.visibleAgentTasks,c.db.visibleTeamActivity,
         ] as any[]) {
           table.onInsert(update);
           table.onUpdate(update);
@@ -2057,6 +2122,7 @@ async function workspace(next: Role, reconnect = false) {
             "SELECT * FROM visible_resilience_mission",
             "SELECT * FROM visible_resilience_drones",
             "SELECT * FROM visible_resilience_budget",
+            "SELECT * FROM visible_battle_drones","SELECT * FROM visible_battle_options","SELECT * FROM visible_attempt_activity","SELECT * FROM visible_agent_tasks","SELECT * FROM visible_team_activity",
           ]);
       })
       .onConnectError(() => {
