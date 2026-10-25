@@ -26,7 +26,7 @@ The existing Tailscale installation publishes only these paths on HTTPS 443:
 
 The backend root, privileged `/v1/fleet/*` routes, raw database SQL and unrelated database subscriptions return 404 at this public ingress. Existing tailnet routes on other ports were preserved. The initial proposal to publish the entire backend was rejected by automatic approval review; the narrower route configuration was approved and verified instead.
 
-Ordinary public-DNS clients resolve `neo.taile1abc7.ts.net` to the Funnel relay. On the backend host, tailnet DNS resolves it to a private IP where an unrelated service already owns port 443. Production browser verification therefore used the public DNS relay address with normal TLS hostname verification; the old private UI continues to use its original subscription address. A tailnet client resolving Neo privately may need public DNS for this production subscription path. No unrelated port-443 service was modified.
+Ordinary public-DNS clients resolve `neo.taile1abc7.ts.net` to the Funnel relay. On the backend host, tailnet DNS resolves it to a private IP where an unrelated service already owns port 443. The original production browser verification used the public DNS relay address with normal TLS hostname verification. Configuration now also supplies the existing private subscription address on port 8443 as a one-time fallback if the primary connection fails, allowing tailnet clients to connect without a DNS override. The fallback uses the same granted viewer credential and identity-scoped views. No unrelated port-443 service was modified.
 
 ## Verification
 
@@ -45,7 +45,7 @@ Evidence and screenshots are saved privately in `output/vercel-deployment/`: `br
 
 ## Operations
 
-The Vercel frontend is independent of the backend process but still depends on the existing Neo host, SpacetimeDB and Funnel being online. The backend is managed by `sudoko-chat-backend.service`; its secrets remain outside Git. Restart only that service for backend updates. Do not reset Tailscale Serve/Funnel globally or reset the fleet to deploy a frontend change.
+The Vercel frontend is independent of the backend process but still depends on the existing Neo host, SpacetimeDB and Funnel being online. The backend runs from the main checkout under the enabled user service `sudoko-chat-backend.service`; its secrets remain outside Git. Restart only that service for backend updates. Do not reset Tailscale Serve/Funnel globally or reset the fleet to deploy a frontend change. Demo users can explicitly reset the shared fleet through the confirmed **Sandbox** button; pending work is cancelled before zero-agent initialization and history is retained.
 
 Deploy from the main checkout after verifying the linked project:
 

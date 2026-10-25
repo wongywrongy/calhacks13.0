@@ -782,9 +782,13 @@ export class FleetChat {
     }
     return this.get(id, role);
   }
-  async endFleet() {
+  async endFleet(resetEpoch?: number) {
+    if (this.stoppingFleet) return reject(409, "Fleet is already stopping or resetting");
     this.stoppingFleet = true;
     try {
+      const [fleet] = resetEpoch === undefined ? [] : await this.store.query("SELECT * FROM fleet_session WHERE id=0");
+      if (resetEpoch !== undefined && fleet?.epoch !== resetEpoch)
+        return reject(409, "Fleet changed; reload before resetting");
       await Promise.all(this.admissions.values());
       for (const turn of this.turns.values()) turn.abort.abort();
       await Promise.all([...this.turns.values()].map((t) => t.done));
@@ -792,6 +796,11 @@ export class FleetChat {
       const workers = [...this.workers.values()];
       for (const worker of workers) worker.abort.abort();
       await Promise.all(workers.map((worker) => worker.done));
+      if (fleet) {
+        await this.store.call("start_fleet", [fleet.drones, 0, 0, fleet.hardened]);
+        await this.store.call("enable_fleet_chat", []);
+        return { reset: true, epoch: resetEpoch! + 1 };
+      }
     } finally {
       this.stoppingFleet = false;
     }

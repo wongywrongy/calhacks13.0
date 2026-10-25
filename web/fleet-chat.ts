@@ -70,7 +70,8 @@ export class OperationChat {
   private changed: () => void;
   private failed: (message: string) => void;
   get operation() {
-    return this.operations.find(activeOperation) ?? this.operations.at(-1);
+    const current = this.operations.filter((o) => !this.fleet || o.epoch === this.fleet.epoch);
+    return current.find(activeOperation) ?? current.at(-1);
   }
   constructor(
     sandbox: string,

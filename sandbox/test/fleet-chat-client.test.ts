@@ -87,4 +87,7 @@ test("conversation reconnect reuses a lost submission key and target; messages a
   other.close();
   assert.deepEqual(other.messages, []);
   assert.equal(keys.length, 2);
+  next.fleet = { active: true, epoch: 2 };
+  next.operations = [{ id: "previous-demo", epoch: 1, state: "completed" }] as any;
+  assert.equal(next.operation, undefined, "A reset fleet must await an objective instead of showing the previous completion");
 });

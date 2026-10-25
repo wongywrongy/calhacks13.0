@@ -207,6 +207,7 @@ export function fleetWeb(options: {
         status: 200,
         body: {
           uri: (url.searchParams.get("internet") === "1" ? env.FLEET_INTERNET_URI : undefined) || env.FLEET_PUBLIC_URI || fleet.uri,
+          fallbackUri: url.searchParams.get("internet") === "1" && env.FLEET_INTERNET_URI !== env.FLEET_PUBLIC_URI ? env.FLEET_PUBLIC_URI : undefined,
           database: fleet.database,
           sandbox: fleet.database,
           role: viewer.role,
@@ -224,6 +225,14 @@ export function fleetWeb(options: {
     }
     if (viewer.role === "observer")
       throw new StoreError(403, "Observer sessions cannot deploy agents");
+    if (url.pathname === "/api/chat/reset" && req.method === "POST") {
+      if (!demo) throw new StoreError(403, "Reset is available only in demo mode");
+      const b: any = await body(req);
+      if (!b || Object.keys(b).length !== 1 || !Number.isSafeInteger(b.epoch) || b.epoch < 1)
+        throw new StoreError(400, "Current fleet epoch required");
+      send(res, { status: 200, body: await chat.endFleet(b.epoch) });
+      return true;
+    }
     if (url.pathname === "/api/chat/conversation" && req.method === "GET") {
       send(res, {
         status: 200,

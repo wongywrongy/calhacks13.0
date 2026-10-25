@@ -200,6 +200,46 @@ try {
     const failed = await send("How does this simulation work?", false);
     for (let i = 0; i < 40 && (await conversation()).turns.find((t: any) => t.id === failed.body.accepted.id)?.state !== "failed"; i++) await delay(100);
     assert.equal((await conversation()).turns.find((t: any) => t.id === failed.body.accepted.id).error, "provider_rate_limit");
+    mode = "blocked";
+    const pending = await send("Inspect the swarm with two agents", false);
+    const beforeReset = await conversation();
+    const actionCountBeforeReset = (await service.store.query("SELECT * FROM fleet_chat_action")).length;
+    await page.waitForFunction(() => document.querySelector("#transcript")?.textContent?.includes("Inspect the swarm with two agents"));
+    page.once("dialog", (dialog) => void dialog.dismiss());
+    await page.getByRole("button", { name: "Reset sandbox", exact: true }).click();
+    assert.equal((await conversation()).fleet.epoch, beforeReset.fleet.epoch);
+    page.once("dialog", (dialog) => void dialog.accept());
+    await Promise.all([
+      page.waitForNavigation(),
+      page.getByRole("button", { name: "Reset sandbox", exact: true }).click(),
+    ]);
+    await page.waitForFunction(() => document.querySelector("#live")?.textContent?.startsWith("Live"));
+    const reset = await conversation();
+    assert.equal(reset.fleet.epoch, beforeReset.fleet.epoch + 1);
+    assert.equal(reset.fleet.active, true);
+    assert.equal(reset.turns.find((t: any) => t.id === pending.body.accepted.id).state, "cancelled");
+    assert.ok(reset.messages.some((m: any) => m.text === "Why did that fail?"));
+    assert.equal(await page.locator(".agent").count(), 0);
+    assert.match(await page.locator("#rail-left").textContent() || "", /No agents deployed/);
+    const staleReset = await page.request.post(service.url + "/api/chat/reset", { headers: { origin: service.url, "x-sudoko-role": role }, data: { epoch: beforeReset.fleet.epoch } });
+    assert.equal(staleReset.status(), 409);
+    const crossSiteReset = await page.request.post(service.url + "/api/chat/reset", { headers: { origin: "https://unrelated.example", "x-sudoko-role": role }, data: { epoch: reset.fleet.epoch } });
+    assert.equal(crossSiteReset.status(), 403);
+    await delay(300);
+    assert.equal((await service.store.query("SELECT * FROM fleet_chat_action")).length, actionCountBeforeReset);
+    assert.equal((await service.store.query("SELECT * FROM fleet_agent")).length, 0);
+    assert.equal((await service.store.query("SELECT * FROM agent_schedule")).length, 0);
+    await page.screenshot({ path: output + "/sandbox-reset.png" });
+    report.checks.push("Demo Sandbox reset confirms both sides, cancels pending inference, preserves history, starts zero-agent persistent fleet, and rejects stale/cross-site requests");
+    await page.route("**/fleet-config?role=*", async (route) => {
+      const response = await route.fetch();
+      const config = await response.json();
+      await route.fulfill({ response, json: { ...config, uri: "http://127.0.0.1:1", fallbackUri: config.uri } });
+    });
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector("#live")?.textContent === "Live · Awaiting objective");
+    await page.unroute("**/fleet-config?role=*");
+    report.checks.push("A failed primary subscription connects through the configured fallback without changing fleet or chat state");
   }
   assert.deepEqual(errors, []);
   report.inferencePool = service.pool.status();

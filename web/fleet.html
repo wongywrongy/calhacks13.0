@@ -336,6 +336,15 @@
       #clock span {
         color: #6f7b8a;
       }
+      #reset-sandbox {
+        font: 14px var(--mono);
+        padding: 6px 12px;
+        border: 1px solid var(--line2);
+        border-radius: 4px;
+        background: transparent;
+        color: var(--fg);
+      }
+      #reset-sandbox:hover { background: var(--line2); }
       .progress {
         background: var(--line2);
         border-radius: 2px;
@@ -962,6 +971,7 @@
           <input id="timeline" type="range" min="0" max="1" value="0" aria-label="Scrub recording" />
         </div>
         <span class="pill replay" id="live" role="status" title="Loading…">Connecting</span>
+        <button id="reset-sandbox" type="button" aria-label="Reset sandbox" title="Reset the shared demo fleet for both sides" hidden>Sandbox</button>
         <div class="clock">
           <div id="clock">0:00<span>&nbsp;/ 1:00</span></div>
           <div class="progress"><i id="progress"></i></div>

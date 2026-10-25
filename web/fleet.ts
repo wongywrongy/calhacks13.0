@@ -79,6 +79,8 @@ let operationChat: OperationChat | undefined;
 let modelDriven = false,
   fleetEpoch = 0,
   coordinatorModel = "",
+  sandboxName = "",
+  demoMode = false,
   chatError = "";
 const workerFor = (id: number): Worker | undefined =>
   operationChat?.operations
@@ -329,6 +331,8 @@ function header(d: Derived) {
     ? "Sandbox"
     : clock(d.elapsed);
   $("clock").querySelector("span")!.textContent = modelDriven ? "" : " / 1:00";
+  $("clock").parentElement!.hidden = demoMode;
+  $("reset-sandbox").hidden = !demoMode;
   $("progress").parentElement!.style.visibility = modelDriven
     ? "hidden"
     : "visible";
@@ -1635,6 +1639,8 @@ async function workspace(next: Role) {
   sessionStorage.setItem("sudoko.role", role);
   fleetEpoch = config.epoch;
   modelDriven = !!config.authenticated;
+  demoMode = !!config.demo;
+  sandboxName = config.sandbox;
   coordinatorModel = config.models?.coordinator || "";
   $("rail-right").hidden = role !== "observer";
   $("chat").hidden = role === "observer";
@@ -1655,6 +1661,12 @@ async function workspace(next: Role) {
       role,
       () => {
         chatError = "";
+        if (operationChat?.fleet && operationChat.fleet.epoch !== fleetEpoch) {
+          fleetEpoch = operationChat.fleet.epoch;
+          selected = selectedEvent = 0;
+          onlySel = false;
+          closeModal();
+        }
         chats[role] = operationChat!.messages.map((m) => ({
           id: m.id,
           who: m.speaker === "operator" ? "you" : "agent",
@@ -1669,72 +1681,82 @@ async function workspace(next: Role) {
     );
     void operationChat.resume();
   }
-  const conn = DbConnection.builder()
-    .withUri(config.uri)
-    .withDatabaseName(config.database)
-    .withToken(config.token)
-    .onConnect((c) => {
-      if (v !== version) {
-        c.disconnect();
-        return;
-      }
-      socketConnected = true;
-      let queued = false;
-      const update = () => {
-        if (queued) return;
-        queued = true;
-        // One redraw per animation frame; each reducer transaction arrives as its own message.
-        requestAnimationFrame(() => {
-          queued = false;
-          if (v !== version) return;
-          lastReceived = Date.now();
-          setStatus(
-            config.authenticated ? "Live · model operations" : "Live · fixture",
-            "live",
-          );
-          const snake = (o: any) =>
-            Object.fromEntries(
-              Object.entries(o).map(([k, val]) => [
-                k.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase()),
-                typeof val === "bigint" ? Number(val) : val,
-              ]),
+  let attempt = 0;
+  const connect = (uri: string) => {
+    const current = ++attempt;
+    const conn = DbConnection.builder()
+      .withUri(uri)
+      .withDatabaseName(config.database)
+      .withToken(config.token)
+      .onConnect((c) => {
+        if (v !== version || current !== attempt) {
+          c.disconnect();
+          return;
+        }
+        socketConnected = true;
+        let queued = false;
+        const update = () => {
+          if (queued) return;
+          queued = true;
+          // One redraw per animation frame; each reducer transaction arrives as its own message.
+          requestAnimationFrame(() => {
+            queued = false;
+            if (v !== version || current !== attempt) return;
+            lastReceived = Date.now();
+            setStatus(
+              config.authenticated ? "Live · model operations" : "Live · fixture",
+              "live",
             );
-          render({
-            drones: [...c.db.visibleDrones.iter()].map(snake) as Drone[],
-            agents: [...c.db.visibleAgents.iter()].map((a) => ({ ...snake(a), ...snake([...c.db.visibleAgentProfiles.iter()].find((p) => p.id === a.id) ?? {}) })) as Agent[],
-            events: ([...c.db.visibleEvidence.iter()].map(snake) as Ev[]).sort(
-              (a, b) => a.id - b.id,
-            ),
+            const snake = (o: any) =>
+              Object.fromEntries(
+                Object.entries(o).map(([k, val]) => [
+                  k.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase()),
+                  typeof val === "bigint" ? Number(val) : val,
+                ]),
+              );
+            render({
+              drones: [...c.db.visibleDrones.iter()].map(snake) as Drone[],
+              agents: [...c.db.visibleAgents.iter()].map((a) => ({ ...snake(a), ...snake([...c.db.visibleAgentProfiles.iter()].find((p) => p.id === a.id) ?? {}) })) as Agent[],
+              events: ([...c.db.visibleEvidence.iter()].map(snake) as Ev[]).sort(
+                (a, b) => a.id - b.id,
+              ),
+            });
           });
-        });
-      };
-      for (const table of [
-        c.db.visibleDrones,
-        c.db.visibleAgents,
-        c.db.visibleAgentProfiles,
-        c.db.visibleEvidence,
-      ] as any[]) {
-        table.onInsert(update);
-        table.onUpdate(update);
-        table.onDelete(update);
-      }
-      c.subscriptionBuilder()
-        .onApplied(update)
-        .subscribe([
-          "SELECT * FROM visible_drones",
-          "SELECT * FROM visible_agents",
-          "SELECT * FROM visible_agent_profiles",
-          "SELECT * FROM visible_evidence",
-        ]);
-    })
-    .onConnectError(() => {
-      if (v === version) { socketConnected = false; setStatus("Disconnected · state frozen", "stale"); }
-    })
-    .onDisconnect(() => {
-      if (v === version) { socketConnected = false; setStatus("Disconnected · state frozen", "stale"); }
-    })
-    .build();
-  close = () => conn.disconnect();
+        };
+        for (const table of [
+          c.db.visibleDrones,
+          c.db.visibleAgents,
+          c.db.visibleAgentProfiles,
+          c.db.visibleEvidence,
+        ] as any[]) {
+          table.onInsert(update);
+          table.onUpdate(update);
+          table.onDelete(update);
+        }
+        c.subscriptionBuilder()
+          .onApplied(update)
+          .subscribe([
+            "SELECT * FROM visible_drones",
+            "SELECT * FROM visible_agents",
+            "SELECT * FROM visible_agent_profiles",
+            "SELECT * FROM visible_evidence",
+          ]);
+      })
+      .onConnectError(() => {
+        if (v !== version || current !== attempt) return;
+        socketConnected = false;
+        setStatus("Disconnected · state frozen", "stale");
+        // Tailnet DNS can resolve the public Funnel hostname to a different private TLS listener.
+        if (current === 1 && config.fallbackUri && uri !== config.fallbackUri)
+          connect(config.fallbackUri);
+      })
+      .onDisconnect(() => {
+        if (v === version && current === attempt) { socketConnected = false; setStatus("Disconnected · state frozen", "stale"); }
+      })
+      .build();
+    close = () => conn.disconnect();
+  };
+  connect(config.uri);
 }
 
 /* ---------- controls ---------- */
@@ -1879,6 +1901,28 @@ $("camera").onclick = () => {
   reframe();
 };
 $("reframe").onclick = reframe;
+$("reset-sandbox").onclick = async () => {
+  if (!demoMode || !confirm("Reset the shared demo fleet for both sides? Running agents will stop and drones will return home. Chat history will be kept.")) return;
+  const button = $("reset-sandbox") as HTMLButtonElement;
+  button.disabled = true;
+  button.textContent = "Resetting…";
+  try {
+    const response = await fetch("/api/chat/reset", {
+      method: "POST",
+      signal: AbortSignal.timeout(30000),
+      headers: { "content-type": "application/json", "x-sudoko-role": role },
+      body: JSON.stringify({ epoch: operationChat?.fleet?.epoch ?? fleetEpoch }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw Error(result.error || "Reset failed. Reload to check fleet state.");
+    for (const side of ["attacker", "defender"]) localStorage.removeItem(`sudoko.message:${sandboxName}:${side}`);
+    location.reload();
+  } catch (error) {
+    $("error").textContent = error instanceof Error ? error.message : "Reset failed";
+    button.disabled = false;
+    button.textContent = "Sandbox";
+  }
+};
 host.ondblclick = reframe;
 document.querySelectorAll<HTMLButtonElement>("nav button").forEach(
   (b) =>

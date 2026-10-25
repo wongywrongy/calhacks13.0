@@ -177,6 +177,7 @@ test(
         assert.ok(!cookie.includes(identity.token));
         cookies[role] = cookie.split(";")[0];
       }
+      assert.equal((await browser("/api/chat/reset", "attacker", { epoch: fleet.epoch })).status, 403);
       assert.equal(
         (
           await browser("/api/chat/operations", "none", {
