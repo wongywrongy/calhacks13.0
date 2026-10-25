@@ -157,7 +157,8 @@
         border-radius: 7px;
         background: var(--bg);
       }
-      .seg button {
+      .seg button,
+      #filter button {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -171,7 +172,8 @@
         white-space: nowrap;
       }
       .seg button[aria-pressed="true"],
-      .seg button[aria-selected="true"] {
+      .seg button[aria-selected="true"],
+      #filter button[aria-selected="true"] {
         color: var(--fg);
         background: var(--active);
         border-color: var(--control-border);
@@ -243,6 +245,9 @@
       }
       .bar .grow {
         flex: 1 1 0;
+      }
+      .bar h2 {
+        flex: none;
       }
       .bar .rule {
         display: flex;
@@ -616,6 +621,7 @@
         overflow: hidden;
       }
       #legend li {
+        flex: none;
         display: flex;
         align-items: center;
         gap: 6px;
@@ -730,6 +736,9 @@
         gap: 8px;
         white-space: nowrap;
         overflow: hidden;
+      }
+      .row .st .dot {
+        background: currentColor;
       }
       .row .s {
         white-space: nowrap;
@@ -1147,6 +1156,10 @@
         }
         #chat .body.rest {
           max-height: none;
+        }
+        #legend {
+          overflow-x: auto;
+          scrollbar-width: none;
         }
         #head .match #playback,
         #head .match .clock {
