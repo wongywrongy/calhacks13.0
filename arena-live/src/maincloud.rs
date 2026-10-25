@@ -275,9 +275,12 @@ fn complete_action(ctx:&ReducerContext,j:&Job,kind:&str,mut receipt:Value)->Resu
     if !pending{finish_operation(ctx,&j.operation);}Ok(())
 }
 pub(super) fn clear_jobs(ctx:&ReducerContext){
- for a in ctx.db.hosted_alarm().iter(){ctx.db.hosted_alarm().id().delete(a.id);}
- for j in ctx.db.hosted_job().iter(){ctx.db.hosted_job().id().delete(j.id);}
+ // HTTP already sent cannot be cancelled: retain its slot and watchdog until it returns.
+ let inflight:std::collections::HashSet<_>=ctx.db.hosted_job().iter().filter(|j|j.state=="running").map(|j|j.id).collect();
+ for a in ctx.db.hosted_alarm().iter(){if !a.watchdog||!inflight.contains(&a.job){ctx.db.hosted_alarm().id().delete(a.id);}}
+ for j in ctx.db.hosted_job().iter(){if !inflight.contains(&j.id){ctx.db.hosted_job().id().delete(j.id);}}
  for b in ctx.db.hosted_budget().iter(){ctx.db.hosted_budget().operation().delete(b.operation);}
+ assert!(inflight.iter().all(|id|ctx.db.hosted_job().id().find(id.clone()).map(|j|j.state)==Some("running".into())),"Reset must retain outstanding inference reservations");
 }
 
 fn finish_operation(ctx:&ReducerContext,id:&str){

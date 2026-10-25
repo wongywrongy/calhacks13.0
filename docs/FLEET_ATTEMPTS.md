@@ -133,12 +133,15 @@ Models' own summaries remain untrusted text; the authoritative report determines
 
 ## Reset, evidence and practical limits
 
-Both shared swarm reset APIs cancel operations/turns, remove pending attempt and hosted
+Both shared swarm reset APIs cancel operations/turns, remove pending attempt and queued hosted
 inference timers/jobs, advance the epoch and both conversation generations, and clear
 contamination, preparation, readiness, retry fingerprints, discoveries, holds, ownership
 changes and action evidence. Role grants remain. Every old scheduled callback checks its
 epoch before applying state; old provider completions cannot deploy into the new session.
-New Chat remains a separate role-local conversation operation.
+Outstanding provider HTTP requests retain a private reservation and timeout watchdog until
+they return; their epoch is stale and they cannot affect the new session. This preserves
+the global four-call cap across repeated resets. New Chat remains a separate role-local
+conversation operation.
 
 `SPACETIME_BINARY=... npm test` includes `sandbox/test/battle.test.ts` against real temporary
 databases. Its explicitly seeded fixtures exercise >2 captures, partial contamination,
