@@ -7,17 +7,22 @@ export const taskActive = (task: AgentTask) => ["queued", "running"].includes(ta
 export function attemptReport(attempt: AttemptActivity): any {
   try { return JSON.parse(attempt.report); } catch { return {}; }
 }
-export function attemptOutcome(attempt: AttemptActivity) {
+export function attemptOutcome(attempt: AttemptActivity, events: {id:number;actor:number;drone:number;at:number}[] = []) {
   const report = attemptReport(attempt), effects: any[] = report.results ?? [];
   const interrupted = /interrupt/i.test(report.summary ?? "");
-  const ownership = effects.some(e => e.beforeController !== undefined && e.beforeController !== e.controller);
-  const contained = effects.some(e => !e.beforeIsolated && e.isolated);
-  const recovered = effects.some(e => e.beforeContamination > 0 && e.contamination === 0);
+  const attacking=["command","spread"].includes(attempt.kind);
+  const ownership = effects.some(e => e.beforeController !== undefined && e.beforeController !== e.controller) || attacking && report.succeeded>0;
+  const contained = effects.some(e => !e.beforeIsolated && e.isolated) || attempt.kind==="isolate" && report.succeeded>0;
+  const recovered = effects.some(e => e.beforeContamination > 0 && e.contamination === 0) || attempt.kind==="verify" && report.succeeded>0;
+  const restored=attempt.kind==="release" && report.succeeded>0;
   const foothold = effects.some(e => e.openedRoutes?.length > 0);
   const failed = !report.succeeded && !report.partial;
-  const label = interrupted ? "Interrupted" : recovered ? "Recovered" : ownership ? "Control changed" : contained ? "Contained" : foothold ? "New route" : failed ? "Failed" : report.partial ? "Partial result" : "Resolved";
-  const major = interrupted || ownership || contained || recovered || foothold || failed && ["command", "spread", "verify"].includes(attempt.kind);
-  return { report, label, major, failed, evidenceIds: effects.flatMap(e => e.evidenceIds ?? []) as number[] };
+  const label = interrupted ? "Interrupted" : restored ? "Mission restored" : recovered ? "Recovered" : ownership ? "Control changed" : contained ? "Contained" : foothold ? "New route" : failed ? "Failed" : report.partial ? "Partial result" : "Resolved";
+  const major = interrupted || ownership || contained || recovered || restored || foothold || attacking && report.partial>0 || failed && ["command", "spread", "verify"].includes(attempt.kind);
+  const evidenceIds: number[]=effects.flatMap(e=>e.evidenceIds ?? []);
+  // Existing reports predate effect IDs; one reducer transaction shares a timestamp.
+  if(!evidenceIds.length){const targets=new Set(effects.map(e=>e.target));for(const e of events)if(e.actor===attempt.agent&&targets.has(e.drone)&&e.at===attempt.at)evidenceIds.push(e.id);}
+  return { report, label, major, failed, evidenceIds };
 }
 export function groupActivity<T extends { major?: boolean; group?: string }>(rows: T[]) {
   const groups = new Map<string,T[]>();

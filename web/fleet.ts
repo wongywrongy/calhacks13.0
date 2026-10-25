@@ -804,7 +804,7 @@ function battleEntries():Entry[]{
   const claimed=new Set<number>(), out:Entry[]=[];
   for(const a of frame.attempts ?? []){
     if(a.stage!=="resolved")continue;
-    const outcome=attemptOutcome(a),{report,label,major,failed,evidenceIds}=outcome;
+    const outcome=attemptOutcome(a,frame.events),{report,label,major,failed,evidenceIds}=outcome;
     evidenceIds.forEach(id=>claimed.add(id));
     const task=frame.tasks?.find(t=>t.agent===a.agent && t.operation===a.operation);
     const current=frame.attempts?.find(next=>next.agent===a.agent&&next.operation===a.operation&&next.stage!=="resolved");

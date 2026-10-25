@@ -19,6 +19,9 @@ test("suggestions track foothold, isolation, failure and recovery without offeri
 });
 test("meaningful outcomes are prominent; repeated failures and routine details are grouped",()=>{
  const result=attemptOutcome(attempt({summary:"One compromised; two resisted",succeeded:1,results:[{beforeController:"defender",controller:"attacker",beforeContamination:0,contamination:100,evidenceIds:[1,2],openedRoutes:[3]}]}));
+ assert.equal(attemptOutcome(attempt({succeeded:1,results:[{target:18,success:true}]})).label,"Control changed","Existing persisted successes retain their meaning");
+ assert.equal(attemptOutcome(attempt({succeeded:1},"release")).label,"Mission restored");
+ assert.deepEqual(attemptOutcome(attempt({succeeded:1,results:[{target:18,success:true}]}),[{id:11,actor:1,drone:18,at:1000},{id:12,actor:2,drone:18,at:1000},{id:13,actor:1,drone:18,at:999}]).evidenceIds,[11],"Legacy evidence merges only for the same actor, target and transaction");
  assert.equal(result.major,true);assert.equal(result.label,"Control changed");assert.deepEqual(result.evidenceIds,[1,2]);
  assert.equal(attemptOutcome(attempt({summary:"Attempt interrupted: isolated",succeeded:0})).label,"Interrupted");
  const groups=groupActivity([{major:true,group:"changed"},{major:true,group:"failed"},{major:true,group:"failed"},{major:false,group:"routine"}]);
