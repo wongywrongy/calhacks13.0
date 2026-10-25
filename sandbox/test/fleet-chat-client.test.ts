@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { SenderError, UnknownCallResultError } from "spacetimedb";
 import { OperationChat, replyBlocks } from "../../web/fleet-chat.ts";
 
 test("a late same-session poll cannot replace a newer submission snapshot", async (t) => {
@@ -229,4 +230,18 @@ test("agent replies become readable lists without losing facts, IDs or literal m
   assert.equal(compact.flatMap(b=>b.lines).join(" ").replace(/[.,;]/g,""),dense.replace(/[.,;]/g,""),"Clause formatting preserves every word and qualifier");
   assert.deepEqual(replyBlocks("Waiting for evidence."), [{ list: false, lines: ["Waiting for evidence."] }]);
   assert.deepEqual(replyBlocks(" "), []);
+});
+
+test("confirmed reducer rejection releases pending intent; unknown outcomes keep the retry key",async t=>{
+ const descriptor=Object.getOwnPropertyDescriptor(globalThis,"localStorage"),values=new Map<string,string>();
+ Object.defineProperty(globalThis,"localStorage",{configurable:true,value:{getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v),removeItem:(k:string)=>values.delete(k)}});
+ t.after(()=>descriptor?Object.defineProperty(globalThis,"localStorage",descriptor):Reflect.deleteProperty(globalThis,"localStorage"));
+ const snapshot={fleet:{epoch:1,active:true},conversation:1,messages:[],turns:[],operations:[]},keys:string[]=[];let error:Error|undefined=new SenderError("Conversation already pending");
+ const transport={snapshot:async()=>snapshot,submit:async(key:string)=>{keys.push(key);if(error)throw error;return snapshot;},newChat:async()=>snapshot,close:()=>{}};
+ const client=new OperationChat("owned","attacker",()=>{},()=>{},1,1,transport);t.after(()=>client.close());
+ await assert.rejects(client.submit("First request"),/pending/);assert.equal(values.size,0);
+ error=undefined;await client.submit("A different request");assert.notEqual(keys[0],keys[1]);
+ error=new UnknownCallResultError();await assert.rejects(client.submit("Uncertain request"));assert.equal(values.size,1);
+ await assert.rejects(client.submit("Different after disconnect"),/Retry the pending message/);
+ error=undefined;await client.submit("Uncertain request");assert.equal(keys[2],keys[3]);assert.equal(values.size,0);
 });

@@ -47,6 +47,10 @@ export function stateSuggestions(state: { role: string; selected: number; drones
     if(entry)offer(`Attempt entry on ${tag(entry.drone)}`,entry.drone);
     if(!relay&&last&&/isolat|route|interrupt/i.test(attemptReport(last).summary ?? ""))offer("Which alternative connections remain?",0);
     if(!state.drones.length)offer("Discover two catalog drones",0);
+    else {
+      const unseen=choices.filter(o=>o.actions.includes("discover")&&!drone(o.drone)).slice(0,2);
+      if(unseen.length)offer(`Discover catalog ${unseen.length===1?"drone":"drones"} ${unseen.map(o=>tag(o.drone)).join(" and ")}`,0);
+    }
   } else if(state.role==="defender") {
     const threat=choices.find(o=>(health(o.drone)?.contamination ?? 0)>0||drone(o.drone)?.controller==="attacker");
     if(threat){

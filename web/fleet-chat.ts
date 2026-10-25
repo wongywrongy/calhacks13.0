@@ -1,3 +1,4 @@
+import { SenderError } from "spacetimedb";
 // Keep reply content as text; the renderer creates the list elements safely.
 export function replyBlocks(text: string) {
   const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
@@ -190,7 +191,10 @@ export class OperationChat {
       this.clearPending();
       this.update(body, request);
     } catch (error) {
-      if (!this.closed && this.fleet?.epoch === epoch && this.conversation === conversation) throw error;
+      if (!this.closed && this.fleet?.epoch === epoch && this.conversation === conversation) {
+        if (error instanceof SenderError) this.clearPending();
+        throw error;
+      }
     } finally {
       if (this.fleet?.epoch === epoch && this.conversation === conversation) this.sending = false;
     }

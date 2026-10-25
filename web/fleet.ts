@@ -100,6 +100,7 @@ let modelDriven = false,
   sandboxName = "",
   demoMode = false,
   chatError = "",
+  submissionError = "",
   resetting = false;
 const workerFor = (id: number): Worker | undefined =>
   operationChat?.operations
@@ -852,12 +853,13 @@ async function say(text: string, target=selected) {
   text = text.trim();
   if (!text || role === "observer" || resetting) return;
   if (!operationChat) {
-    chatError = "Chat requires a live authenticated backend session.";
+    submissionError = "Chat requires a live authenticated backend session.";
     chat(derive(frame));
     return;
   }
   if (operationChat.sending) return;
-  chatError = "";
+  submissionError = "";
+  suggestionDraft={text,target};
   const client = operationChat;
   const sending = client.submit(text, target || undefined);
   chat(derive(frame));
@@ -865,7 +867,7 @@ async function say(text: string, target=selected) {
     await sending;
   } catch (e) {
     if (client !== operationChat || resetting) return;
-    chatError = e instanceof Error ? e.message : "Message failed";
+    submissionError = e instanceof Error ? e.message : "Message failed";
     if (!($("say") as HTMLInputElement).value)
       ($("say") as HTMLInputElement).value = text;
   }
@@ -887,18 +889,19 @@ function bubble(m: Msg) {
 }
 /** Chat state for the single header status cell. */
 let suggestionKey="";
+let suggestionDraft: {text:string;target:number}|undefined;
 function suggestions(_d: Derived) {
   const state={role,selected,drones:frame.drones.map(({id,controller,isolated})=>({id,controller,isolated})),battle:frame.battle ?? [],options:frame.options ?? [],teams:frame.teams ?? [],attempts:(frame.attempts ?? []).filter(a=>a.stage==="resolved")};
-  const key=JSON.stringify(state);if(key===suggestionKey)return;suggestionKey=key;
   const offers=stateSuggestions(state);
   for(const text of templateSuggestions(_d))if(offers.length<3&&!offers.some(o=>o.text===text))offers.push({text,target:selected});
+  const key=JSON.stringify(offers);if(key===suggestionKey)return;suggestionKey=key;
   const nodes=offers.map((offer,i)=>{
     const li=el("li");li.setAttribute("role","option");li.setAttribute("aria-selected",String(i===0));
     const b=el("button");b.setAttribute("type","button");b.dataset.target=String(offer.target);
     b.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9"></path></svg>';
     b.append(el("span","",offer.text),el("span","key",i===0?"Tab":""));
     b.onclick=()=>void say(offer.text,offer.target);li.append(b);return li;});
-  $("suggest").replaceChildren(...nodes);
+  patchList($("suggest"),nodes);
 }
 /** Static per-role templates keyed on the fleet phase and the selected drone; never a model call. */
 function templateSuggestions(d: Derived): string[] {
@@ -911,7 +914,7 @@ function templateSuggestions(d: Derived): string[] {
   if (role === "attacker")
     return held ? ["Hold what we have", ...withDrone("Why was DR-xxx blocked?"), "Try another drone"]
       : seen ? ["Summarize what got blocked", "Find a new entry point"]
-      : ["Discover drones on FC-01", "What is the fleet controller exposing?", ...withDrone("Command DR-xxx")];
+      : ["Which entry tests are currently permitted?", "What is the fleet controller exposing?", ...withDrone("Command DR-xxx")];
   return held ? ["Why did these drones flip?", "Isolate the compromised cluster", "Write a guard rule for this exploit"]
     : d.recovered.length ? ["Summarize what was blocked", "Show the guard rule that held", ...withDrone("Replay the takeover on DR-xxx")]
     : ["Probe the fleet controller", "What is exposed right now?", ...withDrone("Trace DR-xxx's last 3 commands")];
@@ -922,6 +925,13 @@ function chat(d: Derived) {
   const op = operationChat?.operation;
   $("provider").textContent = modelDriven ? `${inferenceLabel} · ${op?.models?.coordinator || coordinatorModel}` : "Fixture decisions";
   suggestions(d);
+  const sending=!!operationChat?.sending, unavailable=modelDriven&&!operationChat;
+  for(const b of Array.from($("suggest").querySelectorAll<HTMLButtonElement>("button"))){
+    b.disabled=unavailable||sending||!!operationChat?.pendingTurn;
+    b.title=b.disabled ? "Waiting for the current reply or connection." : "";
+  }
+  ($("send") as HTMLButtonElement).disabled=unavailable||sending;
+  $("error").textContent=submissionError||chatError||webglNote;
   ($("say") as HTMLInputElement).disabled = (modelDriven && !operationChat) || !!operationChat?.sending;
   ($("say") as HTMLInputElement).placeholder = `Message ${agentOf()}`;
   const t = $("transcript");
@@ -1864,7 +1874,7 @@ function adoptEpoch(epoch: number) {
   fleetEpoch = epoch;
   operationChat?.advanceEpoch(epoch);
   typing.hidden = true;
-  chatError = "";
+  chatError = submissionError = "";
   $("error").textContent = webglNote;
   ($("say") as HTMLInputElement).value = "";
   selected = selectedEvent = hovered = 0;
@@ -1875,7 +1885,7 @@ function adoptEpoch(epoch: number) {
   fitted = "";
   userMoved = false;
   frame = EMPTY;
-  suggestionKey="";activityKey=""; recentTasks.clear(); clearTimeout(rosterTimer);
+  suggestionKey="";suggestionDraft=undefined;activityKey=""; recentTasks.clear(); clearTimeout(rosterTimer);
 }
 
 function render(next: Frame) {
@@ -1930,7 +1940,8 @@ async function workspace(next: Role, reconnect = false) {
   operationChat?.close();
   operationChat = undefined;
   role = next;
-  chatError = "";
+  suggestionDraft=undefined;
+  chatError = submissionError = "";
   ($("say") as HTMLInputElement).value = "";
   selected = 0;
   selectedEvent = 0;
@@ -2438,6 +2449,7 @@ $("new-chat").onclick = async () => {
   try {
     await client.newChat();
     if (client !== operationChat) return;
+    submissionError = "";
     ($("say") as HTMLInputElement).value = "";
     $("reset-status").textContent = "New chat started. Shared fleet preserved.";
   } catch (error) {
@@ -2473,16 +2485,19 @@ document.querySelectorAll<HTMLButtonElement>("nav button").forEach(
         $("error").textContent = e.message;
       })),
 );
+$("say").addEventListener("input",()=>{suggestionDraft=undefined;});
 $("say").addEventListener("keydown", (e) => {
-  const first = $("suggest").querySelector<HTMLElement>('[aria-selected="true"] span');
-  if (e.key !== "Tab" || e.shiftKey || !first) return;
+  const first = $("suggest").querySelector<HTMLButtonElement>('[aria-selected="true"] button');
+  if (e.key !== "Tab" || e.shiftKey || !first || first.disabled) return;
   e.preventDefault();
-  ($("say") as HTMLInputElement).value = first.textContent ?? "";
+  const text=first.querySelector("span")?.textContent ?? "";
+  ($("say") as HTMLInputElement).value=text;
+  suggestionDraft={text,target:Number(first.dataset.target)||0};
 });
 ($("compose") as HTMLFormElement).onsubmit = (e) => {
   e.preventDefault();
   const input = $("say") as HTMLInputElement;
-  say(input.value);
+  say(input.value,suggestionDraft?.text===input.value?suggestionDraft.target:selected);
   input.value = "";
 };
 document.querySelectorAll<HTMLButtonElement>("#filter button").forEach(

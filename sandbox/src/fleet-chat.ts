@@ -389,7 +389,7 @@ export class FleetChat {
         validate: (v) => {
           metric.validationFailure = !object(v, ["intent", "answer", "evidenceIds", "tasks"]) ? "fields"
             : !["answer", "clarify", "deploy", "replace"].includes(v.intent) ? "intent"
-            : typeof v.answer !== "string" || !v.answer.trim() || v.answer.length > 2000 ? "answer"
+            : typeof v.answer !== "string" || !v.answer.trim() || v.answer.length > 2000 || ["answer", "clarify", "deploy", "replace"].includes(v.answer.trim().toLowerCase()) ? "answer"
             : !Array.isArray(v.evidenceIds) || v.evidenceIds.length > 16 || !v.evidenceIds.every((n: any) => Number.isSafeInteger(n) && evidenceIdsAllowed.has(n)) ? "evidence_references"
             : !Array.isArray(v.tasks) || (["deploy", "replace"].includes(v.intent) ? !this.validTasks(v.tasks, fleet?.drones || FLEET.maxDrones, config.target, role) : v.tasks.length !== 0) ? "assignments" : undefined;
           if (metric.validationFailure === "assignments") metric.assignmentValidation = { intent: v.intent, count: v.tasks?.length, tasks: Array.isArray(v.tasks) ? v.tasks.slice(0, 4).map((t: any) => ({ fields: object(t, ["name", "specialty", "target", "objective", "goal"]), nameFormat: validGoal(role,t.goal) && typeof t.name === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,27}$/.test(t.name) && t.name.trim() === t.name, specialtyFormat: typeof t.specialty === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,47}$/.test(t.specialty), objectiveLength: typeof t.objective === "string" ? t.objective.length : null, targetInRange: Number.isInteger(t.target) && t.target >= 1 && t.target <= (fleet?.drones || FLEET.maxDrones), targetMatches: config.target === null || config.target === t.target })) : [] };
