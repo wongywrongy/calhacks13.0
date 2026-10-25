@@ -1,0 +1,23 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "web/fleet.html"
+        ],
+        "createdAt": "2026-10-25T06:48:03.567Z",
+        "reason": "Agent review: flagged cell/bar wrappers vertically center text in fixed-height rows with 12–20px horizontal insets; col wrapper intentionally holds an edge-to-edge 3D viewport. Existing theme.css documents full-height grid rules."
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-10-25T06:48:03.575Z",
+        "reason": "Agent review: Inter is the existing shared theme.css body and type-role font; this narrow chat-spacing refinement preserves Claude’s completed redesign."
+      }
+    ]
+  }
+}
