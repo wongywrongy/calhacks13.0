@@ -3,23 +3,68 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SudoKO · Recorded run evidence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="theme.css">
 <style>
-  :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10141c;color:#edf1fa}
-  body{max-width:1180px;margin:36px auto;padding:0 24px}h1{font-size:30px;margin:0 0 10px}p{color:#aebbd0;line-height:1.5}
-  input,select{font:inherit;background:#1c2433;color:inherit;padding:10px;border:1px solid #46536a;border-radius:5px}
-  .row{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:20px 0}.badge{border:1px solid #647590;padding:6px 10px;font-size:12px;letter-spacing:.08em}
-  table{border-collapse:collapse;width:100%;margin:20px 0;font-variant-numeric:tabular-nums}th,td{padding:11px;text-align:left;border-bottom:1px solid #303b4e;font-size:14px}th{color:#adbed5}
-  tr[data-event]{cursor:pointer}tr[data-event]:hover{background:#202c3d}pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:20px;background:#192231;border:1px solid #344660;max-height:520px;overflow:auto}
-  #timeline{max-height:420px;overflow:auto}#error{color:#ffaba7}.note{padding-left:14px;border-left:3px solid #90b5ff}
+  /* Arena shell system: 56px header, 1px rule grid, 44px section bars, 32px tinted rows. */
+  body{display:flex;flex-direction:column;min-height:100dvh}
+  .page-head .match{display:flex;align-items:center;gap:8px;flex:1 1 0;padding:0 20px;white-space:nowrap;overflow:hidden}
+  .page-head .match .sep{color:var(--faint)}
+  .page-head .cell.r{padding:0 20px;gap:10px}
+  .badge{font:500 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--text-2);white-space:nowrap}
+  input[type=file]{color:var(--muted);font-size:12px;max-width:260px}
+  select{height:28px;padding:0 8px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--text-2)}
+  .bar label{display:flex;align-items:center;gap:8px;color:var(--muted);white-space:nowrap}
+  p{margin:0;padding:12px 20px;color:var(--text-2);line-height:1.5}
+  p.muted{color:var(--muted)}
+  #error:empty,#meta:empty,#caveat:empty{display:none}
+  #error{color:var(--red-text)}
+  #caveat{border-left:0;color:var(--text-2)}
+  code{font:500 12px var(--mono);color:var(--blue-text)}
+  table{border-collapse:collapse;width:100%}
+  th{height:32px;padding:0 20px 0 0;text-align:left;font:500 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--text-2);border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{padding-left:20px}
+  td{height:32px;padding:0 20px 0 0;border-bottom:1px solid var(--row-line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0}
+  td:first-child{font:500 12px var(--mono)}
+  #metrics td:first-child{font:400 13px Inter,system-ui,sans-serif;color:var(--text-2)}
+  #metrics td:not(:first-child){font:500 12px var(--mono)}
+  tr[data-event]{cursor:pointer;background:var(--tint,transparent)}
+  tr[data-event]:hover{background:var(--tint-hot,var(--raised))}
+  tr[data-event] td{border-bottom-color:var(--bg)}
+  tr[data-event] td:nth-child(2),tr[data-event] td:nth-child(3){font:500 12px var(--mono)}
+  tr[data-event] td:nth-child(2){color:var(--muted)}
+  tr[data-event] td:nth-child(5){font-weight:500;color:var(--state,var(--text-2))}
+  tr[data-kind="capture"]{--tint:rgba(255,90,95,.13);--tint-hot:rgba(255,90,95,.21);--state:var(--red-text)}
+  tr[data-kind="reclaim"]{--tint:rgba(56,192,122,.12);--tint-hot:rgba(56,192,122,.2);--state:var(--green-text)}
+  tr[data-kind="rule_change"]{--tint:rgba(91,140,255,.12);--tint-hot:rgba(91,140,255,.2);--state:var(--blue-text)}
+  tr[data-kind="untrusted_telemetry"]{--tint:rgba(232,176,74,.12);--tint-hot:rgba(232,176,74,.2);--state:var(--amber)}
+  #timeline{max-height:420px;overflow:auto;border-bottom:1px solid var(--line)}
+  pre{margin:0;padding:12px 20px;font:500 11px/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;max-height:520px;overflow:auto;color:var(--text-2);background:var(--panel)}
+  section{background:var(--panel);border-bottom:1px solid var(--line)}
+  @media(max-width:1100px){
+    .page-head{grid-template-columns:minmax(0,1fr);height:auto}
+    .page-head .cell.l{border-right:0}
+    .page-head .cell{height:56px}
+    .page-head .cell.r{border-left:0}
+    .page-head nav{border-right:0}
+    .bar{flex-wrap:wrap;height:auto;min-height:44px;padding-top:6px;padding-bottom:6px;gap:10px}
+    th:nth-child(n+4),td:nth-child(n+4){display:none}
+  }
 </style>
-<h1>SudoKO / run evidence</h1>
-<p>Inspect a recorded HTTP match. Load the JSON produced by <code>npm run sandbox</code>. This view does not represent a live connection.</p>
-<div class="row"><input id="file" type="file" accept=".json"><span class="badge">RECORDED RUN</span><span id="engine" class="badge">NO FILE LOADED</span></div>
-<p id="error" role="alert"></p><p id="meta"></p><p id="caveat" class="note"></p>
-<div id="metrics"></div>
-<div class="row"><label for="kind">Event type </label><select id="kind"><option value="">All events</option></select><span id="count"></span></div>
-<div id="timeline"></div>
-<p>Select an event to inspect the recorded action, supporting evidence and referee checks.</p><pre id="detail">No event selected.</pre>
+<div class="page-head">
+  <div class="cell l"><span class="wordmark">SUDOKO</span></div>
+  <div class="cell"><nav aria-label="Page"><h2>Run evidence</h2></nav><div class="match"><span class="muted ellipsis">Inspect a recorded HTTP match from <code>npm run sandbox</code>. This view does not represent a live connection.</span></div></div>
+  <div class="cell r"><span class="badge">Recorded run</span><span class="badge" id="engine">No file loaded</span></div>
+</div>
+<div class="bar"><label>Run file <input id="file" type="file" accept=".json"></label></div>
+<p id="error" role="alert"></p><p id="meta" class="muted"></p><p id="caveat"></p>
+<section><div class="bar"><h2>Observed outcomes</h2></div><div id="metrics"></div></section>
+<section>
+  <div class="bar"><h2>Events</h2><span class="rule"><label for="kind">Event type</label><select id="kind"><option value="">All events</option></select></span><span class="grow"></span><span class="mono muted" id="count"></span></div>
+  <div id="timeline"></div>
+</section>
+<section><div class="bar"><h2>Selected event</h2><span class="rule"><span class="muted">Recorded action, supporting evidence and referee checks</span></span></div><pre id="detail">No event selected.</pre></section>
 <script>
 let run;
 const $=id=>document.getElementById(id);
@@ -30,7 +75,7 @@ function draw(){
   $('count').textContent=events.length+' recorded events';
   const rows=events.map(e=>[e.id,(e.at/1000).toFixed(2)+'s',e.actor,e.target||'—',e.kind,e.detail.status??e.detail.rule??'']);
   const t=table(['Event','Time','Actor','Target','Type','Result'],rows);
-  [...t.rows].slice(1).forEach((row,i)=>{row.dataset.event=events[i].id;row.onclick=()=>{
+  [...t.rows].slice(1).forEach((row,i)=>{row.dataset.event=events[i].id;row.dataset.kind=events[i].kind;row.onclick=()=>{
     const e=events[i],support=run.events.find(x=>x.id===e.detail.evidenceId);
     const verification=run.probes.filter(p=>p.target===e.target&&p.at>=e.at).slice(0,3);
     $('detail').textContent=JSON.stringify({event:e,evidence:support,nextRefereeChecks:verification},null,2);

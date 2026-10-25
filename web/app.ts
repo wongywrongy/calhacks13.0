@@ -80,7 +80,8 @@ function render(run: any) {
   };
   const showRequests = $('requests') as HTMLInputElement;
   $('events').replaceChildren(...run.events.filter(relevant).filter((e: any) => showRequests.checked || !['request','untrusted_telemetry'].includes(e.kind)).slice(-120).reverse().map((e: any) => {
-    const button = node('button','','event');
+    const button = node('button','','row event');
+    button.dataset.tone = e.kind==='capture' ? 'comp' : e.kind==='reclaim' ? 'recovered' : e.kind==='rule_change' ? 'contained' : e.detail.status>=400 ? 'blocked' : '';
     button.append(node('span',`${(e.at/1000).toFixed(2)}s`),node('span',e.actor),node('strong',e.kind.replaceAll('_',' ').toUpperCase()),node('span',e.detail.rule ?? e.detail.scenario ?? e.target ?? 'match'),node('span',e.detail.status ? `HTTP ${e.detail.status}` : `#${e.id}`));
     button.dataset.eventId = String(e.id);
     button.classList.toggle('selected',e.id===selectedEvent);

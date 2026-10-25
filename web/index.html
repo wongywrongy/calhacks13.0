@@ -7,157 +7,131 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SudoKO Arena</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <style>
-:root{
-  --bg:#0A0C12; --panel:#12161F; --panel2:#171C27; --line:#242B3A;
-  --fg:#E8EBF2; --dim:#868FA3; --faint:#5B6478;
-  --red:#FF4D5E; --blue:#4D8CFF; --green:#2FD98A; --amber:#FFB454;
-  color-scheme:dark;
-}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--fg)}
-body{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
-.wrap{max-width:1340px;margin:0 auto;padding-block:16px;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.mono{font-family:'JetBrains Mono',monospace}
-
-/* top bar */
-.bar{display:flex;align-items:center;gap:16px;background:rgba(18,22,31,.7);border:1px solid var(--line);
-  border-radius:14px;padding:12px 18px;flex-wrap:wrap}
-.logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.16em;font-size:15px}
+/* Arena shell system: 56px header, 1px rule grid, 44px section bars, 32px tinted rows. */
+body{display:flex;flex-direction:column;min-height:100dvh}
+.page-head nav{gap:12px}
 .pips{display:flex;gap:6px}
-.pip{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;
-  font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--line);color:var(--faint);
-  transition:background .3s,color .3s,border-color .3s}
-.pip.done{background:var(--panel2);color:var(--dim);border-color:transparent}
-.pip.now{background:var(--fg);color:var(--bg);font-weight:700;border-color:transparent}
-.clock{font-family:'JetBrains Mono',monospace;color:var(--dim);font-size:13px;font-variant-numeric:tabular-nums}
-.score{display:flex;align-items:center;gap:14px;margin-left:auto}
-.score .n{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;transition:transform .3s}
+.pip{width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;font:500 12px var(--mono);border:1px solid var(--line);color:var(--faint);transition:background .3s,color .3s,border-color .3s}
+.pip.done{background:var(--active);color:var(--text-2);border-color:transparent}
+.pip.now{background:var(--fg);color:var(--bg);font-weight:600;border-color:transparent}
+.clock{font:500 12px var(--mono);color:var(--text-2)}
+.ctrls{display:flex;gap:8px;align-items:center}
+.ctrls button,.ctrls select{height:32px;padding:0 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--text-2);font-weight:500}
+.ctrls button:hover{background:var(--active);color:var(--fg)}
+.ctrls button.primary{color:var(--fg);background:var(--active);border-color:var(--control-border)}
+.page-head .cell.r{padding:0 20px}
+.score{display:flex;align-items:center;gap:14px}
+.score .n{font:600 18px var(--mono);line-height:1;transition:transform .3s}
 .score .n.bump{transform:scale(1.25)}
-.score .lbl{font-size:10px;letter-spacing:.16em;color:var(--dim);text-align:center;margin-top:3px}
-.vs{color:var(--faint);font-size:14px}
-.ctrls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-button{font-family:inherit;font-size:13px;font-weight:600;color:var(--fg);background:var(--panel2);
-  border:1px solid var(--line);border-radius:9px;padding:8px 14px;cursor:pointer;transition:border-color .2s,transform .1s}
-button:hover{border-color:var(--faint)} button:active{transform:translateY(1px)}
-button.primary{background:var(--fg);color:var(--bg);border-color:transparent}
-button:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
-select{font-family:inherit;font-size:13px;color:var(--fg);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
-
-/* main grid */
-.grid{display:grid;grid-template-columns:260px 1fr 260px;gap:14px;margin-top:14px}
-@media(max-width:860px){.grid{grid-template-columns:1fr}}
-
-.rail{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.rail.red{border-left:3px solid var(--red)} .rail.blue{border-right:3px solid var(--blue)}
-.rh{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.06em;font-size:13px}
-.dot{width:9px;height:9px;border-radius:50%;flex:none}
-.tag{margin-left:auto;font-size:10px;letter-spacing:.1em;padding:4px 8px;border-radius:6px}
-.sub{font-size:16px;font-weight:600;min-height:22px;transition:color .3s}
-.subd{font-size:12px;color:var(--dim)}
-.stat{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
-.con{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:20px;color:#8A93A6;margin-top:auto;min-height:60px}
-
-/* center stage */
-.stage{background:var(--panel);border:1px solid var(--line);border-radius:14px;position:relative;overflow:hidden;
-  min-height:340px;display:flex;flex-direction:column}
-.stage .cap{position:absolute;top:14px;left:0;right:0;text-align:center;font-size:11px;letter-spacing:.18em;color:var(--dim)}
-.arena{flex:1;position:relative}
-#channel{position:absolute;top:50%;left:12%;right:12%;height:2px;transform:translateY(-50%);
-  background:linear-gradient(90deg,rgba(255,77,94,.25),rgba(255,255,255,.06),rgba(77,140,255,.25))}
-/* store nodes */
+.score .lbl{font:500 11px var(--mono);letter-spacing:.14em;color:var(--text-2);text-align:center;margin-top:3px}
+.vs{color:var(--faint)}
+.grid{display:grid;grid-template-columns:272px minmax(0,1fr) 272px;border-bottom:1px solid var(--line)}
+.rail{display:flex;flex-direction:column;min-width:0;background:var(--panel)}
+.rail.red{border-right:1px solid var(--line)}.rail.blue{border-left:1px solid var(--line)}
+.rail.red h2.team{color:var(--red-text)}.rail.blue h2.team{color:var(--blue-text)}
+.rail .tag{margin-left:auto}
+.block{padding:12px 20px;border-bottom:1px solid var(--row-line)}
+.sub{font-weight:600;min-height:20px;transition:color .3s}
+.subd{font:500 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--text-2);margin-bottom:4px}
+.stat{padding:12px 20px;font:500 12px var(--mono);color:var(--muted);border-bottom:1px solid var(--row-line)}
+.con{margin-top:auto;padding:12px 20px;font:500 12px/20px var(--mono);color:var(--muted);min-height:72px}
+.stage{display:flex;flex-direction:column;position:relative;overflow:hidden;background:var(--bg);min-height:440px}
+.arena{flex:1;position:relative;min-height:396px}
+#channel{position:absolute;top:50%;left:12%;right:12%;height:2px;transform:translateY(-50%);background:linear-gradient(90deg,rgba(255,90,95,.25),rgba(255,255,255,.06),rgba(91,140,255,.25))}
 .store{position:absolute;top:50%;transform:translate(-50%,-50%);width:150px;text-align:center}
-.store.red{left:22%;transform:translate(-50%,-50%)}
-.store.blue{left:78%;transform:translate(-50%,-50%)}
-.node{width:150px;height:118px;border-radius:16px;border:1.5px solid var(--line);background:#0E121B;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative;
-  transition:background .4s,border-color .4s,box-shadow .4s}
-.node .st{font-size:19px;font-weight:700;letter-spacing:.02em;transition:color .35s}
-.node .who{font-size:10px;letter-spacing:.14em;color:var(--dim)}
-.node.held{}
-.node.breached{background:rgba(255,77,94,.09);border-color:#E0726F;box-shadow:0 0 44px rgba(255,77,94,.22)}
-.node.defended{background:rgba(47,217,138,.08);border-color:#5FBF8C;box-shadow:0 0 44px rgba(47,217,138,.18)}
-.sla{width:112px;margin-top:4px}
-.slab{display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:.08em;color:var(--dim)}
-.track{height:5px;border-radius:3px;background:var(--panel2);margin-top:3px;overflow:hidden}
+.store.red{left:22%}.store.blue{left:78%}
+.node{width:150px;height:118px;border-radius:8px;border:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative;transition:background .4s,border-color .4s,box-shadow .4s}
+.node .st{font:600 14px var(--mono);letter-spacing:.08em;transition:color .35s}
+.node .who{font:500 11px var(--mono);letter-spacing:.14em;color:var(--text-2)}
+.node.breached{background:rgba(255,90,95,.13);border-color:#7a2a33;box-shadow:0 0 44px rgba(255,90,95,.18)}
+.node.defended{background:rgba(56,192,122,.12);border-color:#2f6b4c;box-shadow:0 0 44px rgba(56,192,122,.14)}
+.sla{width:112px;margin-top:6px}
+.slab{display:flex;justify-content:space-between;font:500 11px var(--mono);letter-spacing:.08em;color:var(--text-2)}
+.track{height:5px;border-radius:3px;background:var(--active);margin-top:3px;overflow:hidden}
 .fill{height:5px;border-radius:3px;transition:width .5s cubic-bezier(.22,1,.36,1)}
-/* central service emblem */
 .core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:92px;height:92px;z-index:2}
 .core svg{display:block}
-.core .lab{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:9.5px;letter-spacing:.16em;color:var(--faint);white-space:nowrap}
-.halo{position:absolute;top:50%;left:50%;width:92px;height:92px;border-radius:50%;transform:translate(-50%,-50%);
-  border:1px solid rgba(232,235,242,.14)}
+.core .lab{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font:500 11px var(--mono);letter-spacing:.14em;color:var(--faint);white-space:nowrap}
+.halo{position:absolute;top:50%;left:50%;width:92px;height:92px;border-radius:50%;transform:translate(-50%,-50%);border:1px solid rgba(231,235,242,.14)}
 @media(prefers-reduced-motion:no-preference){.halo{animation:breathe 4.2s ease-in-out infinite}}
 @keyframes breathe{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.5}50%{transform:translate(-50%,-50%) scale(1.5);opacity:0}}
 .pulse{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:3}
-.pulse.red{background:var(--red);box-shadow:0 0 14px 3px rgba(255,77,94,.7)}
-.pulse.blue{background:var(--blue);box-shadow:0 0 14px 3px rgba(77,140,255,.7)}
-.ring{position:absolute;top:50%;left:50%;width:150px;height:118px;border-radius:16px;transform:translate(-50%,-50%);
-  pointer-events:none;border:2px solid var(--green)}
-
-/* feed */
-.feed{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin-top:14px}
-.fh{display:flex;align-items:center;font-size:11px;letter-spacing:.14em;color:var(--dim)}
-.fs{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
-.row{display:flex;align-items:center;gap:12px;font-family:'JetBrains Mono',monospace;font-size:13px;padding:5px 0}
-.row .rx{flex:1;min-width:0;color:#C3C9D6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row .rt{color:var(--faint);flex:none}
+.pulse.red{background:var(--red);box-shadow:0 0 14px 3px rgba(255,90,95,.7)}
+.pulse.blue{background:var(--blue);box-shadow:0 0 14px 3px rgba(91,140,255,.7)}
+.ring{position:absolute;top:50%;left:50%;width:150px;height:118px;border-radius:8px;transform:translate(-50%,-50%);pointer-events:none;border:2px solid var(--green)}
+.feed{background:var(--panel);border-bottom:1px solid var(--line)}
+.row.feedrow{grid-template-columns:8px minmax(0,1fr) 64px;cursor:default}
+.row.feedrow .rx{color:#c9d0dc}
+.row.feedrow .rt{font:500 12px var(--mono);color:var(--muted);text-align:right}
+.row[data-tone="plain"]{--tint:transparent}
 @media(prefers-reduced-motion:no-preference){.row.fresh{animation:slidein .4s cubic-bezier(.22,1,.36,1)}}
 @keyframes slidein{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-.hint{text-align:center;color:var(--faint);font-size:12px;margin-top:10px}
+.hint{padding:12px 20px;color:var(--muted)}
+@media(max-width:1100px){
+  .page-head{grid-template-columns:minmax(0,1fr) auto;height:auto}
+  .page-head .cell.l{grid-column:1/-1;height:56px;border-right:0}
+  .page-head .cell:nth-child(2){flex-wrap:wrap;min-height:56px}
+  .page-head nav{flex:1 1 100%;flex-wrap:wrap;padding:8px 20px;border-right:0}
+  .page-head .cell.r{height:56px;align-self:end;border-left:0}
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .rail.red,.rail.blue{border-left:0;border-right:0;border-bottom:1px solid var(--line)}
+  .stage{order:-1;min-height:360px}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-
-  <div class="bar">
-    <div class="logo">
-      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><polygon points="11,2 20,6 20,12 11,20 2,12 2,6" fill="#12161F" stroke="#2A3242"/><path d="M8 7 L8 16" stroke="#FF4D5E" stroke-width="2" stroke-linecap="round"/><path d="M8 7.5 L15 10 L8 12.5 Z" fill="#4D8CFF"/></svg>
-      SUDOKO
+  <div class="page-head">
+    <div class="cell l"><span class="wordmark">SUDOKO</span></div>
+    <div class="cell">
+      <nav aria-label="Match controls">
+        <div class="pips" id="pips"></div>
+        <div class="clock" id="clock">0:00</div>
+        <div class="ctrls">
+          <button class="primary" id="play">&#9654; Play</button>
+          <button id="step">Step</button>
+          <button id="reset">Reset</button>
+          <select id="speed" aria-label="Speed"><option value="1900">0.5&times;</option><option value="1150" selected>1&times;</option><option value="650">2&times;</option></select>
+        </div>
+      </nav>
     </div>
-    <div class="pips" id="pips"></div>
-    <div class="clock" id="clock">0:00</div>
-    <div class="score">
-      <div><div class="n" style="color:var(--red)" id="sRed">0</div><div class="lbl">RED</div></div>
-      <div class="vs">vs</div>
-      <div><div class="n" style="color:var(--blue)" id="sBlue">0</div><div class="lbl">BLUE</div></div>
-    </div>
-    <div class="ctrls">
-      <button class="primary" id="play">&#9654; Play</button>
-      <button id="step">Step</button>
-      <button id="reset">Reset</button>
-      <select id="speed" aria-label="Speed"><option value="1900">0.5&times;</option><option value="1150" selected>1&times;</option><option value="650">2&times;</option></select>
+    <div class="cell r">
+      <div class="score">
+        <div><div class="n" style="color:var(--red-text)" id="sRed">0</div><div class="lbl">RED</div></div>
+        <div class="vs">vs</div>
+        <div><div class="n" style="color:var(--blue-text)" id="sBlue">0</div><div class="lbl">BLUE</div></div>
+      </div>
     </div>
   </div>
 
   <div class="grid">
     <!-- RED (left) -->
     <div class="rail red">
-      <div class="rh"><span class="dot" style="background:var(--red)"></span>RED TEAM<span class="tag" style="color:var(--red);background:rgba(255,77,94,.12)">ATTACK · DEFEND</span></div>
-      <div><div class="subd">OFFENSE</div><div class="sub" id="rOff">standing by</div></div>
-      <div><div class="subd">DEFENSE</div><div class="sub" id="rDef">standing by</div></div>
+      <div class="bar"><span class="dot" style="background:var(--red)"></span><h2 class="team">Red team</h2><span class="tag red">ATTACK · DEFEND</span></div>
+      <div class="block"><div class="subd">Offense</div><div class="sub" id="rOff">standing by</div></div>
+      <div class="block"><div class="subd">Defense</div><div class="sub" id="rDef">standing by</div></div>
       <div class="stat" id="rStat">STOLEN 0 &middot; SLA 100%</div>
       <div class="con" id="rCon">&gt; awaiting kickoff</div>
     </div>
 
     <!-- CENTER stage -->
     <div class="stage">
-      <div class="cap">ONE SERVICE &middot; TWO FLAG STORES</div>
+      <div class="bar"><h2>One service &middot; two flag stores</h2></div>
       <div class="arena" id="arena">
         <div id="channel"></div>
         <div class="halo"></div>
         <div class="core" aria-hidden="true">
-          <svg width="92" height="92" viewBox="0 0 92 92" fill="none"><polygon points="78,46 62,73 30,73 14,46 30,19 62,19" fill="#0E121B" stroke="#3A4456" stroke-width="1.5"/><path d="M46 32 L46 60" stroke="#8A93A6" stroke-width="2.5" stroke-linecap="round"/><path d="M46 33 L60 38 L46 44 Z" fill="#8A93A6"/></svg>
+          <svg width="92" height="92" viewBox="0 0 92 92" fill="none"><polygon points="78,46 62,73 30,73 14,46 30,19 62,19" fill="#0D1118" stroke="#3A4760" stroke-width="1.5"/><path d="M46 32 L46 60" stroke="#8C96A8" stroke-width="2.5" stroke-linecap="round"/><path d="M46 33 L60 38 L46 44 Z" fill="#8C96A8"/></svg>
           <div class="lab">SERVICE</div>
         </div>
         <div class="store red">
-          <div class="node held" id="nodeRed"><div class="st" id="stRed" style="color:var(--dim)">HELD</div><div class="who">RED&rsquo;S STORE</div></div>
+          <div class="node held" id="nodeRed"><div class="st" id="stRed" style="color:var(--text-2)">HELD</div><div class="who">RED&rsquo;S STORE</div></div>
           <div class="sla"><div class="slab"><span>RED SLA</span><span id="rSlaTxt">100%</span></div><div class="track"><div class="fill" id="rSlaBar" style="width:100%;background:var(--green)"></div></div></div>
         </div>
         <div class="store blue">
-          <div class="node held" id="nodeBlue"><div class="st" id="stBlue" style="color:var(--dim)">HELD</div><div class="who">BLUE&rsquo;S STORE</div></div>
+          <div class="node held" id="nodeBlue"><div class="st" id="stBlue" style="color:var(--text-2)">HELD</div><div class="who">BLUE&rsquo;S STORE</div></div>
           <div class="sla"><div class="slab"><span>BLUE SLA</span><span id="bSlaTxt">100%</span></div><div class="track"><div class="fill" id="bSlaBar" style="width:100%;background:var(--green)"></div></div></div>
         </div>
       </div>
@@ -165,20 +139,19 @@ select{font-family:inherit;font-size:13px;color:var(--fg);background:var(--panel
 
     <!-- BLUE (right) -->
     <div class="rail blue">
-      <div class="rh"><span class="dot" style="background:var(--blue)"></span>BLUE TEAM<span class="tag" style="color:var(--blue);background:rgba(77,140,255,.12)">ATTACK · DEFEND</span></div>
-      <div><div class="subd">OFFENSE</div><div class="sub" id="bOff">standing by</div></div>
-      <div><div class="subd">DEFENSE</div><div class="sub" id="bDef">standing by</div></div>
+      <div class="bar"><span class="dot" style="background:var(--blue)"></span><h2 class="team">Blue team</h2><span class="tag blue">ATTACK · DEFEND</span></div>
+      <div class="block"><div class="subd">Offense</div><div class="sub" id="bOff">standing by</div></div>
+      <div class="block"><div class="subd">Defense</div><div class="sub" id="bDef">standing by</div></div>
       <div class="stat" id="bStat">STOLEN 0 &middot; SLA 100%</div>
       <div class="con" id="bCon">&gt; awaiting kickoff</div>
     </div>
   </div>
 
   <div class="feed">
-    <div class="fh">LIVE FEED<span class="fs" id="feedStat">BREACHES 0 &middot; PATCHES 0</span></div>
-    <div id="feed"></div>
+    <div class="bar"><h2>Live feed</h2><span class="grow"></span><span class="mono muted" id="feedStat">BREACHES 0 &middot; PATCHES 0</span></div>
+    <div id="feed" class="rows"></div>
   </div>
   <div class="hint" id="hint">Press Play to run a full match &mdash; deterministic, same every time.</div>
-</div>
 
 <script>
 "use strict";
@@ -239,7 +212,7 @@ function shield(storeSel){ if(reduced) return;
 
 function apply(e){
   S.clock=e.t; if(e.round) S.round=e.round;
-  S.feed.unshift({t:e.t,team:e.team||'ref',msg:e.msg,fresh:true}); S.feed=S.feed.slice(0,6);
+  S.feed.unshift({t:e.t,team:e.team||'ref',kind:e.kind,msg:e.msg,fresh:true}); S.feed=S.feed.slice(0,6);
   if(e.team){ S[e.team].con.unshift(e.msg); S[e.team].con=S[e.team].con.slice(0,3); }
   switch(e.kind){
     case 'rotate': S.store.red='held'; S.store.blue='held'; break;
@@ -270,7 +243,7 @@ function render(){
   sr.textContent=S.red.steals; sb.textContent=S.blue.steals;
 
   const paint=(who,nodeId,stId)=>{ const st=S.store[who]; const n=$(nodeId); n.className='node '+st;
-    const m={held:['HELD','var(--dim)'],breached:['BREACHED','var(--red)'],defended:['DEFENDED','var(--green)']};
+    const m={held:['HELD','var(--text-2)'],breached:['BREACHED','var(--red-text)'],defended:['DEFENDED','var(--green-text)']};
     $(stId).textContent=m[st][0]; $(stId).style.color=m[st][1]; };
   paint('red','nodeRed','stRed'); paint('blue','nodeBlue','stBlue');
 
@@ -286,8 +259,9 @@ function render(){
   $('bCon').innerHTML=S.blue.con.map(x=>'&gt; '+x).join('<br>')||'&gt; …';
 
   const fc={red:'var(--red)',blue:'var(--blue)',ref:'var(--faint)'};
+  const tone={steal:'comp',patch:'recovered',patchbad:'blocked',blocked:'blocked',recover:'contained'};
   $('feed').innerHTML=S.feed.map((l,ix)=>
-    `<div class="row${ix===0&&l.fresh?' fresh':''}"><span class="dot" style="background:${fc[l.team]}"></span><span class="rx">${l.msg}</span><span class="rt">${l.t}</span></div>`).join('');
+    `<div class="row feedrow${ix===0&&l.fresh?' fresh':''}" data-tone="${tone[l.kind]||'plain'}"><span class="dot" style="background:${fc[l.team]}"></span><span class="rx">${l.msg}</span><span class="rt">${l.t}</span></div>`).join('');
   S.feed.forEach(l=>l.fresh=false);
   $('feedStat').innerHTML=`BREACHES ${S.breaches} &middot; PATCHES ${S.patches}`;
   $('hint').textContent = S.ended ? 'Match complete — Red won on offense, Blue held strong on defense.'

@@ -13,7 +13,7 @@ One CSS grid on `body` keeps every line aligned; flex columns drift.
 
 ```
 grid-template-columns: 272px minmax(0,1fr) 352px;
-grid-template-rows:    56px  52px  minmax(0,1fr);   height: 100dvh
+grid-template-rows:    56px  50px  minmax(0,1fr);   height: 100dvh
 ```
 
 ```
@@ -150,3 +150,30 @@ checks: no step band, no viewport overlays, one status indicator, resets only in
 menu, and role scoping (the attacker page never shows a fleet total, isolation, recovery or
 policy text). `npm run typecheck`, `npm run build:fleet` and `npm run test:fleet` are the
 gate.
+
+## v2 (2026-10-25) and the shared theme
+
+Spec: `design/arena-shell/PROMPT.md` ("What changed from v1"). Tokens and the five type roles
+now live in `web/theme.css`, loaded by `fleet.html`, `live.html`, `report.html` and
+`index.html`; every server and export path serves `/theme.css` next to the page.
+
+- Row 2 is 50px and holds the column headers (AGENTS / SWARM / SENTINEL; RED AGENTS / BLUE
+  AGENTS on Observer). The possession bar is a 6px band on the top edge of the SWARM cell
+  (`#poss-bar`, red share from the left, 2px tick at 50%); the RED HOLDS / BLUE HOLDS cells
+  are gone and the band's `aria-label` carries the counts. Attack reads held vs discovered.
+- Camera: Follow / Fit / Top-down are flush full-height tabs (`#cam`) at the right end of the
+  SWARM row; the active tab is `--raised` with an inset 2px team underline.
+- Legend: 12px between items, 5px inside. "Exposed" appears only when battle rows exist.
+- Activity rows: 32px, grid `64px 56px 104px 1fr`, gap 12px, whole-row tint by `data-tone`,
+  no left border, 1px `--bg` between rows (`.row` in `theme.css`).
+- Drone filter: `#only-sel` is a flush selector at the right of the ACTIVITY bar that opens
+  `#drone-list` ("All drones", then IDs); `filterDrone` in `fleet.ts` filters the log.
+- Composer: one box docked 16px from the bottom with `#suggest` (36px rows, first row
+  highlighted with a "Tab" hint) above a 44px input row; the DR-xxx chip sits inside the
+  input. Tab fills the highlighted suggestion, Enter sends, clicks go through `say()`.
+  Suggestions come from `stateSuggestions` plus the spec's static per-role templates.
+- Other pages adopt the `.page-head` 56px header, `.bar` 44px section headers and `.row`
+  32px tinted rows from the theme. `app.ts` tags event rows with `data-tone`; `report.html`
+  tags table rows with `data-kind`. No data shown changed.
+- Checks: `scripts/check-arena-shell.ts` (fleet, all roles) and `scripts/check-arena-pages.ts`
+  (other pages) write screenshots and measurements to `output/arena-shell-v2/`.
