@@ -676,44 +676,61 @@ function entries(d: Derived): Entry[] {
     }
   return out.sort((a, b) => a.at - b.at || a.id - b.id);
 }
+/** Whole-row tint from the state label/colour class. */
+function toneOf(e: Entry) {
+  const [label, cls] = e.state;
+  if (/isolat|contain|policy|quarantin/i.test(label)) return "contained";
+  return cls === "c-red" ? "comp" : cls === "c-amber" ? "blocked" : cls === "c-green" ? "recovered" : cls === "c-blue" ? "contained" : "";
+}
+/** One 32px row: time | drone | state | action ID + detail. A button when it can select a drone. */
 function rowEl(e: Entry, d: Derived, clickable = true) {
-  const li = el("li", "row");
-  li.dataset.operationId = e.operationId ?? "";
-  li.dataset.actionId = e.actionId ?? "";
-  li.dataset.evidenceIds = (e.evidenceIds ?? (e.id ? [e.id] : [])).join(",");
-  li.dataset.status = e.status ?? "executed";
-  li.dataset.agentId = String(e.actorId);
-  li.setAttribute("aria-selected", String(!!e.id && e.id === selectedEvent));
+  const li = el("li");
+  const row = el(clickable && e.drone ? "button" : "div", "row");
+  if (row instanceof HTMLButtonElement) row.type = "button";
+  row.dataset.operationId = e.operationId ?? "";
+  row.dataset.actionId = e.actionId ?? "";
+  row.dataset.evidenceIds = (e.evidenceIds ?? (e.id ? [e.id] : [])).join(",");
+  row.dataset.status = e.status ?? "executed";
+  row.dataset.agentId = String(e.actorId);
+  row.dataset.timestamp = String(e.at);
+  const tone = toneOf(e);
+  if (tone) row.dataset.tone = tone;
+  if (clickable) row.setAttribute("aria-pressed", String(!!e.id && e.id === selectedEvent));
   const s = el("span", "s");
-  s.append(el("b", e.cls, e.actor), e.text.startsWith(" ") ? e.text : " "+e.text);
-  s.title = e.actor + e.text;
+  if (e.actionId) s.append(el("code", "aid", e.actionId.slice(0, 8)));
+  s.append(el("b", e.cls, e.actor), e.text.startsWith(" ") ? e.text : " " + e.text);
+  s.title = (e.actionId ? e.actionId + " · " : "") + e.actor + " " + e.text.trim();
   const t = el("span", "t", clickable ? eventTime(e.at).replace(" UTC", "") : eventTime(e.at));
   t.title = eventTime(e.at);
-  const st = el("span", "st", e.state[0]);
-  st.prepend(el("i", "dot " + e.state[1]));
-  li.append(t, el("span", "d", e.drone ? tag(e.drone) : "—"), st, s);
-  li.dataset.timestamp = String(e.at);
-  if (clickable && e.drone) {
-    li.tabIndex = 0;
-    li.setAttribute("role", "button");
-    li.onclick = () => {
-      selectedEvent = e.id;
-      pull(e.drone);
-    };
-    li.onkeydown = (k) => {
-      if (k.key === "Enter" || k.key === " ") {
-        k.preventDefault();
-        li.click();
-      }
-    };
-  } else li.style.cursor = "default";
+  row.append(t, el("span", "d", e.drone ? tag(e.drone) : "—"), el("span", "st", e.state[0]), s);
+  if (row instanceof HTMLButtonElement) row.onclick = () => { selectedEvent = e.id; pull(e.drone); };
+  li.append(row);
   return li;
 }
+/** A collapsed group of rows (routine checks, repeated results, closed tasks) as one row. */
+function groupRow(key: string, state: string, actionId: string, detail: string, quiet: boolean, children: HTMLElement[], d: Derived) {
+  const li = el("li", quiet ? "activity-quiet" : "activity-major");
+  const row = el("button", "row group" + (quiet ? " quiet" : ""));
+  (row as HTMLButtonElement).type = "button";
+  const open = openGroups.has(key);
+  row.setAttribute("aria-expanded", String(open));
+  const s = el("span", "s");
+  if (actionId) s.append(el("code", "aid", actionId.slice(0, 8)));
+  s.append(detail);
+  s.title = detail;
+  row.append(el("span", "t", ""), el("span", "d", ""), el("span", "st", state), s);
+  row.onclick = () => { if (open) openGroups.delete(key); else openGroups.add(key); activityKey = ""; log(d); };
+  const ul = el("ul", "rows");
+  if (open) ul.append(...children);
+  li.append(row, ul);
+  return li;
+}
+const openGroups = new Set<string>();
 let activityKey="";
 function log(d: Derived) {
   teamStatus();
   if(modelDriven && frame.attempts){
-    const key=JSON.stringify([fleetEpoch,role,selected,selectedEvent,onlySel,filter,frame.events.map(e=>e.id),frame.attempts.filter(a=>a.stage==="resolved").map(a=>[a.key,a.at]),frame.tasks?.map(t=>[t.agent,t.state,t.stage,t.summary]),operationChat?.operations.map(o=>[o.id,o.state,o.workers.map(w=>w.error)]),operationChat?.turns.map(t=>[t.id,t.state])]);
+    const key=JSON.stringify([fleetEpoch,role,selected,selectedEvent,onlySel,filter,[...openGroups],frame.events.map(e=>e.id),frame.attempts.filter(a=>a.stage==="resolved").map(a=>[a.key,a.at]),frame.tasks?.map(t=>[t.agent,t.state,t.stage,t.summary]),operationChat?.operations.map(o=>[o.id,o.state,o.workers.map(w=>w.error)]),operationChat?.turns.map(t=>[t.id,t.state])]);
     if(key===activityKey)return;activityKey=key;
   }
   const all = entries(d);
@@ -737,31 +754,19 @@ function log(d: Derived) {
     .slice(-150)
     .reverse();
   const nodes:HTMLElement[] = modelDriven && frame.attempts ? groupActivity(rows).map(group=>{
-    const item=el("li",group.major?"activity-major":"activity-quiet"), details=document.createElement("details");
-    details.dataset.activityKey=group.key;
-    const summary=el("summary");
-    const first=group.items[0];
-    if(group.items.length===1 && group.major){const row=rowEl(first,d,false);row.querySelector(".t")!.textContent=eventTime(first.at).replace(" UTC","");const div=el("div","row");div.append(...Array.from(row.childNodes));summary.append(div);}
-    else summary.textContent=`${group.items.length} ${group.major ? first.state[0].toLowerCase()+" results" : "routine checks / minor results"} · ${first.actor} · ${first.drone?tag(first.drone):"team"}`;
-    details.append(summary);
-    for(const e of group.items){
-      const info=el("div","activity-detail");info.append(el("b","",`${e.actor} · ${e.drone?tag(e.drone):"team"}`),el("p","",e.text.trim()));
-      if(e.drone){const select=el("button","chip",`Inspect ${tag(e.drone)}`);select.onclick=()=>pull(e.drone);info.append(select);}
-      if(e.detail)info.append(technicalDetails(e.detail,"Factors and recorded evidence"));
-      details.append(info);
-    }
-    item.append(details);return item;
+    const first=group.items[0], n=group.items.length;
+    if(n===1 && group.major){const li=rowEl(first,d);li.className="activity-major";return li;}
+    const children=group.items.map(e=>rowEl(e,d));
+    return group.major
+      ? groupRow(group.key,`${first.state[0]} ×${n}`,first.actionId ?? "",first.text.trim(),false,children,d)
+      : groupRow(group.key,`Routine ×${n}`,first.actionId ?? "","checks with minor results",true,children,d);
   }) : rows.map((e) => rowEl(e, d));
   if(modelDriven && frame.tasks?.some(t=>!taskActive(t))){
-    const item=el("li","activity-quiet"),history=document.createElement("details");history.dataset.activityKey="agent-history";
     const closed=frame.tasks.filter(t=>!taskActive(t)).sort((a,b)=>b.finished_at-a.finished_at);
-    history.append(el("summary","",`${closed.length} completed / closed agent tasks`));
-    for(const task of closed){const info=el("div","activity-detail");info.append(el("b","",`${task.name} · ${tag(task.target)} · ${task.state}`),el("p","",task.summary),technicalDetails(task,"Assignment and identity"));history.append(info);}
-    item.append(history);nodes.push(item);
+    const children=closed.map(task=>rowEl({at:task.finished_at,id:0,drone:task.target,actorId:task.agent,actor:task.name,cls:"c-team",text:` ${task.summary}`,state:[task.state,"c-grey"],problem:false,you:true,operationId:task.operation,status:task.state},d));
+    nodes.push(groupRow("agent-history",`History ×${closed.length}`,"",`${closed.length} completed / closed agent tasks`,true,children,d));
   }
-  const opened=new Set(Array.from($("log").querySelectorAll<HTMLDetailsElement>("details[data-activity-key][open]")).map(n=>n.dataset.activityKey));
   const scroll=$("log").parentElement!.scrollTop;
-  for(const node of nodes)node.querySelectorAll<HTMLDetailsElement>("details[data-activity-key]").forEach(n=>n.open=opened.has(n.dataset.activityKey));
   if ($("log").innerHTML !== nodes.map((n) => n.outerHTML).join("")) $("log").replaceChildren(...nodes);
   $("log").parentElement!.scrollTop=scroll;
 }
@@ -788,12 +793,12 @@ function teamStatus(){
   for(const row of Array.from(host.children) as HTMLElement[])if(!teams.some(t=>t.role===row.dataset.team))row.remove();
   for(const team of teams){
     let row=host.querySelector<HTMLElement>(`[data-team="${team.role}"]`);
-    if(!row){row=el("div","team-operation");row.dataset.team=team.role;row.append(el("b"),el("span","operation-stage"),el("small"));host.append(row);}
+    if(!row){row=el("div","team-operation");row.dataset.team=team.role;row.append(el("b"),el("i","dot"),el("span","operation-stage"),el("small"));host.append(row);}
     const attempt=frame.attempts?.find(a=>a.operation===team.operation&&a.stage!=="resolved");
     row.dataset.stage=team.stage;row.dataset.operationId=team.operation;
-    row.children[0].textContent=team.role==="attacker"?"Crimson · team controller":"Sentinel · team controller";
-    row.children[1].textContent=!stateConnected&&live&&team.operation ? "Connection lost · operation state unavailable" : team.summary;
-    row.children[2].textContent=attempt ? `${attempt.kind} · ${tag(attempt.target)} · ${attempt.stage}` : team.targets.length ? `Targets: ${team.targets.map(tag).join(", ")} · ${team.active_agents} active` : team.objective;
+    row.children[0].textContent=team.role==="attacker"?"Crimson":"Sentinel";
+    row.children[2].textContent=!stateConnected&&live&&team.operation ? "Connection lost · operation state unavailable" : team.summary;
+    row.children[3].textContent=attempt ? `${attempt.kind} · ${tag(attempt.target)} · ${attempt.stage}` : team.targets.length ? `Targets: ${team.targets.map(tag).join(", ")} · ${team.active_agents} active` : team.objective;
     row.title=team.objective;
   }
   const active=teams.filter(t=>t.operation);

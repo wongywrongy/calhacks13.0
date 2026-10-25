@@ -73,9 +73,17 @@ header. The old palette is remapped onto the arena tokens (`--bg`, `--panel`, `-
   takeover it saw), Blocked. Isolation and recovery rows are not in the attacker's view, so
   they are omitted rather than estimated.
 - **Activity.** All / Problems / You tabs after a rule, drone filter chip on the right. Rows
-  are a dense 26px grid `56px 50px 94px 1fr`: time, drone ID, state dot + label, detail with
-  ellipsis (full text in `title`). The state column comes from the evidence kind or the
-  operation result status. The modal reuses the same rows with the time and detail only.
+  are single-line 32px buttons on the grid `64px 56px 104px 1fr`: time, drone ID, state,
+  then the action ID (mono, blue) and the detail with ellipsis (full text in `title`). The
+  whole row is tinted by state and the state label matches: compromised red, blocked amber,
+  contained/isolated/policy blue, recovered green; 1px `--bg` lines between rows; hover and
+  the selected row raise the tint. Clicking a row selects its drone. In model-driven mode
+  routine-check groups collapse to one untinted muted row (`Routine ×N`, action ID, "checks
+  with minor results"); clicking it expands the child rows below in the same format, and
+  closed agent tasks collapse the same way as `History ×N`. The team controller
+  (`#team-status`) is one sticky 32px row at the top of the log: SENTINEL / CRIMSON label,
+  status dot, status text and the current targets. The agent modal reuses the rows with the
+  time and detail only.
 - **Right column (Attack/Defend).** CRIMSON or SENTINEL header with the provider muted and a
   28px new-chat button; transcript in the 440 body, bottom-aligned; SUGGESTED header; three
   36px suggestion buttons; composer with an "About DR-xxx" context chip and a 40px input with
@@ -122,7 +130,7 @@ pending-message rules.
 ## Stability rules (unchanged in spirit)
 
 - `font-variant-numeric: tabular-nums` on every number that ticks.
-- Fixed tracks: header 56, possession 52, bars 44, bodies 440, agent card 56, log row 26,
+- Fixed tracks: header 56, possession 52, bars 44, bodies 440, agent card 56, log row 32,
   suggestion 36, input 40.
 - Lists are patched node by node (`patchList`) and the transcript appends; nothing
   `replaceChildren`s a whole panel on a tick.

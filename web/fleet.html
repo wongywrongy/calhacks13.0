@@ -704,22 +704,15 @@
       #only-sel[aria-pressed="true"] {
         background: #2a2210;
       }
-      #team-status { flex: 0 0 auto; border-bottom: 1px solid var(--row-line); }
-      .team-operation { display: grid; gap: 4px; padding: 12px 20px; }
-      .team-operation b { font-size: 11px; color: var(--muted); font-weight: 500; }
-      .team-operation .operation-stage { font-size: 13px; }
-      .team-operation small { color: var(--text-2); font-size: 11px; overflow-wrap: anywhere; }
-      .team-operation[data-stage="blocked"] .operation-stage { color: var(--amber); }
+      /* Team controller: one sticky 32px row at the top of the log. */
+      #team-status { position: sticky; top: 0; z-index: 1; background: var(--panel); }
+      .team-operation { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 20px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; }
+      .team-operation b { flex: none; font: 500 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-2); }
+      .team-operation .dot { background: var(--team-text); }
+      .team-operation[data-stage="blocked"] .dot { background: var(--amber); }
+      .team-operation .operation-stage { flex: none; font-size: 12px; }
+      .team-operation small { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
       #viewport-operation { position: absolute; z-index: 2; left: 14px; bottom: 14px; max-width: calc(100% - 28px); padding: 6px 10px; background: #10151de8; border: 1px solid var(--row-line); color: var(--text-2); font-size: 11px; pointer-events: none; }
-      #log > li > details > summary { cursor: pointer; }
-      #log > .activity-major { border-left: 1px solid var(--text-2); }
-      #log > .activity-quiet > details > summary, #log > li > details > summary:not(:has(.row)) { padding: 10px 20px; font-size: 12px; color: var(--muted); }
-      #log > .activity-major > details > summary { list-style: none; }
-      #log > .activity-major > details > summary .row { height: auto; min-height: 44px; }
-      #log > .activity-major .s { white-space: normal; padding: 8px 0; line-height: 1.45; }
-      .activity-detail { padding: 12px 20px; border-bottom: 1px solid var(--row-line); font-size: 12px; line-height: 1.5; }
-      .activity-detail p { margin: 6px 0; }
-      .activity-detail pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 250px; overflow: auto; font-size: 11px; }
       .recent-agent { opacity: .7; }
       .dot.running, .dot.queued { animation: none; }
       .rows {
@@ -727,24 +720,42 @@
         margin: 0;
         padding: 0;
       }
-      /* Dense log: 26px rows, 11px mono keys, one line of detail. */
+      /* Activity rows: single line, 32px, whole row tinted by state. */
       .row {
+        --tint: transparent;
+        --tint-hot: var(--raised);
         display: grid;
-        grid-template-columns: 56px 50px 94px minmax(0, 1fr);
+        grid-template-columns: 64px 56px 104px minmax(0, 1fr);
         align-items: center;
         gap: 10px;
-        height: 26px;
+        height: 32px;
         width: 100%;
         padding: 0 12px 0 20px;
-        border-bottom: 1px solid var(--row-line);
+        border-bottom: 1px solid var(--bg);
+        background: var(--tint);
         font-size: 12px;
         line-height: 1.2;
         text-align: left;
+        color: var(--fg);
         cursor: pointer;
       }
+      .row:disabled { opacity: 1; cursor: default; }
+      .row[data-tone="comp"] { --tint: rgba(255, 90, 95, 0.13); --tint-hot: rgba(255, 90, 95, 0.21); --state: #ff7a7e; }
+      .row[data-tone="blocked"] { --tint: rgba(232, 176, 74, 0.12); --tint-hot: rgba(232, 176, 74, 0.2); --state: #e8b04a; }
+      .row[data-tone="contained"] { --tint: rgba(91, 140, 255, 0.12); --tint-hot: rgba(91, 140, 255, 0.2); --state: #8fb0ff; }
+      .row[data-tone="recovered"] { --tint: rgba(56, 192, 122, 0.12); --tint-hot: rgba(56, 192, 122, 0.2); --state: #5fd495; }
       .row:hover,
-      .row[aria-selected="true"] {
-        background: var(--raised);
+      .row[aria-pressed="true"] {
+        background: var(--tint-hot);
+      }
+      .row.quiet { color: var(--muted); }
+      .row.quiet .s, .row.quiet .d { color: var(--muted); }
+      .row.group .st::before { content: "▸"; width: 10px; color: var(--muted); }
+      .row.group[aria-expanded="true"] .st::before { content: "▾"; }
+      .row .aid {
+        font: 500 11px var(--mono);
+        color: var(--blue-text);
+        margin-right: 8px;
       }
       .row .t {
         font: 500 11px var(--mono);
@@ -760,11 +771,8 @@
         gap: 6px;
         white-space: nowrap;
         overflow: hidden;
-      }
-      .row .st .dot {
-        width: 6px;
-        height: 6px;
-        background: currentColor;
+        font-weight: 500;
+        color: var(--state, var(--text-2));
       }
       .row .s {
         white-space: nowrap;
@@ -1186,9 +1194,6 @@
           overflow-x: auto;
           scrollbar-width: none;
         }
-        #log > .activity-major > details > summary .row { grid-template-columns: 76px 68px minmax(0, 1fr); gap: 6px 12px; padding: 10px 16px; }
-        #log > .activity-major .row .s { grid-column: 1 / -1; padding: 0; }
-        #log > .activity-major .row .st { font-size: 12px; }
         #head .match #playback,
         #head .match .clock {
           flex: none;
@@ -1310,8 +1315,7 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
         </button>
       </div>
-      <div id="team-status" role="status" aria-label="Live team operations"></div>
-      <div class="body rest"><ul class="rows" id="log"></ul></div>
+      <div class="body rest"><div id="team-status" role="status" aria-label="Live team operations"></div><ul class="rows" id="log"></ul></div>
     </section>
     <aside id="rail-right" class="col r" aria-label="Blue agents and evidence" hidden>
       <div class="bar"><h2>Blue agents</h2><span class="grow"></span><span class="mono muted" id="blue-count">0</span></div>
