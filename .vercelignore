@@ -18,6 +18,8 @@ web/*
 !web/fleet-activity.ts
 !web/fleet-assessment.ts
 !web/maincloud-chat.ts
+!web/fleet-overview.ts
+!web/visitor-session.ts
 !web/flock.ts
 !web/fleet-render.ts
 !web/module_bindings/
