@@ -73,7 +73,7 @@ header. The old palette is remapped onto the arena tokens (`--bg`, `--panel`, `-
   takeover it saw), Blocked. Isolation and recovery rows are not in the attacker's view, so
   they are omitted rather than estimated.
 - **Activity.** All / Problems / You tabs after a rule, drone filter chip on the right. Rows
-  are a 40px grid `72px 64px 112px 1fr`: time, drone ID, state dot + label, detail with
+  are a dense 26px grid `56px 50px 94px 1fr`: time, drone ID, state dot + label, detail with
   ellipsis (full text in `title`). The state column comes from the evidence kind or the
   operation result status. The modal reuses the same rows with the time and detail only.
 - **Right column (Attack/Defend).** CRIMSON or SENTINEL header with the provider muted and a
@@ -122,7 +122,7 @@ pending-message rules.
 ## Stability rules (unchanged in spirit)
 
 - `font-variant-numeric: tabular-nums` on every number that ticks.
-- Fixed tracks: header 56, possession 52, bars 44, bodies 440, agent card 56, log row 40,
+- Fixed tracks: header 56, possession 52, bars 44, bodies 440, agent card 56, log row 26,
   suggestion 36, input 40.
 - Lists are patched node by node (`patchList`) and the transcript appends; nothing
   `replaceChildren`s a whole panel on a tick.

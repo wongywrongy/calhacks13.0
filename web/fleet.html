@@ -727,15 +727,18 @@
         margin: 0;
         padding: 0;
       }
+      /* Dense log: 26px rows, 11px mono keys, one line of detail. */
       .row {
         display: grid;
-        grid-template-columns: 72px 64px 112px minmax(0, 1fr);
+        grid-template-columns: 56px 50px 94px minmax(0, 1fr);
         align-items: center;
-        gap: 16px;
-        height: 40px;
+        gap: 10px;
+        height: 26px;
         width: 100%;
-        padding: 0 20px;
+        padding: 0 12px 0 20px;
         border-bottom: 1px solid var(--row-line);
+        font-size: 12px;
+        line-height: 1.2;
         text-align: left;
         cursor: pointer;
       }
@@ -744,21 +747,23 @@
         background: var(--raised);
       }
       .row .t {
-        font: 500 12px var(--mono);
+        font: 500 11px var(--mono);
         color: var(--muted);
         white-space: nowrap;
       }
       .row .d {
-        font: 500 12px var(--mono);
+        font: 500 11px var(--mono);
       }
       .row .st {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         white-space: nowrap;
         overflow: hidden;
       }
       .row .st .dot {
+        width: 6px;
+        height: 6px;
         background: currentColor;
       }
       .row .s {

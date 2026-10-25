@@ -32,14 +32,15 @@
     "resetsOutsideMenu": 0,
     "possession": {
       "red": "3",
-      "right": "16",
+      "right": "12",
       "label": "Discovered"
     },
     "legend": [
       "Seized3",
       "Home1",
-      "Lost12",
-      "Blocked0"
+      "Lost8",
+      "Blocked2",
+      "Exposed0"
     ],
     "errors": []
   },
@@ -75,15 +76,16 @@
     "statusIndicators": 1,
     "resetsOutsideMenu": 0,
     "possession": {
-      "red": "4",
-      "right": "19",
+      "red": "3",
+      "right": "15",
       "label": "Discovered"
     },
     "legend": [
-      "Seized4",
-      "Home0",
-      "Lost15",
-      "Blocked0"
+      "Seized3",
+      "Home1",
+      "Lost11",
+      "Blocked1",
+      "Exposed0"
     ],
     "errors": []
   },
@@ -113,21 +115,22 @@
     "possessionLeftBorderX": 106.265625,
     "possessionRightBorderX": 275.59375,
     "railBottom": 649.84375,
-    "rightBottom": 2053.84375,
+    "rightBottom": 1969.84375,
     "stepBand": false,
     "overlays": 0,
     "statusIndicators": 1,
     "resetsOutsideMenu": 0,
     "possession": {
-      "red": "6",
-      "right": "24",
+      "red": "3",
+      "right": "17",
       "label": "Discovered"
     },
     "legend": [
-      "Seized6",
+      "Seized3",
       "Home0",
-      "Lost18",
-      "Blocked0"
+      "Lost14",
+      "Blocked0",
+      "Exposed0"
     ],
     "errors": []
   },
@@ -163,16 +166,17 @@
     "statusIndicators": 1,
     "resetsOutsideMenu": 0,
     "possession": {
-      "red": "6",
-      "right": "42",
+      "red": "5",
+      "right": "43",
       "label": "Blue holds"
     },
     "legend": [
-      "Home19",
-      "Compromised6",
-      "Recovered23",
+      "Home26",
+      "Compromised5",
+      "Recovered17",
       "Blocked0",
-      "Isolated23"
+      "Isolated17",
+      "Exposed0"
     ],
     "errors": []
   },
@@ -208,16 +212,17 @@
     "statusIndicators": 1,
     "resetsOutsideMenu": 0,
     "possession": {
-      "red": "6",
-      "right": "42",
+      "red": "5",
+      "right": "43",
       "label": "Blue holds"
     },
     "legend": [
-      "Home14",
-      "Compromised6",
-      "Recovered28",
-      "Blocked3",
-      "Isolated28"
+      "Home21",
+      "Compromised5",
+      "Recovered22",
+      "Blocked0",
+      "Isolated22",
+      "Exposed0"
     ],
     "errors": []
   },
@@ -247,22 +252,23 @@
     "possessionLeftBorderX": 106.265625,
     "possessionRightBorderX": 275.59375,
     "railBottom": 649.84375,
-    "rightBottom": 2053.84375,
+    "rightBottom": 1969.84375,
     "stepBand": false,
     "overlays": 0,
     "statusIndicators": 1,
     "resetsOutsideMenu": 0,
     "possession": {
-      "red": "9",
-      "right": "39",
+      "red": "6",
+      "right": "42",
       "label": "Blue holds"
     },
     "legend": [
-      "Home39",
-      "Compromised9",
-      "Recovered0",
-      "Blocked0",
-      "Isolated0"
+      "Home16",
+      "Compromised6",
+      "Recovered26",
+      "Blocked1",
+      "Isolated26",
+      "Exposed0"
     ],
     "errors": []
   },
@@ -298,16 +304,17 @@
     "statusIndicators": 1,
     "resetsOutsideMenu": 0,
     "possession": {
-      "red": "4",
-      "right": "44",
+      "red": "8",
+      "right": "40",
       "label": "Blue holds"
     },
     "legend": [
-      "Home36",
-      "Unauthorized4",
-      "Recovered8",
-      "Blocked2",
-      "Isolated8"
+      "Home40",
+      "Unauthorized8",
+      "Recovered0",
+      "Blocked0",
+      "Isolated0",
+      "Exposed0"
     ],
     "errors": []
   },
@@ -343,16 +350,17 @@
     "statusIndicators": 1,
     "resetsOutsideMenu": 0,
     "possession": {
-      "red": "3",
-      "right": "45",
+      "red": "5",
+      "right": "43",
       "label": "Blue holds"
     },
     "legend": [
-      "Home34",
-      "Unauthorized3",
-      "Recovered11",
+      "Home37",
+      "Unauthorized5",
+      "Recovered6",
       "Blocked0",
-      "Isolated11"
+      "Isolated6",
+      "Exposed0"
     ],
     "errors": []
   },
@@ -388,16 +396,17 @@
     "statusIndicators": 1,
     "resetsOutsideMenu": 0,
     "possession": {
-      "red": "4",
-      "right": "44",
+      "red": "5",
+      "right": "43",
       "label": "Blue holds"
     },
     "legend": [
-      "Home30",
-      "Unauthorized4",
-      "Recovered14",
-      "Blocked0",
-      "Isolated14"
+      "Home12",
+      "Unauthorized5",
+      "Recovered31",
+      "Blocked4",
+      "Isolated31",
+      "Exposed0"
     ],
     "errors": []
   },
