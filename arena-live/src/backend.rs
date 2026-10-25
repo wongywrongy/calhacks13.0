@@ -424,7 +424,7 @@ pub fn plan_chat_operation(ctx:&ReducerContext,session:String,id:String,tasks:St
     crate::fleet::validate_chat_fleet(ctx,r.epoch)?;
     let assignments:serde_json::Value=serde_json::from_str(&tasks).map_err(|_|"Invalid assignments")?;
     let entries=assignments.as_array().ok_or("Invalid assignments")?;
-    if !(2..=4).contains(&entries.len()) {return Err("Require 2..4 specialists".into())}
+    if !(1..=4).contains(&entries.len()) {return Err("Require 1..4 specialists".into())}
     let mut used=std::collections::HashSet::new();
     let mut names=std::collections::HashSet::new();
     for t in entries {

@@ -377,7 +377,7 @@ export class FleetChat {
         stage: "coordinator", tokens: CHAT_LIMITS.coordinatorTokens, timeoutMs: CHAT_LIMITS.coordinatorTimeoutMs, metric, progress,
         schema, system: {
           task: resilience ? RESILIENCE_COORDINATOR : prompts.coordinator,
-          role, agents: { min: 2, max: 4 }, targets: { min: 1, max: fleet?.drones || FLEET.maxDrones },
+          role, agents: { min: 1, max: 4 }, targets: { min: 1, max: fleet?.drones || FLEET.maxDrones },
           allowed: resilience ? ["discover", ...resilienceActions(role)] : role === "attacker" ? ["discover", "prepare", "command", "spread", "wait"] : ["prepare", "isolate", "harden", "verify", "release", "wait"],
         }, input: { message: config.message, selectedTarget: config.target, history: recent,
           eligibleOptions: options.filter((o:any)=>o.role===role).map(({drone,actions,reachable,blocker}:any)=>({target:drone,actions,reachable,blocker})),
@@ -421,7 +421,7 @@ export class FleetChat {
     }
   }
   private validTasks(tasks: any[], max: number, target: number | null, role: ChatRole) {
-    return tasks.length >= 2 && tasks.length <= 4 && tasks.every((t: any) => object(t, ["name", "specialty", "target", "objective", "goal"]) &&
+    return tasks.length >= 1 && tasks.length <= 4 && tasks.every((t: any) => object(t, ["name", "specialty", "target", "objective", "goal"]) &&
       validGoal(role,t.goal) && typeof t.name === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,27}$/.test(t.name) && t.name.trim() === t.name &&
       typeof t.specialty === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,47}$/.test(t.specialty) &&
       typeof t.objective === "string" && t.objective.trim() && t.objective.length <= 300 &&
@@ -561,7 +561,7 @@ export class FleetChat {
                 properties: {
                   tasks: {
                     type: "array",
-                    minItems: 2,
+                    minItems: 1,
                     maxItems: 4,
                     items: {
                       type: "object",
@@ -620,7 +620,7 @@ export class FleetChat {
         {
           task: resilience ? RESILIENCE_COORDINATOR + " Return only {tasks:[{name,specialty,target,objective,goal}]}." : "Plan assignments for an explicit deployment. " + prompts.coordinator + " In this stage return only {tasks:[{name,specialty,target,objective,goal}]}; routing was already requested by the operator.",
           role,
-          agents: { min: 2, max: CHAT_LIMITS.maxAgents },
+          agents: { min: 1, max: CHAT_LIMITS.maxAgents },
           targets: {
             min: config.target ?? 1,
             max: config.target ?? fleet.drones,
@@ -637,7 +637,7 @@ export class FleetChat {
         (v) =>
           object(v, ["tasks"]) &&
           Array.isArray(v.tasks) &&
-          v.tasks.length >= 2 &&
+          v.tasks.length >= 1 &&
           v.tasks.length <= 4 &&
           v.tasks.every(
             (t: any) =>

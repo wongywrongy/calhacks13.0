@@ -69,7 +69,7 @@ or hosted conversation membership depends on splitting a deduplication key.
 1. A granted operator sends a bounded prompt with epoch, conversation generation and an
    idempotency key. Repeating identical input reuses the request; conflicting input fails.
 2. A durable turn/job/alarm queues planning. A short transaction reserves one of four
-   global inference slots. Bitdeer proposes two to four specialists; reducers validate
+   global inference slots. Bitdeer proposes one to four specialists; reducers validate
    catalog goals, target scopes, identities, names and budgets before deployment.
 3. Typed assignments hold the immutable completion contracts and current worker state.
    Each specialist observes scoped state, teammates and measured receipts, then chooses

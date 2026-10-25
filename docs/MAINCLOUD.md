@@ -23,7 +23,7 @@ current role grant, assignment, deadline, and policy version before applying an 
 Duplicate jobs cannot claim twice. Duplicate message keys accept only identical input.
 
 Limits: four concurrent inference reservations globally, one pending conversation and
-one operation per role, two to four specialists per operation, eight decisions per
+one operation per role, one to four specialists per operation, eight decisions per
 specialist, 33 model calls per operation including its coordinator, a 75-second operation
 deadline, a 30-second conversation deadline, and a 20-second HTTP timeout. Deadlines have
 scheduled watchdogs. Cancellation/reset cannot abort a provider request already sent;
@@ -59,7 +59,7 @@ waits, immutable targets, missing teammate context, coarse terminal statuses, an
 rendering that hid durable plan/outcome content. Fleet size alone still cannot multiply
 useful work: the coordinator must choose complementary objectives and routes.
 
-The coordinator chooses 2–4 typed assignment goals and up to eight candidate target IDs
+The coordinator chooses 1–4 typed assignment goals and up to eight candidate target IDs
 per specialist. `shared/fleet-goals.json` describes the server predicates. The simulator
 verifies them; model explanations never establish completion. Candidate IDs are alternative
 assignment targets, while spread retains the simulator's existing local-neighbor scope.
@@ -222,3 +222,24 @@ mission budgets and the shared clock are preserved. New drones receive their own
 schedules and battle state. Growth is epoch-fenced, idempotent and bounded by the existing
 256-drone ceiling; viewers cannot invoke it, and shrinking is rejected. `start_fleet` still
 resets battle/chat state and is not required for this growth.
+
+## Selected-target admission fix, 2026-10-25
+
+Production requests such as “Attempt entry on DR-001” exposed a contract mismatch:
+coordinators were told to create at least two specialists while duplicate target/goal
+assignments were rejected. A real Bitdeer reproduction returned valid JSON with one
+capture task and cited evidence from earlier recon on drones 1 and 2. The server rejected
+both the singleton count and evidence outside its selected-target-only context.
+
+Plans now allow one to four useful assignments. Multi-target work still defaults to two
+complementary specialists. Coordinators observe all evidence visible to their own role;
+selected targets still restrict action authority. Coordinator/replan citations are checked
+against the observations supplied at reservation, while current permission, epoch,
+generation, deadline, assignment and policy checks remain in force at completion.
+Duplicate work, forged evidence and out-of-selection assignments are still rejected.
+
+Verification: **79 Node tests, zero skips/failures; 14 native Rust tests; TypeScript,
+release WASM and Vercel static build.** An actual credentialed local run completed recon
+on two drones, then used one specialist on selected DR-001: prepare → command →
+server-verified capture, with three calls for that mission. This is local provider evidence,
+not a claim about every possible model response. No shared production reset was used.

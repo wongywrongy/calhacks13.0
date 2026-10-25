@@ -70,6 +70,24 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
       assert.equal((await rows("battle_attempt")).length,0);
       assert.ok((await viewer.query("SELECT * FROM visible_chat_operations")).some((r:any)=>r.id!==op.id&&r.state==="running"));
     });
+    await t.test("selected single target admits one useful specialist and role-visible evidence without allowing duplicate assignments",async()=>{
+      await reset();const recon=await start([1,2],"recon");for(const a of recon.config.tasks)await reserve((await latest(recon.id,a.agentId)).id);
+      const session=(await viewer.query("SELECT * FROM visible_fleet_session"))[0],key=randomUUID();
+      await viewer.call("send_maincloud_message",[key,"Attempt entry on DR-001",1,session.epoch,session.conversation]);
+      const turn=(await rows("backend_chat_turn")).find(t=>t.request_key.endsWith(key));await reserve(turn.id);const input=context(await job(turn.id));
+      assert.ok(input.evidence.some((e:any)=>e.target===2),"Coordinator retains role-visible evidence while selecting one action target");
+      const task={name:"Entry 1",specialty:"capture",target:1,targets:[1],objective:"Attempt entry on DR-001",goal:"capture"};
+      const plan={intent:"deploy",answer:"Fixture: one useful entry assignment for the selected target.",evidenceIds:input.evidence.map((e:any)=>e.id),tasks:[task]};
+      await assert.rejects(reply(turn.id,{...plan,tasks:[]}));
+      await assert.rejects(reply(turn.id,{...plan,tasks:[task,{...task,name:"Duplicate"}]}));
+      await assert.rejects(reply(turn.id,{...plan,tasks:[{...task,target:2,targets:[2]}]}));
+      await assert.rejects(reply(turn.id,{...plan,evidenceIds:[999999]}));
+      await reply(turn.id,plan);const raw=(await rows("backend_chat")).find(o=>JSON.parse(o.config).turnId===turn.id),op=await operation(raw.id);
+      assert.equal(op.config.tasks.length,1);assert.equal(op.config.tasks[0].target,1);assert.equal(op.config.tasks[0].goal,"capture");
+      assert.equal((await rows("hosted_budget")).find(b=>b.operation===op.id).calls,1);
+      const worker=await latest(op.id,op.config.tasks[0].agentId);await decide(worker,"command");await resolve(worker);
+      assert.ok((await operation(op.id)).results.some((r:any)=>r.kind==="command"&&r.status==="executed"));
+    });
     await t.test("blocked attempt resumes, choices adapt to evidence, result replay is idempotent, terminal roster clears",async()=>{
       await reset();const op=await start(), [a,b]=op.config.tasks;
       for(const agent of [a,b])await reserve((await latest(op.id,agent.agentId)).id); // required discovery is bookkeeping

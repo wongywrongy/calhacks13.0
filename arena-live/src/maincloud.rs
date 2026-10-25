@@ -154,7 +154,7 @@ fn choices(ctx:&ReducerContext,j:&Job,config:&Value,rows:&[Value])->Vec<Value> {
 }
 fn prompt(ctx:&ReducerContext,j:&Job)->Result<Value,String> {
     let prompts:Value=serde_json::from_str(include_str!("../../shared/fleet-prompts.json")).unwrap();
-    let mut input=fleet::hosted_context(ctx,&j.role,j.target);
+    let mut input=fleet::hosted_context(ctx,&j.role,if j.agent==0{0}else{j.target});
     input["goalContracts"]=serde_json::from_str(include_str!("../../shared/fleet-goals.json")).unwrap();
     let max=fleet::hosted_context(ctx,&j.role,0)["catalog"]["targetIds"].as_array().ok_or("Fleet missing")?.len() as u64;
     let (system,schema)=if j.agent==0 && !j.operation.is_empty() {
@@ -203,7 +203,7 @@ fn prompt(ctx:&ReducerContext,j:&Job)->Result<Value,String> {
         (json!(format!("{} Choose a useful permitted simulation action, retarget within targetChoices, handoff evidence to a teammate, help to request coordinator reassessment, wait for a scheduled fresh observation, or finish when no useful work remains. Wait resumes; it does not complete the objective. Return kind, target, recipientAgentId (0 unless handoff), explanation (short operator-facing reason), evidenceIds (provided evidence only).",prompts["specialist"].as_str().unwrap().replace("Return only JSON {kind:\"...\"}.", ""))),json!({"type":"object","additionalProperties":false,"required":["kind","target","recipientAgentId","explanation","evidenceIds"],"properties":{"kind":{"type":"string","enum":allowed},"target":{"type":"integer"},"recipientAgentId":{"type":"integer"},"explanation":{"type":"string"},"evidenceIds":{"type":"array","items":{"type":"integer"}}}}))
     };
     let model=if j.agent==0{ctx.env.BITDEER_COORDINATOR_MODEL()}else{ctx.env.BITDEER_SPECIALIST_MODEL()}.unwrap_or(MODEL.into());
-    Ok(json!({"model":model,"temperature":0,"max_tokens":if j.agent==0{1536}else{512},"reasoning_effort":"low","response_format":{"type":"json_schema","json_schema":{"name":if j.agent==0{"fleet_plan"}else{"fleet_action"},"strict":true,"schema":schema}},"messages":[{"role":"system","content":json!({"task":system,"role":j.role,"agents":{"min":2,"max":4},"targets":{"min":1,"max":max},"allowed":schema["properties"]["kind"]["enum"]}).to_string()},{"role":"user","content":input.to_string()}]}))
+    Ok(json!({"model":model,"temperature":0,"max_tokens":if j.agent==0{1536}else{512},"reasoning_effort":"low","response_format":{"type":"json_schema","json_schema":{"name":if j.agent==0{"fleet_plan"}else{"fleet_action"},"strict":true,"schema":schema}},"messages":[{"role":"system","content":json!({"task":system,"role":j.role,"agents":{"min":1,"max":4},"targets":{"min":1,"max":max},"allowed":schema["properties"]["kind"]["enum"]}).to_string()},{"role":"user","content":input.to_string()}]}))
 }
 fn reserve(ctx:&ReducerContext,id:&str)->Result<Option<Job>,String>{
     let Some(mut j)=ctx.db.hosted_job().id().find(id.to_string())else{return Ok(None)};
@@ -359,12 +359,14 @@ fn commit_plan(ctx:&ReducerContext,j:&Job,v:&Value)->Result<(),String>{
     let intent=v["intent"].as_str().ok_or("provider_malformed_output")?;
     let answer=v["answer"].as_str().filter(|s|!s.trim().is_empty()&&s.len()<=2000).ok_or("provider_malformed_output")?;
     let ids=v["evidenceIds"].as_array().filter(|a|a.len()<=16).ok_or("provider_malformed_output")?;
-    let context=fleet::hosted_context(ctx,&j.role,j.target);
-    if v.as_object().map(|o|o.len())!=Some(4)||!ids.iter().all(|id|context["evidence"].as_array().unwrap().iter().any(|e|e["id"]==*id)){return Err("provider_malformed_output".into())}
+    let request:Value=serde_json::from_str(&j.request).map_err(|_|"Invalid reservation")?;
+    let context:Value=serde_json::from_str(request["messages"][1]["content"].as_str().ok_or("Invalid reservation")?).map_err(|_|"Invalid reservation")?;
+    if v.as_object().map(|o|o.len())!=Some(4){return Err("provider_malformed_output".into())}
+    if !ids.iter().all(|id|context["evidence"].as_array().unwrap().iter().any(|e|e["id"]==*id)){return Err("Invalid evidence reference".into())}
     let tasks=v["tasks"].as_array().ok_or("provider_malformed_output")?;
     let mut operation=String::new();
     if ["deploy","replace"].contains(&intent) {
-        if !(2..=4).contains(&tasks.len()){return Err("provider_malformed_output".into())}
+        if !(1..=4).contains(&tasks.len()){return Err("invalid_plan_size".into())}
         let active=ctx.db.backend_chat().scope().filter((j.role.as_str(),j.epoch,j.generation)).map(|op|hydrate_operation(ctx,op)).find(|r|["planning","running"].contains(&r.state.as_str()));
         if let Some(r)=active {
             if intent!="replace"{return Err("Role operation already active".into())}
@@ -564,7 +566,9 @@ fn commit_replan(ctx:&ReducerContext,j:&Job,v:&Value)->Result<(),String>{
  let mut op=ctx.db.backend_chat().id().find(&j.operation).map(|op|hydrate_operation(ctx,op)).ok_or("Operation missing")?;
  let mut config:Value=serde_json::from_str(&op.config).map_err(|_|"Invalid operation")?;
  if v.as_object().map(|o|o.len())!=Some(3){return Err("provider_malformed_output".into())}
- validate_explanation(v,&fleet::hosted_context(ctx,&j.role,0))?;
+ let request:Value=serde_json::from_str(&j.request).map_err(|_|"Invalid reservation")?;
+ let input:Value=serde_json::from_str(request["messages"][1]["content"].as_str().ok_or("Invalid reservation")?).map_err(|_|"Invalid reservation")?;
+ validate_explanation(v,&input)?;
  let assignments=v["assignments"].as_array().filter(|a|a.len()<=4).ok_or("Invalid replan")?;
  let mut rows=records(ctx,&j.operation);let mut used=std::collections::HashSet::new();let mut resumed=vec![];
  for a in assignments {

@@ -72,3 +72,9 @@ test("hosted mission conditions distinguish completed containment from recovery 
   assert.equal(failed.status,"Execution failed");assert.equal(failed.succeeded,1);assert.match(failed.summary,/separate from simulated outcomes/);
   assert.match(explainFleetError("provider_rate_limit: HTTP 429"),/limiting requests/);
 });
+
+test("plan admission failures have specific operator messages",()=>{
+  assert.match(explainFleetError("invalid_plan_size"),/one to four/);
+  assert.match(explainFleetError("Duplicate assignment"),/same target and objective twice/);
+  assert.match(explainFleetError("Invalid evidence reference"),/outside its supplied observations/);
+});
