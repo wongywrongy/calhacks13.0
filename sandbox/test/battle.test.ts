@@ -166,12 +166,12 @@ test("seeded battle: local cumulative effects, fallibility, adaptation, interrup
    const a=await plan("attacker",[1,18]);await a.queue(0,"discover");const key=await a.queue(0,"command");
    const epoch=(await rows("fleet_session"))[0].epoch;
    await store.call("reset_chat_fleet",[store.session,epoch,true]);
-   for(const table of ["battle_attempt","battle_retry","battle_schedule","battle_drone","battle_state","battle_options","fleet_hold","fleet_chat_action","fleet_discovery","hosted_job","hosted_alarm"])
+   for(const table of ["battle_retry","battle_schedule","battle_drone","battle_state","battle_options","fleet_hold","fleet_discovery","hosted_alarm"])
     assert.deepEqual(await rows(table),[],table);
    await delay(4500);
    assert.ok((await rows("fleet_drone")).every((d:any)=>d.controller==="defender"&&!d.isolated&&d.policy_version===0));
    await assert.rejects(store.call("execute_fleet_chat_action",[store.session,a.id,3,a.tasks[0].agentId,1,"command",0]));
-   assert.ok(!(await rows("battle_attempt")).some((a:any)=>a.key===key));
+   assert.ok((await rows("battle_attempt")).some((a:any)=>a.key===key&&a.stage==="resolved"),"Reset retains interrupted attempts for mission history");
    for(const role of ["attacker","defender"]){
     const generation=(await rows("backend_chat_session")).find((r:any)=>r.role===role).generation;
     assert.ok(!(await rows("backend_chat_message")).some((m:any)=>m.role===role&&m.key.startsWith(`epoch:${epoch+1}:chat:${generation}:`)));

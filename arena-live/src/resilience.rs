@@ -72,9 +72,10 @@ fn spend(ctx:&ReducerContext,role:&str,cost:u32)->Result<(),String>{
 }
 fn active(e:&Disruption,now:i64)->bool{!e.resolved&&e.until>now}
 fn harmful(e:&Disruption,p:u32)->bool{p&e.bit==0}
-fn event(ctx:&ReducerContext,actor:u32,d:&Drone,kind:&str,status:u32){emit(ctx,d.epoch,actor,d,kind,status)}
+fn event(ctx:&ReducerContext,actor:u32,d:&Drone,kind:&str,status:u32)->u64{emit(ctx,d.epoch,actor,d,kind,status)}
 
-pub(super) fn apply(ctx:&ReducerContext,role:&str,actor:u32,d:&mut Drone,kind:&str,version:u32)->Result<(),String>{
+pub(super) fn apply(ctx:&ReducerContext,role:&str,actor:u32,d:&mut Drone,kind:&str,version:u32)->Result<u64,String>{
+ let evidence_id;
  let now=ctx.timestamp.to_micros_since_unix_epoch();
  let mut m=ctx.db.resilience_mission().id().find(0).ok_or("Mission missing")?;
  if m.state=="ready"{m.state="running".into();m.started=now;m.deadline=now+60_000_000;ctx.db.resilience_mission().id().update(m.clone());}
@@ -94,7 +95,7 @@ pub(super) fn apply(ctx:&ReducerContext,role:&str,actor:u32,d:&mut Drone,kind:&s
    let e=Disruption{key:key.clone(),epoch:d.epoch,drone:d.id,actor,effective:false,bit,started:now,until:now+duration,cooldown_until:now+cooldown,detected:0,resolved:status!=200};
    if previous.is_some(){ctx.db.resilience_disruption().key().update(e);}else{ctx.db.resilience_disruption().insert(e);}
   }
-  event(ctx,actor,d,&format!("challenge_{}_{}",kind,if status==200{"scheduled"}else{"blocked"}),status);
+  evidence_id=event(ctx,actor,d,&format!("challenge_{}_{}",kind,if status==200{"scheduled"}else{"blocked"}),status);
   // Invalid synthetic provenance is always rejected; admission of a scenario grants no control.
   if bit==2{
    let command=if d.id%2==0{SyntheticCommand{issued_at:now,identity:SimIdentity::Unknown}}else{SyntheticCommand{issued_at:now-5_000_001,identity:SimIdentity::Pilot}};
@@ -107,13 +108,13 @@ pub(super) fn apply(ctx:&ReducerContext,role:&str,actor:u32,d:&mut Drone,kind:&s
   spend(ctx,role,cost)?;
   if kind=="restore"{
    let safe=state.checked_at>0&&now-state.checked_at<=10_000_000&&!ctx.db.resilience_disruption().iter().any(|e|e.drone==d.id&&active(&e,now)&&harmful(&e,state.protection));
-   if !safe{event(ctx,actor,d,"restoration_failed",409);return Ok(())}
+   if !safe{return Ok(event(ctx,actor,d,"restoration_failed",409))}
    let had_issue=d.isolated||ctx.db.resilience_disruption().iter().any(|e|e.drone==d.id&&active(&e,now)&&e.detected>0);
    d.isolated=false;d.policy_version+=1;
    for mut e in ctx.db.resilience_disruption().iter().filter(|e|e.drone==d.id&&active(e,now)){
     e.resolved=true;m.recovery_us+=(now-e.started) as u64;m.recoveries+=1;ctx.db.resilience_disruption().key().update(e);
    }
-   state.protection&=!16;state.anomaly=false;event(ctx,actor,d,if had_issue{"participation_restored"}else{"participation_verified"},200);
+   state.protection&=!16;state.anomaly=false;evidence_id=event(ctx,actor,d,if had_issue{"participation_restored"}else{"participation_verified"},200);
   }else{
    d.policy_version+=1;state.protection|=flag;
    if kind=="quarantine"{d.isolated=true;}
@@ -125,10 +126,10 @@ pub(super) fn apply(ctx:&ReducerContext,role:&str,actor:u32,d:&mut Drone,kind:&s
      event(ctx,actor,d,label,200);ctx.db.resilience_disruption().key().update(e);
     }
    }
-   event(ctx,actor,d,&format!("defense_{}",kind),200);
+   evidence_id=event(ctx,actor,d,&format!("defense_{}",kind),200);
   }
   ctx.db.resilience_drone().drone().update(state);ctx.db.resilience_mission().id().update(m);
- }else{return Err("Action not permitted".into())}Ok(())
+ }else{return Err("Action not permitted".into())}Ok(evidence_id)
 }
 
 pub(super) fn tick(ctx:&ReducerContext,d:&mut Drone){

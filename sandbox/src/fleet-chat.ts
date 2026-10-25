@@ -920,7 +920,7 @@ export class FleetChat {
         const [current] = await this.store.query("SELECT * FROM fleet_session WHERE id=0");
         const drones = await this.store.query("SELECT * FROM fleet_drone");
         const agents = await this.store.query("SELECT * FROM fleet_agent");
-        const evidence = await this.store.query("SELECT * FROM fleet_evidence");
+        const evidence = await this.store.query(`SELECT * FROM fleet_evidence WHERE epoch=${current.epoch}`);
         if (current?.epoch !== resetEpoch + 1 || !current.active || drones.length !== fleet.drones ||
             drones.some((d: any) => d.epoch !== current.epoch || d.controller !== "defender" || d.policy_version !== 0 || d.isolated !== fleet.hardened) || agents.length || evidence.length)
           return reject(502, "Fleet reset could not be verified; synchronizing current state");

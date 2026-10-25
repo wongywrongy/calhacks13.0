@@ -61,3 +61,14 @@ test("compact outcomes identify drones and group repeated identical attempts", (
   assert.equal(summary.succeeded, 0);
   assert.deepEqual(summary.evidenceIds, [4, 5, 6]);
 });
+
+test("hosted mission conditions distinguish completed containment from recovery and execution failure", () => {
+  const effect={agentId:1,kind:"isolate",status:"executed",evidenceId:7,simulation:{simulated:true,summary:"Contained; isolation verified.",succeeded:1,partial:0,total:1}};
+  const mission={type:"mission",agentId:0,status:"terminal",outcome:"verified_success",completed:1,total:1};
+  const op={state:"completed",role:"defender",tasks:[{agentId:1}],results:[effect,mission]};
+  assert.equal(fleetOutcome(op).status,"Completed","Containment goal is verified without claiming recovery");
+  assert.deepEqual(fleetOutcome(op).evidenceIds,[7]);
+  const failed=fleetOutcome({...op,state:"failed",results:[effect,{...mission,outcome:"execution_failure",total:2}]});
+  assert.equal(failed.status,"Execution failed");assert.equal(failed.succeeded,1);assert.match(failed.summary,/separate from simulated outcomes/);
+  assert.match(explainFleetError("provider_rate_limit: HTTP 429"),/limiting requests/);
+});

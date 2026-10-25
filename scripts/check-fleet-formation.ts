@@ -15,8 +15,9 @@ const drawSamples = [];
 const originalDraw = draw;
 draw = () => { const start = performance.now(); originalDraw(); drawSamples.push(performance.now()-start); if(drawSamples.length>2000)drawSamples.shift(); };
 Object.assign(globalThis, {formationCheck: () => ({
+  resetCheck: () => { const saved = frame; render({...EMPTY, epoch: fleetEpoch + 1}); fit(true); const empty = pad.scale.toArray(); render({...saved, epoch: fleetEpoch}); fit(true); return {empty, restored: pad.scale.toArray()}; },
   role, count: frame.drones.length, webgl: !!renderer, pad: {size: pad.scale.toArray(), center: pad.position.toArray()},
-  positions: frame.drones.map(d=>[d.id,...shown(d).toArray()]), points: frame.drones.map(d=>screen(d)),
+  positions: frame.drones.map(d=>[d.id,...shown(d).toArray()]), rawPositions: frame.drones.map(d=>[d.id,d.x,d.y,d.z]), points: frame.drones.map(d=>screen(d)),
   ground: [[-1,-1],[-1,1],[1,-1],[1,1]].map(([x,z]) => new THREE.Vector3(x*pad.scale.x/2,0,z*pad.scale.z/2).project(camera).toArray()),
   instances: [...batches.values()].reduce((n,b)=>n+b.body.count,0), calls: renderer?.info.render.calls,
   triangles: renderer?.info.render.triangles, pixelRatio: renderer?.getPixelRatio(), drawSamples: [...drawSamples],
@@ -64,11 +65,11 @@ try {
     await page.screenshot({ path: `docs/screenshots/fleet-${FLEET.drones}-${name}.png` });
     report[name] = current;
   }
-  report.checks.push("Defend at 1440x900: square centered grid, full instanced fleet and scoped counts in Fit and Top-down");
-  const before = (await state(page)).positions;
+  report.checks.push("Defend at 1440x900: centered flock waves, full instanced fleet and scoped counts in Fit and Top-down");
+  const before = (await state(page)).rawPositions;
   await page.reload();
   await page.waitForFunction(count => (globalThis as any).formationCheck?.().instances === count, FLEET.drones);
-  assert.deepEqual((await state(page)).positions, before, "Replaying the same recorded snapshot after reconnect preserves ID positions");
+  assert.deepEqual((await state(page)).rawPositions, before, "Replaying the same recorded snapshot preserves authoritative positions while decorative waves continue");
   await page.locator('nav [data-role="attacker"]').click();
   await page.waitForFunction(() => document.body.dataset.role === "attacker");
   assert.equal((await state(page)).count, 0);
@@ -77,6 +78,10 @@ try {
   await page.locator('nav [data-role="defender"]').click();
   await page.waitForFunction(count => (globalThis as any).formationCheck().count === count, FLEET.drones);
   report.checks.push("Replay reload and role switch keep slots stable; Attack sees no undiscovered drones or fleet total");
+  const resetSizes = await page.evaluate(() => (globalThis as any).formationCheck().resetCheck());
+  report.resetSizes = resetSizes;
+  assert.deepEqual(resetSizes.empty, resetSizes.restored, "Reset's empty subscription frame must not resize the operating pad");
+  report.checks.push("Reset epoch and empty subscription frame preserve operating pad size");
   // Measure after other checks and with all drones visible; never reduce the scene's count.
   report.performance = await page.evaluate(async () => {
     const intervals: number[] = []; let last = performance.now(), start = last;

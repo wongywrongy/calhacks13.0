@@ -55,7 +55,7 @@ try {
       assert.equal(result.state,"completed",JSON.stringify(result));
       return result;
     };
-    const attacker=await run(attack,"Deploy exactly two specialists on catalog targets 1 and 2. Discover each assigned synthetic drone, then test the planted command authorization weakness. Stop each assignment after one measured command outcome.");
+    const attacker=await run(attack,"Deploy exactly two specialists on catalog targets 1 and 2. Discover each assigned synthetic drone, then test the planted command authorization weakness. Reassess measured results and adapt within the original budget until capture is verified or the assignment reaches an honest terminal blocker.");
     assert.ok(attacker.results.some((r:any)=>r.outcome==="unauthorized_command_accepted"));
     const defender=await run(defend,"Deploy exactly two specialists to recover drones 1 and 2 from the current incident. Apply isolation, then verify unauthorized denial and legitimate acceptance on each assigned drone. Report only measured recovery evidence.");
     assert.ok(defender.results.some((r:any)=>r.outcome==="recovery_verified" && r.verificationEvidenceIds.length===2));

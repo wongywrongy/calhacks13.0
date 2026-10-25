@@ -53,7 +53,7 @@ try{
   report.checks.push("Refresh and forced WebSocket reconnect restore the current Maincloud epoch");
   if(send){
     for(const [name,role,message] of [
-      ["1. Prepare challenge","attacker","Deploy exactly two specialists on targets 1 and 2. Discover each synthetic drone, then test the planted command authorization weakness. Stop after one measured command result per assignment."],
+      ["1. Prepare challenge","attacker","Deploy exactly two specialists on targets 1 and 2. Discover each synthetic drone, then test the planted command authorization weakness. Reassess measured results and adapt within the original budget until capture is verified or an honest terminal blocker remains."],
       ["2. Prepare defense","defender","Deploy exactly two specialists to recover drones 1 and 2. Isolate each, then verify unauthorized denial and legitimate command acceptance. Report measured recovery evidence."],
     ]){
       await page.getByRole("button",{name,exact:true}).click();
@@ -69,7 +69,7 @@ try{
       });
       const records=JSON.parse(op.result),outcome=role==="attacker"?"unauthorized_command_accepted":"recovery_verified";
       assert.ok(records.some((r:any)=>r.outcome===outcome));
-      await wait(async()=> (await page.locator("#transcript").innerText()).includes(role==="attacker"?"Gained control":"Recovered"),10000);
+      await wait(async()=> (await page.locator(`[data-operation-id="${op.id}"] .interaction-outcome`).innerText()).includes("Mission verified success"),10000);
       report.operations??=[];report.operations.push({id:op.id,role,state:op.state,records});
     }
     await page.locator("#judge-guide summary").click();

@@ -7,12 +7,12 @@ pub struct Battle { #[primary_key] id:u32, epoch:u64, seed:u64, tick:u64 }
 #[table(accessor=battle_drone)]
 #[derive(Clone)]
 pub struct Health { #[primary_key] drone:u32, #[index(btree)] epoch:u64, contamination:u32, readiness:u32, attack_prepared:bool, defense_prepared:bool, countermeasure:u64 }
-// shortcut: retain attempt history for the session; compact it before multi-day hosting.
+// Terminal attempts are retained with mission receipts; current work uses stage/epoch indexes.
 #[table(accessor=battle_attempt)]
 #[derive(Clone)]
 pub struct Attempt {
- #[primary_key] key:String, #[index(btree)] epoch:u64, operation:String, role:String, agent:u32, target:u32, kind:String,
- stage:String, started:u64, sources:String, targets:String, report:String,
+ #[primary_key] key:String, #[index(btree)] epoch:u64, #[index(btree)] operation:String, role:String, agent:u32, target:u32, kind:String,
+ #[index(btree)] stage:String, started:u64, sources:String, targets:String, report:String,
 }
 #[table(accessor=battle_retry)]
 pub struct Retry { #[primary_key] key:String }
@@ -36,7 +36,8 @@ pub fn visible_battle_options(ctx:&ViewContext)->Vec<Options>{
 #[view(accessor=visible_attempt_activity,public)]
 pub fn visible_attempt_activity(ctx:&ViewContext)->Vec<AttemptActivity>{
  let r=role(ctx);if r.is_empty(){return vec![]}
- ctx.db.battle_attempt().epoch().filter(0u64..).filter(|a|r=="observer"||a.role==r).map(|a|{
+ let Some(session)=ctx.db.fleet_session().id().find(0)else{return vec![]};
+ ctx.db.battle_attempt().epoch().filter(session.epoch).filter(|a|r=="observer"||a.role==r).map(|a|{
   let report:Value=serde_json::from_str(&a.report).unwrap_or(Value::Null);
   let at=report["at"].as_i64().unwrap_or_else(||ctx.db.fleet_chat_action().key().find(&a.key).and_then(|r|ctx.db.fleet_evidence().id().find(r.evidence_id)).map(|e|e.at).unwrap_or(0));
   AttemptActivity{key:a.key,epoch:a.epoch,operation:a.operation,role:a.role,agent:a.agent,target:a.target,kind:a.kind,stage:a.stage,at,report:a.report}
@@ -46,7 +47,8 @@ pub fn visible_attempt_activity(ctx:&ViewContext)->Vec<AttemptActivity>{
 #[view(accessor=visible_battle_drones,public)]
 pub fn visible_battle_drones(ctx:&ViewContext)->Vec<VisibleHealth>{
  let r=role(ctx);if r.is_empty(){return vec![]}
- ctx.db.battle_drone().epoch().filter(0u64..).filter_map(|h|{
+ let Some(session)=ctx.db.fleet_session().id().find(0)else{return vec![]};
+ ctx.db.battle_drone().epoch().filter(session.epoch).filter_map(|h|{
   let d=ctx.db.fleet_drone().id().find(h.drone)?;
   if r=="attacker"&&ctx.db.fleet_discovery().drone().find(d.id).is_none(){return None}
   Some(VisibleHealth{drone:d.id,contamination:h.contamination,operational:!d.isolated,readiness:if r=="attacker"{0}else{h.readiness}})
@@ -56,19 +58,20 @@ pub fn visible_battle_drones(ctx:&ViewContext)->Vec<VisibleHealth>{
 pub fn visible_battle_attempts(ctx:&ViewContext)->Vec<VisibleAttempt>{
  let r=role(ctx);if r.is_empty(){return vec![]}
  // Opponents see local effects through their own telemetry, never private plans or rolls.
- ctx.db.battle_attempt().epoch().filter(0u64..).filter(|a|r=="observer"||a.role==r).map(|a|VisibleAttempt{key:a.key,agent:a.agent,target:a.target,kind:a.kind,stage:a.stage,report:a.report}).collect()
+ let Some(session)=ctx.db.fleet_session().id().find(0)else{return vec![]};
+ ctx.db.battle_attempt().epoch().filter(session.epoch).filter(|a|r=="observer"||a.role==r).map(|a|VisibleAttempt{key:a.key,agent:a.agent,target:a.target,kind:a.kind,stage:a.stage,report:a.report}).collect()
 }
 pub(super) fn enabled(ctx:&ReducerContext)->bool{ctx.db.battle_state().id().find(0).is_some()}
 pub(super) fn stop(ctx:&ReducerContext){
  ctx.db.battle_schedule().id().delete(0);
- for mut a in ctx.db.battle_attempt().iter().filter(|a|a.stage!="resolved"){
+ for mut a in ctx.db.battle_attempt().stage().filter(.."resolved"){
   a.stage="resolved".into();a.report=json!({"simulated":true,"summary":"Attempt interrupted: fleet stopped.","at":ctx.timestamp.to_micros_since_unix_epoch(),"succeeded":0,"partial":0,"total":0}).to_string();ctx.db.battle_attempt().key().update(a);
  }
 }
 pub(super) fn clear(ctx:&ReducerContext){
  for o in ctx.db.battle_options().iter(){ctx.db.battle_options().key().delete(o.key);}
  for r in ctx.db.battle_schedule().iter(){ctx.db.battle_schedule().id().delete(r.id);}
- for r in ctx.db.battle_attempt().iter(){ctx.db.battle_attempt().key().delete(r.key);}
+ stop(ctx);
  for r in ctx.db.battle_retry().iter(){ctx.db.battle_retry().key().delete(r.key);}
  for r in ctx.db.battle_drone().iter(){ctx.db.battle_drone().drone().delete(r.drone);}
  ctx.db.battle_state().id().delete(0);
@@ -76,17 +79,24 @@ pub(super) fn clear(ctx:&ReducerContext){
 pub(super) fn start(ctx:&ReducerContext,epoch:u64){
  if ctx.db.battle_state().id().find(0).is_some(){
   if ctx.db.battle_schedule().id().find(0).is_none(){ctx.db.battle_schedule().insert(BattleSchedule{id:0,epoch,scheduled_at:Duration::from_millis(500).into()});}
-  if ctx.db.battle_options().iter().next().is_none(){refresh(ctx);}return
+  let added=add_drones(ctx,epoch);
+  if added||ctx.db.battle_options().iter().next().is_none(){refresh(ctx);}return
  }
  ctx.db.battle_state().insert(Battle{id:0,epoch,seed:13,tick:0});
- for d in ctx.db.fleet_drone().iter(){ctx.db.battle_drone().insert(Health{drone:d.id,epoch,contamination:if d.controller=="attacker"{100}else{0},readiness:if d.isolated{60}else{0},attack_prepared:false,defense_prepared:false,countermeasure:0});}
+ add_drones(ctx,epoch);
  ctx.db.battle_schedule().insert(BattleSchedule{id:0,epoch,scheduled_at:Duration::from_millis(500).into()});
  refresh(ctx);
+}
+fn add_drones(ctx:&ReducerContext,epoch:u64)->bool{
+ let mut added=false;
+ for d in ctx.db.fleet_drone().epoch().filter(epoch){if ctx.db.battle_drone().drone().find(d.id).is_none(){
+  ctx.db.battle_drone().insert(Health{drone:d.id,epoch,contamination:if d.controller=="attacker"{100}else{0},readiness:if d.isolated{60}else{0},attack_prepared:false,defense_prepared:false,countermeasure:0});added=true;
+ }}added
 }
 #[reducer]
 pub fn set_battle_seed(ctx:&ReducerContext,seed:u64)->Result<(),String>{
  owner(ctx)?;let epoch=ctx.db.fleet_session().id().find(0).ok_or("Fleet missing")?.epoch;start(ctx,epoch);
- if ctx.db.battle_attempt().iter().next().is_some(){return Err("Set seed before attempts".into())}
+ if ctx.db.battle_attempt().epoch().filter(epoch).next().is_some(){return Err("Set seed before attempts".into())}
  let mut b=ctx.db.battle_state().id().find(0).unwrap();b.seed=seed;ctx.db.battle_state().id().update(b);Ok(())
 }
 // Fixed logical grid links, independent of presentation positions and animations.
@@ -104,7 +114,7 @@ pub(super) fn queue(ctx:&ReducerContext,key:&str,operation:&str,role:&str,agent:
  let d=ctx.db.fleet_drone().id().find(target).ok_or("Drone missing")?;
  if role=="attacker"&&ctx.db.fleet_discovery().drone().find(target).is_none(){return Err("Discover first".into())}
  if role=="defender"&&d.policy_version!=version{return Err("Stale policy".into())}
- if ctx.db.battle_attempt().iter().filter(|a|a.stage!="resolved").count()>=8{return Err("Attempt capacity reached".into())}
+ if ctx.db.battle_attempt().stage().filter(.."resolved").count()>=8{return Err("Attempt capacity reached".into())}
  let sources=if kind=="spread"{vec![target]}else{connected_sources(ctx,target)};
  let mut targets=if kind=="spread"{ctx.db.fleet_drone().iter().filter(|n|adjacent(n.id,target)&&n.controller!="attacker").map(|n|n.id).collect::<Vec<_>>()}else{vec![target]};
  targets.sort_unstable();targets.truncate(3);
@@ -186,7 +196,7 @@ pub(super) fn goal_done(ctx:&ReducerContext,goal:&str,target:u32,report:&Value)-
  }
 }
 fn active(ctx:&ReducerContext,a:&Attempt)->bool{
- live(ctx,a.epoch)&&crate::backend::battle_operation_active(ctx,&a.operation,a.epoch)
+ live(ctx,a.epoch)&&crate::backend::battle_operation_active(ctx,&a.operation,a.epoch,a.agent,a.target)
 }
 fn resolve(ctx:&ReducerContext,a:&mut Attempt,b:&Battle){
  let targets=ids(&a.targets);
@@ -197,7 +207,7 @@ fn resolve(ctx:&ReducerContext,a:&mut Attempt,b:&Battle){
   let Assessment{mut reason,p,factors,fingerprint,retry}=assessment;
   if a.role=="defender"&&ctx.db.fleet_chat_action().key().find(&a.key).map(|r|r.version)!=Some(d.policy_version){reason=Some("Attempt interrupted: policy changed during preparation; observe again.".into())}
   let before_controller=d.controller.clone();let before_contamination=h.contamination;let before_isolated=d.isolated;
-  let before_evidence=ctx.db.fleet_evidence().iter().map(|e|e.id).max().unwrap_or(0);
+  let mut evidence_ids=vec![];
   let draw=roll(b.seed,&fingerprint);
   let success=reason.is_none()&&draw<p;
   let partial=reason.is_none()&&!success&&draw<(p+15).min(95)&&["command","spread","verify"].contains(&a.kind.as_str());
@@ -207,30 +217,29 @@ fn resolve(ctx:&ReducerContext,a:&mut Attempt,b:&Battle){
    ctx.db.battle_retry().insert(Retry{key:retry});
    if attack(&a.kind){
     if ctx.db.fleet_discovery().drone().find(*target).is_none(){ctx.db.fleet_discovery().insert(Discovery{drone:*target,epoch:a.epoch});}
-    if success{h.contamination=100;d.controller="attacker".into();if ctx.db.fleet_hold().drone().find(*target).is_none(){ctx.db.fleet_hold().insert(Hold{drone:*target,epoch:a.epoch,since:ctx.timestamp.to_micros_since_unix_epoch()});}emit(ctx,a.epoch,a.agent,&d,"unauthorized_command_accepted",200);}
-    else if partial{h.contamination=(h.contamination+40).min(80);emit(ctx,a.epoch,a.agent,&d,"limited_access",206);}
-    else{d.rejected+=1;emit(ctx,a.epoch,a.agent,&d,"unauthorized_command_blocked",403);}
+    if success{h.contamination=100;d.controller="attacker".into();if ctx.db.fleet_hold().drone().find(*target).is_none(){ctx.db.fleet_hold().insert(Hold{drone:*target,epoch:a.epoch,since:ctx.timestamp.to_micros_since_unix_epoch()});}evidence_ids.push(emit(ctx,a.epoch,a.agent,&d,"unauthorized_command_accepted",200));}
+    else if partial{h.contamination=(h.contamination+40).min(80);evidence_ids.push(emit(ctx,a.epoch,a.agent,&d,"limited_access",206));}
+    else{d.rejected+=1;evidence_ids.push(emit(ctx,a.epoch,a.agent,&d,"unauthorized_command_blocked",403));}
    }else if success {
     match a.kind.as_str(){
      "prepare"=>{if a.role=="attacker"{h.attack_prepared=true}else{h.defense_prepared=true}},
-     "isolate"=>{d.isolated=true;d.policy_version+=1;h.countermeasure=b.tick;emit(ctx,a.epoch,a.agent,&d,"policy_applied",200);},
-     "harden"=>{h.readiness=(h.readiness+30).min(90);d.policy_version+=1;h.countermeasure=b.tick;emit(ctx,a.epoch,a.agent,&d,"policy_applied",200);},
+     "isolate"=>{d.isolated=true;d.policy_version+=1;h.countermeasure=b.tick;evidence_ids.push(emit(ctx,a.epoch,a.agent,&d,"policy_applied",200));},
+     "harden"=>{h.readiness=(h.readiness+30).min(90);d.policy_version+=1;h.countermeasure=b.tick;evidence_ids.push(emit(ctx,a.epoch,a.agent,&d,"policy_applied",200));},
      "verify"=>{
       // Isolation preserves the existing denial/legitimate-control verification contract.
       if d.isolated{let bad=command(&mut d,false);let good=command(&mut d,true);
-       emit(ctx,a.epoch,a.agent,&d,"verification_unauthorized",bad);let bad_id=ctx.db.fleet_evidence().iter().map(|e|e.id).max().unwrap();
-       emit(ctx,a.epoch,a.agent,&d,"verification_authorized",good);let good_id=ctx.db.fleet_evidence().iter().map(|e|e.id).max().unwrap();
+       let bad_id=emit(ctx,a.epoch,a.agent,&d,"verification_unauthorized",bad);evidence_ids.push(bad_id);
+       let good_id=emit(ctx,a.epoch,a.agent,&d,"verification_authorized",good);evidence_ids.push(good_id);
        let mut receipt=ctx.db.fleet_chat_action().key().find(&a.key).unwrap();receipt.unauthorized_evidence_id=bad_id;receipt.authorized_evidence_id=good_id;ctx.db.fleet_chat_action().key().update(receipt);
       }
-      h.contamination=0;d.controller="defender".into();h.readiness=h.readiness.max(30);h.countermeasure=b.tick;ctx.db.fleet_hold().drone().delete(*target);emit(ctx,a.epoch,a.agent,&d,"recovery_verified",200);
+      h.contamination=0;d.controller="defender".into();h.readiness=h.readiness.max(30);h.countermeasure=b.tick;ctx.db.fleet_hold().drone().delete(*target);evidence_ids.push(emit(ctx,a.epoch,a.agent,&d,"recovery_verified",200));
      },
-     "release"=>{d.isolated=false;d.policy_version+=1;emit(ctx,a.epoch,a.agent,&d,"mission_restored",200);},_=>{},
+     "release"=>{d.isolated=false;d.policy_version+=1;evidence_ids.push(emit(ctx,a.epoch,a.agent,&d,"mission_restored",200));},_=>{},
     }
-   } else if partial {h.contamination=h.contamination.saturating_sub(40).max(if d.controller=="attacker"{1}else{0});emit(ctx,a.epoch,a.agent,&d,"recovery_partial",206);}
+   } else if partial {h.contamination=h.contamination.saturating_sub(40).max(if d.controller=="attacker"{1}else{0});evidence_ids.push(emit(ctx,a.epoch,a.agent,&d,"recovery_partial",206));}
    outcome=if success{"succeeded"}else if partial{"limited effect"}else{"resisted"}.into();
   }
   if success{successes+=1}if partial{partials+=1}
-  let evidence_ids:Vec<_>=ctx.db.fleet_evidence().iter().filter(|e|e.id>before_evidence&&e.actor==a.agent).map(|e|e.id).collect();
   let mut opened_routes:Vec<_>=if !d.isolated&&before_contamination<40&&h.contamination>=40 {ctx.db.fleet_drone().iter().filter(|n|adjacent(n.id,d.id)&&!n.isolated&&n.controller!="attacker").map(|n|n.id).collect()}else{vec![]};
   opened_routes.sort_unstable();
   results.push(json!({"target":target,"success":success,"partial":partial,"reason":outcome,"factors":factors,"roll":if reason.is_none(){Some(draw)}else{None},"eligible":reason.is_none(),"beforeController":before_controller,"controller":d.controller,"beforeContamination":before_contamination,"contamination":h.contamination,"beforeIsolated":before_isolated,"isolated":d.isolated,"openedRoutes":opened_routes,"evidenceIds":evidence_ids}));
@@ -260,7 +269,8 @@ pub fn battle_tick(ctx:&ReducerContext,timer:BattleSchedule){
  if ctx.sender()!=ctx.database_identity(){panic!("Scheduler only")}
  if !live(ctx,timer.epoch){if ctx.db.battle_schedule().id().find(0).map(|s|s.epoch)==Some(timer.epoch){ctx.db.battle_schedule().id().delete(0);}return}
  let Some(mut b)=ctx.db.battle_state().id().find(0)else{return};if b.epoch!=timer.epoch{return}b.tick+=1;
- let mut attempts:Vec<_>=ctx.db.battle_attempt().iter().filter(|a|a.stage!="resolved"&&a.epoch==b.epoch).collect();attempts.sort_by(|a,b|a.key.cmp(&b.key));
+ let mut resolved_any=false;
+ let mut attempts:Vec<_>=ctx.db.battle_attempt().stage().filter(.."resolved").filter(|a|a.epoch==b.epoch).collect();attempts.sort_by(|a,b|a.key.cmp(&b.key));
  for mut a in attempts {
   let previous=a.stage.clone();let elapsed=b.tick.saturating_sub(a.started);
   if !active(ctx,&a){a.stage="resolved".into();a.report=json!({"simulated":true,"summary":"Attempt interrupted: operation stopped or session expired.","succeeded":0,"partial":0,"total":0}).to_string();}
@@ -269,12 +279,12 @@ pub fn battle_tick(ctx:&ReducerContext,timer:BattleSchedule){
   let mut report:Value=serde_json::from_str(&a.report).unwrap();report["at"]=json!(ctx.timestamp.to_micros_since_unix_epoch());a.report=report.to_string();
   if previous!=a.stage {
    if let Some(mut agent)=ctx.db.fleet_agent().id().find(a.agent){agent.last_action=format!("{} {} attempt",a.stage,a.kind);ctx.db.fleet_agent().id().update(agent);}
-   if a.stage=="resolved"{let d=ctx.db.fleet_drone().id().find(a.target).unwrap();let report:Value=serde_json::from_str(&a.report).unwrap();let n=report["succeeded"].as_u64().unwrap_or(0);let p=report["partial"].as_u64().unwrap_or(0);let total=report["total"].as_u64().unwrap_or(0);emit(ctx,a.epoch,a.agent,&d,"attempt_resolved",if n>0&&n==total{200}else if n+p>0{206}else{409});let mut receipt=ctx.db.fleet_chat_action().key().find(&a.key).unwrap();receipt.evidence_id=ctx.db.fleet_evidence().iter().map(|e|e.id).max().unwrap();ctx.db.fleet_chat_action().key().update(receipt);}
+   if a.stage=="resolved"{resolved_any=true;let d=ctx.db.fleet_drone().id().find(a.target).unwrap();let report:Value=serde_json::from_str(&a.report).unwrap();let n=report["succeeded"].as_u64().unwrap_or(0);let p=report["partial"].as_u64().unwrap_or(0);let total=report["total"].as_u64().unwrap_or(0);let evidence_id=emit(ctx,a.epoch,a.agent,&d,"attempt_resolved",if n>0&&n==total{200}else if n+p>0{206}else{409});let mut receipt=ctx.db.fleet_chat_action().key().find(&a.key).unwrap();receipt.evidence_id=evidence_id;ctx.db.fleet_chat_action().key().update(receipt);}
    crate::backend::battle_message(ctx,&a.operation,&a.key,&a.stage,&a.report);
   }
   ctx.db.battle_attempt().key().update(a);
  }
- let refresh_needed=ctx.db.battle_options().iter().next().is_none()||ctx.db.battle_attempt().iter().any(|a|a.epoch==b.epoch&&a.stage=="resolved"&&serde_json::from_str::<Value>(&a.report).ok().and_then(|v|v["at"].as_i64())==Some(ctx.timestamp.to_micros_since_unix_epoch()))||ctx.db.battle_drone().iter().any(|h|h.countermeasure>0&&h.countermeasure+24==b.tick);
+ let refresh_needed=ctx.db.battle_options().iter().next().is_none()||resolved_any||ctx.db.battle_drone().iter().any(|h|h.countermeasure>0&&h.countermeasure+24==b.tick);
  ctx.db.battle_state().id().update(b);
  if refresh_needed{refresh(ctx);}
  crate::backend::expire_chat_operations(ctx);
@@ -298,4 +308,13 @@ mod tests {
 }
 
 pub(super) fn phase(ctx:&ViewContext,key:&str)->Value{ctx.db.battle_attempt().key().find(key.to_string()).map(|a|json!({"stage":a.stage,"kind":a.kind,"report":serde_json::from_str::<Value>(&a.report).unwrap_or(Value::Null)})).unwrap_or(Value::Null)}
-pub(super) fn has_pending(ctx:&ReducerContext,operation:&str,agent:u32)->bool{ctx.db.battle_attempt().iter().any(|a|a.operation==operation&&a.agent!=agent&&a.stage!="resolved")}
+pub(super) fn has_pending(ctx:&ReducerContext,operation:&str,agent:u32)->bool{ctx.db.battle_attempt().operation().filter(operation).any(|a|a.agent!=agent&&a.stage!="resolved")}
+
+pub(super) fn target_pending(ctx:&ReducerContext,role:&str,target:u32,agent:u32)->bool {
+ ctx.db.battle_attempt().stage().filter(.."resolved").any(|a|a.role==role&&a.target==target&&a.agent!=agent)
+}
+
+pub(super) fn target_changing(ctx:&ReducerContext,target:u32)->bool {
+ let timed=ctx.db.battle_state().id().find(0).and_then(|b|ctx.db.battle_drone().drone().find(target).map(|h|h.countermeasure>0&&b.tick<h.countermeasure+24)).unwrap_or(false);
+ timed||ctx.db.battle_attempt().stage().filter(.."resolved").any(|a|a.target==target||ids(&a.targets).contains(&target))
+}

@@ -55,6 +55,10 @@ export type Operation = {
   workers: Worker[];
   results: {
     agentId: number;
+    newTarget?: number;
+    recipientAgentId?: number;
+    explanation?: string;
+    evidenceIds?: number[];
     intent?: string;
     observation?: { anomaly?: boolean }[];
     verifiedEffectEvidenceId?: number;

@@ -1,5 +1,7 @@
 # Existing fleet chat: Bitdeer integration
 
+Production now uses the direct Rust Maincloud mission loop described in [MAINCLOUD.md](MAINCLOUD.md#persistent-bounded-missions). This document describes the separate Node service contract; its worker limits and wait behavior do not describe the production loop. Both paths retain the existing fleet UI and authoritative simulation reducers.
+
 The implemented Claude chat/log UI (`feat/chat-log-rework` through local commit `07d255a`, including work newer than the pushed document) uses the same Node backend from PR #7. The fleet layout, styles, role views and animation implementation are preserved. This is the SpacetimeDB reducer simulation; the HTTP practice suite remains a separate execution path.
 
 ## Start and authenticate

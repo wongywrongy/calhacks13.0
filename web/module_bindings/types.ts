@@ -54,6 +54,26 @@ export const ArenaSnapshot = __t.object("ArenaSnapshot", {
 });
 export type ArenaSnapshot = __Infer<typeof ArenaSnapshot>;
 
+export const Assignment = __t.object("Assignment", {
+  id: __t.string(),
+  operation: __t.string(),
+  agent: __t.u32(),
+  epoch: __t.u64(),
+  generation: __t.u64(),
+  role: __t.string(),
+  name: __t.string(),
+  specialty: __t.string(),
+  objective: __t.string(),
+  goal: __t.string(),
+  target: __t.u32(),
+  targets: __t.array(__t.u32()),
+  state: __t.string(),
+  reason: __t.string(),
+  error: __t.string(),
+  updated: __t.i64(),
+});
+export type Assignment = __Infer<typeof Assignment>;
+
 export const Attempt = __t.object("Attempt", {
   key: __t.string(),
   epoch: __t.u64(),
@@ -134,6 +154,8 @@ export const ChatMessage = __t.object("ChatMessage", {
   text: __t.string(),
   target: __t.u32(),
   at: __t.i64(),
+  epoch: __t.u64(),
+  generation: __t.u64(),
 });
 export type ChatMessage = __Infer<typeof ChatMessage>;
 
@@ -145,6 +167,7 @@ export const ChatOperation = __t.object("ChatOperation", {
   state: __t.string(),
   config: __t.string(),
   result: __t.string(),
+  generation: __t.u64(),
 });
 export type ChatOperation = __Infer<typeof ChatOperation>;
 
@@ -171,6 +194,8 @@ export const ChatTurn = __t.object("ChatTurn", {
   result: __t.string(),
   created: __t.i64(),
   updated: __t.i64(),
+  epoch: __t.u64(),
+  generation: __t.u64(),
 });
 export type ChatTurn = __Infer<typeof ChatTurn>;
 
@@ -309,6 +334,18 @@ export const Lease = __t.object("Lease", {
 });
 export type Lease = __Infer<typeof Lease>;
 
+export const MessageRow = __t.object("MessageRow", {
+  id: __t.u64(),
+  key: __t.string(),
+  role: __t.string(),
+  operation: __t.string(),
+  speaker: __t.string(),
+  text: __t.string(),
+  target: __t.u32(),
+  at: __t.i64(),
+});
+export type MessageRow = __Infer<typeof MessageRow>;
+
 export const Mission = __t.object("Mission", {
   id: __t.u32(),
   epoch: __t.u64(),
@@ -355,6 +392,17 @@ export const Observation = __t.object("Observation", {
 });
 export type Observation = __Infer<typeof Observation>;
 
+export const OperationRow = __t.object("OperationRow", {
+  id: __t.string(),
+  requestKey: __t.string(),
+  role: __t.string(),
+  epoch: __t.u64(),
+  state: __t.string(),
+  config: __t.string(),
+  result: __t.string(),
+});
+export type OperationRow = __Infer<typeof OperationRow>;
+
 export const Options = __t.object("Options", {
   key: __t.string(),
   epoch: __t.u64(),
@@ -377,6 +425,14 @@ export const Publisher = __t.object("Publisher", {
   identity: __t.identity(),
 });
 export type Publisher = __Infer<typeof Publisher>;
+
+export const Record = __t.object("Record", {
+  id: __t.string(),
+  operation: __t.string(),
+  sequence: __t.u32(),
+  body: __t.string(),
+});
+export type Record = __Infer<typeof Record>;
 
 export const Retry = __t.object("Retry", {
   key: __t.string(),
@@ -439,6 +495,18 @@ export const TeamActivity = __t.object("TeamActivity", {
 });
 export type TeamActivity = __Infer<typeof TeamActivity>;
 
+export const TurnRow = __t.object("TurnRow", {
+  id: __t.string(),
+  requestKey: __t.string(),
+  role: __t.string(),
+  state: __t.string(),
+  config: __t.string(),
+  result: __t.string(),
+  created: __t.i64(),
+  updated: __t.i64(),
+});
+export type TurnRow = __Infer<typeof TurnRow>;
+
 export const Viewer = __t.object("Viewer", {
   identity: __t.identity(),
 });
@@ -461,3 +529,12 @@ export const VisibleHealth = __t.object("VisibleHealth", {
   readiness: __t.u32(),
 });
 export type VisibleHealth = __Infer<typeof VisibleHealth>;
+
+export const Workflow = __t.object("Workflow", {
+  id: __t.string(),
+  created: __t.i64(),
+  deadline: __t.i64(),
+  replans: __t.u32(),
+  contractReady: __t.bool(),
+});
+export type Workflow = __Infer<typeof Workflow>;

@@ -1,9 +1,9 @@
 {
-  "recon": { "role": "attacker", "actions": ["discover"] },
-  "capture": { "role": "attacker", "actions": ["discover", "prepare", "command"] },
-  "spread": { "role": "attacker", "actions": ["discover", "prepare", "command", "spread"] },
-  "contain": { "role": "defender", "actions": ["prepare", "isolate", "harden"] },
-  "recover": { "role": "defender", "actions": ["prepare", "isolate", "harden", "verify"] },
-  "restore": { "role": "defender", "actions": ["prepare", "isolate", "harden", "verify", "release"] },
-  "harden": { "role": "defender", "actions": ["prepare", "harden"] }
+  "recon": {"role": "attacker", "actions": ["discover"], "completion": "Discovery exists for this target in the current fleet epoch."},
+  "capture": {"role": "attacker", "actions": ["discover", "prepare", "command"], "completion": "This target is currently controlled by the attacker."},
+  "spread": {"role": "attacker", "actions": ["discover", "prepare", "command", "spread"], "completion": "A resolved spread attempt by this specialist has at least one measured success."},
+  "contain": {"role": "defender", "actions": ["prepare", "isolate", "harden"], "completion": "This target is currently isolated."},
+  "recover": {"role": "defender", "actions": ["prepare", "isolate", "harden", "verify"], "completion": "Authorized control is restored and contamination is zero; simulator recovery requires paired policy-version verification probes."},
+  "restore": {"role": "defender", "actions": ["prepare", "isolate", "harden", "verify", "release"], "completion": "Authorized control is restored, contamination is zero, and isolation is released."},
+  "harden": {"role": "defender", "actions": ["prepare", "harden"], "completion": "This target has reached readiness 90."}
 }

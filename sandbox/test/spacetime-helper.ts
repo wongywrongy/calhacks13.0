@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { generateKeyPairSync } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { createServer } from "node:net";
-export async function testDatabase() {
+export async function testDatabase(modulePath = "arena-live/target/wasm32-unknown-unknown/release/sudoko_live.wasm", environment: Record<string,string> = {}) {
   const binary = process.env.SPACETIME_BINARY;
   if (!binary) throw Error("Set SPACETIME_BINARY for real database tests");
   const reservation = createServer();
@@ -77,11 +77,13 @@ export async function testDatabase() {
       (r) => r.json(),
     )) as any;
     const database = "backend-test-" + Date.now();
+    const headers = new Headers({authorization: `Bearer ${owner.token}`});
+    for (const [key,value] of Object.entries(environment)) headers.append("spacetime-environment", `${key}=${value}`);
     const r = await fetch(`${uri}/v1/database/${database}?host_type=Wasm`, {
       method: "PUT",
-      headers: { authorization: `Bearer ${owner.token}` },
+      headers,
       body: await readFile(
-        "arena-live/target/wasm32-unknown-unknown/release/sudoko_live.wasm",
+        modulePath,
       ),
     });
     if (!r.ok) throw Error("Module deployment failed: " + (await r.text()));
@@ -93,6 +95,17 @@ export async function testDatabase() {
       },
       close,
       restart,
+      pid: () => child.pid!,
+      upgrade: async (path: string) => {
+        const body=await readFile(path),headers={authorization:`Bearer ${owner.token}`};
+        const preview=await fetch(`${uri}/v1/database/${database}/pre_publish?host_type=Wasm&style=NoColor`,{method:"POST",headers,body});
+        if(!preview.ok)throw Error("Migration preview failed: "+await preview.text());
+        const plan:any=await preview.json();
+        if(!plan.AutoMigrate)throw Error("Manual migration required: "+JSON.stringify(plan));
+        const policy=new URLSearchParams({host_type:"Wasm",policy:"BreakClients",token:String(plan.AutoMigrate.token)});
+        const response = await fetch(`${uri}/v1/database/${database}?${policy}`, {method:"PUT",headers,body});
+        if (!response.ok) throw Error("Module upgrade failed: " + await response.text());
+      },
     };
   } catch (e) {
     await close();

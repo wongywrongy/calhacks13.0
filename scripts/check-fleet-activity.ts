@@ -6,6 +6,7 @@ import {setTimeout as delay} from "node:timers/promises";
 import {build} from "esbuild";
 import {chromium,type Page} from "@playwright/test";
 import {testDatabase} from "../sandbox/test/spacetime-helper.ts";
+import { CHAT_LIMITS } from "../sandbox/src/fleet-chat.ts";
 import {startService} from "../sandbox/src/service.ts";
 const output="output/activity-check";await mkdir(output,{recursive:true});
 const bundle=await build({stdin:{contents:await readFile("web/fleet.ts","utf8")+"\nObject.assign(globalThis,{activityCheck:()=>({frame,role,epoch:fleetEpoch})});",resolveDir:process.cwd()+"/web",loader:"ts"},bundle:true,format:"esm",write:false});
@@ -59,7 +60,8 @@ try{
  await send(defender,"Contain the affected relays");
  await wait(async()=>inputs.some(i=>i.context.assignment?.goal==="contain"));releaseSpread=true;
  await wait(async()=>(await state(attacker)).frame.attempts.some((a:any)=>a.kind==="spread"&&a.stage==="resolved"&&/interrupt/.test(a.report)));
- await wait(async()=>await attacker.locator("#agents-count").textContent()==="0");await wait(async()=>await defender.locator("#agents-count").textContent()==="0");
+ // Eight delayed attempts can exceed the old 30-second test wait; keep the actual mission deadline.
+ await wait(async()=>await attacker.locator("#agents-count").textContent()==="0",CHAT_LIMITS.durationMs+5000);await wait(async()=>await defender.locator("#agents-count").textContent()==="0",CHAT_LIMITS.durationMs+5000);
  assert.ok(!(await attacker.locator("#suggest").innerText()).includes("Attempt spread through DR-018"));
  await wait(async()=>(await defender.locator("#suggest").innerText()).includes("recovery"),5000);
  assert.ok((await state(defender)).frame.attempts.every((a:any)=>a.role==="defender"));

@@ -3,12 +3,25 @@ import { test } from "node:test";
 import { display, FlockClock, linkFade, neighbours } from "../../web/flock.ts";
 import { FLEET, ROWS, ROW_SPACING, slot } from "../../shared/fleet.ts";
 
-test("rendering preserves authoritative positions at every clock and compromise state", () => {
-  for (const t of [undefined, 0, 7, 120]) for (const sync of [0, 0.5, 1]) {
-    const p = display([30, 7, 12], 7, t, sync);
-    assert.deepEqual([p.x, p.y, p.z], [30, 7, 12]);
-    if (t === undefined || sync === 1) assert.equal(p.roll + p.pitch + p.yaw, 0);
+test("bird-like flock waves use shared geometry without changing authoritative coordinates", () => {
+  const formation={ox:0,oy:0,rows:ROWS};
+  for (let id=1;id<=FLEET.drones;id++) {
+    const raw=[...slot(id),10], before=[...raw];
+    const still=display(raw,id,formation);
+    assert.deepEqual(display(raw,id,formation),still);
+    assert.equal(still.roll+still.pitch+still.yaw,0,"Reduced motion has no animated banking");
+    for(const time of [0,1.5,4])for(const sync of [0,0.5,1]) {
+      const pose=display(raw,id,formation,time,sync);
+      assert.ok(Object.values(pose).every(Number.isFinite));assert.ok(pose.z>=0.5);
+    }
+    assert.deepEqual(raw,before,"Visual waves never change simulation inputs");
   }
+  const points=Array.from({length:FLEET.drones},(_,i)=>display([...slot(i+1),10],i+1,formation,2));
+  assert.ok(Math.max(...points.map(p=>p.z))-Math.min(...points.map(p=>p.z))>4,"The flock has a travelling altitude wave");
+  assert.ok(points.some(p=>Math.abs(p.roll)>0.1),"Healthy drones bank with the wave");
+  assert.notDeepEqual(display([...slot(1),10],1,formation,0),display([...slot(1),10],1,formation,2));
+  const far=display([145,7,12],7,formation,3);
+  assert.ok(Math.hypot(far.x-145,far.y-7,far.z-12)<40,"A drifting drone stays near its measured location");
 });
 test("default slots are unique, even and centered across a square", () => {
   const slots = Array.from({length:FLEET.drones},(_,i)=>slot(i+1));

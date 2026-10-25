@@ -108,7 +108,7 @@ test("authoritative resilience: five scenarios, budgets, mission costs, private 
     const epoch = (await rows("fleet_session"))[0].epoch;
     await store.call("reset_chat_fleet", [store.session, epoch, false]);
     assert.equal((await rows("fleet_session"))[0].epoch, epoch + 1);
-    for (const table of ["fleet_agent", "fleet_agent_profile", "fleet_discovery", "fleet_evidence", "fleet_chat_action", "resilience_disruption"]) assert.deepEqual(await rows(table), [], table);
+    for (const table of ["fleet_agent", "fleet_agent_profile", "fleet_discovery", "resilience_disruption"]) assert.deepEqual(await rows(table), [], table);
     assert.equal((await mission()).state, "ready");assert.equal((await mission()).delivered_ms, 0);
     assert.ok((await rows("resilience_budget")).every((b: any) => b.remaining === 40 && b.spent === 0));
     assert.ok((await rows("fleet_drone")).every((d: any) => !d.policy_version && !d.isolated));

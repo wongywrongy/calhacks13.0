@@ -1,4 +1,8 @@
-# Square formation validation — 2026-10-25
+# Formation validation — 2026-10-25
+
+The later wave restoration keeps all 200 authoritative slots but restores the prior
+display-only crescent, travelling waves and banking for the shared 20-column layout.
+The square-only observations below describe the earlier build.
 
 The fleet default is `shared/fleet.json:drones`; the same file defines columns,
 spacing and the separate permitted maximum. Rust generates compile-time constants

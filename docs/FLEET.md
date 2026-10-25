@@ -80,9 +80,11 @@ order, discovery order, reconnect or replay time. Recovery returns to that same 
 `arena-live/build.rs` embeds the JSON as Rust constants; `shared/fleet.ts` supplies the
 same geometry to the client and checks. The separate maximum is an input cap, not a default.
 
-The viewport renders authoritative positions without crescent bending, scatter or positional
-waves. Only the attitude of compromised models is decorative (`web/flock.ts`); movement,
-control changes and recovery remain reducer outcomes. Bodies and shadows use instanced
+The viewport restores the bird-like crescent, deterministic scatter, travelling waves and
+banking in `web/flock.ts`, adapted to the shared 20-column geometry. These are display
+effects: metrics, control changes and recovery still use authoritative reducer state.
+Drone bodies, ghost slots, tethers, camera targeting and the Canvas fallback use the same
+transform. Reduced-motion preferences retain the static flock shape without animated waves. Bodies and shadows use instanced
 meshes, and stems, trails and neighbour links use shared line buffers.
 
 The operating pad and survey grid are square and centered at the scene origin, sized from

@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { droneGeometry, FleetLines, ViewportResolution, DuskBackdrop, basinHeight, outpostGeometry } from "./fleet-render.ts";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { display, FlockClock, linkFade, neighbours } from "./flock.ts";
+import { display, FlockClock, linkFade, neighbours, type Formation } from "./flock.ts";
 import { FLEET, slot } from "../shared/fleet.ts";
 import { DbConnection } from "./module_bindings/index.ts";
 
@@ -106,7 +106,7 @@ const workerFor = (id: number): Worker | undefined =>
     .filter((o) => o.epoch === fleetEpoch)
     .flatMap((o) => o.workers)
     .findLast((w) => w.agentId === id);
-const assignedTarget = (a: Agent) => workerFor(a.id)?.target ?? a.target;
+const assignedTarget = (a: Agent) => frame.tasks?.find(t=>t.agent===a.id)?.target ?? workerFor(a.id)?.target ?? a.target;
 
 /* ---------- derived metrics (evidence rows + visible drones only) ---------- */
 const median = (v: number[]) => {
@@ -288,7 +288,7 @@ function oneLine(drone: Drone, d: Derived) {
 function agentLine(a: Agent, d: Derived): [string, string] {
   if (modelDriven) {
     const task=frame.tasks?.find(t=>t.agent===a.id);
-    if(task) return [task.state,task.summary || task.stage];
+    if(task) return [task.state,`${workerFor(a.id)?.objective ?? task.goal} · ${task.summary || task.stage}`];
     const w = workerFor(a.id);
     return w
       ? [
@@ -726,7 +726,7 @@ let activityKey="";
 function log(d: Derived) {
   teamStatus();
   if(modelDriven && frame.attempts){
-    const key=JSON.stringify([fleetEpoch,role,selected,selectedEvent,filterDrone,filter,[...openGroups],frame.events.map(e=>e.id),frame.attempts.filter(a=>a.stage==="resolved").map(a=>[a.key,a.at]),frame.tasks?.map(t=>[t.agent,t.state,t.stage,t.summary]),operationChat?.operations.map(o=>[o.id,o.state,o.workers.map(w=>w.error)]),operationChat?.turns.map(t=>[t.id,t.state])]);
+    const key=JSON.stringify([fleetEpoch,role,selected,selectedEvent,filterDrone,filter,[...openGroups],frame.events.map(e=>e.id),frame.attempts.filter(a=>a.stage==="resolved").map(a=>[a.key,a.at]),frame.tasks?.map(t=>[t.agent,t.state,t.stage,t.summary]),operationChat?.operations.map(o=>[o.id,o.state,o.workers.map(w=>w.error),o.results.filter(r=>["retarget","handoff"].includes(r.kind ?? "")).map(r=>[r.actionId,r.newTarget,r.recipientAgentId])]),operationChat?.turns.map(t=>[t.id,t.state])]);
     if(key===activityKey)return;activityKey=key;
   }
   const all = entries(d);
@@ -773,7 +773,7 @@ function recentAgents(){
   const now=Date.now();let next=Infinity;
   for(const task of frame.tasks ?? []){
     const previous=recentTasks.get(task.agent);
-    const until=taskActive(task) ? 0 : previous && ["queued","running"].includes(previous.state) ? now+4000 : previous?.until ?? 0;
+    const until=taskActive(task) ? 0 : previous && ["queued","running","observing","deciding","executing","waiting"].includes(previous.state) ? now+4000 : previous?.until ?? 0;
     recentTasks.set(task.agent,{state:task.state,until});
     if(until>now){
       const row=el("li","note recent-agent",`${task.name} · ${task.state}: ${task.summary}`);row.dataset.agentId=String(task.agent);row.dataset.state=task.state;
@@ -808,7 +808,7 @@ function battleEntries():Entry[]{
     evidenceIds.forEach(id=>claimed.add(id));
     const task=frame.tasks?.find(t=>t.agent===a.agent && t.operation===a.operation);
     const current=frame.attempts?.find(next=>next.agent===a.agent&&next.operation===a.operation&&next.stage!=="resolved");
-    const next=current ? `Next: ${current.kind} attempt on ${tag(current.target)} (${current.stage}).` : task&&taskActive(task) ? `Next: ${task.stage==="waiting" ? "waiting for an active operation" : "reassessing permitted actions"} within the same objective.` : "";
+    const next=current ? `Next: ${current.kind} attempt on ${tag(current.target)} (${current.stage}).` : task&&taskActive(task) ? `Next: ${task.stage==="waiting" ? "waiting for fresh observations" : "reassessing permitted actions"} within the same objective.` : "";
     out.push({at:a.at,id:evidenceIds[0]??0,drone:a.target,actorId:a.agent,actor:agentName(a.agent),cls:"c-team",text:`Attempted ${a.kind} on ${tag(a.target)}. Simulated result: ${report.summary ?? label}${next?" "+next:""}`,state:[label,failed?"c-amber":label==="Recovered"?"c-green":"c-team"],problem:failed,you:true,operationId:a.operation,actionId:a.key,evidenceIds,status:failed?"failed":"resolved",major,group:failed?`${a.operation}:${a.kind}:${a.target}:failed`:major?a.key:`${a.operation}:${a.kind}:${a.target}:routine`,detail:{attempt:a,report,assignment:task,...(next?{next}:{} )}});
   }
   for(const e of frame.events){
@@ -817,12 +817,18 @@ function battleEntries():Entry[]{
     const label=e.kind===ACCEPTED?"Control changed":e.kind===RECOVERED?"Recovered":e.kind==="limited_access"?"New foothold":e.kind===BLOCKED?"Resisted":e.kind==="mission_restored"?"Mission restored":e.kind.replaceAll("_"," ");
     out.push({at:e.at,id:e.id,drone:e.drone,actorId:e.actor,actor:e.actor?agentName(e.actor):"Observed telemetry",cls:e.kind===ACCEPTED?"c-red":"c-team",text:`${label} on ${tag(e.drone)} (simulated).`,state:[label,e.kind===ACCEPTED?"c-red":e.kind===RECOVERED?"c-green":"c-grey"],problem:e.kind===BLOCKED||e.kind===ACCEPTED&&role!=="attacker",you:false,major,group:major?`evidence:${e.id}`:`evidence:${e.kind}:${e.drone}`,detail:e});
   }
-  for(const op of operationChat?.operations ?? [])if(op.epoch===fleetEpoch && op.state==="failed"){
+  for(const op of operationChat?.operations ?? [])if(op.epoch===fleetEpoch){
+    for(const r of op.results.filter(r=>["retarget","handoff"].includes(r.kind ?? "")&&r.actionId)){
+      const text=r.kind==="retarget" ? `Changed assignment from ${tag(r.target ?? 0)} to ${tag(r.newTarget ?? 0)}.` : `Handed evidence to ${agentName(r.recipientAgentId ?? 0)}.`;
+      out.push({at:(r.at ?? op.createdAt)*1000,id:0,drone:r.newTarget ?? r.target ?? 0,actorId:r.agentId,actor:agentName(r.agentId),cls:"c-team",text:`${text} ${r.explanation ?? ""}`,state:[r.kind==="retarget"?"Retargeted":"Handoff","c-team"],problem:false,you:true,major:true,operationId:op.id,actionId:r.actionId,evidenceIds:r.evidenceIds ?? [],status:"executed",group:r.actionId,detail:r});
+    }
+  }
+  for(const op of operationChat?.operations ?? [])if(op.epoch===fleetEpoch && ["failed","blocked","exhausted"].includes(op.state)){
     const error=op.workers.find(w=>w.error)?.error ?? op.results.find(r=>r.error)?.error;
     const own=(frame.attempts ?? []).filter(a=>a.operation===op.id&&a.stage==="resolved");
     if(error || !own.length){
       const reason=error ? explainFleetError(error) : op.workers.map(w=>w.reason).filter(Boolean).join("; ") || "No permitted action completed the objective.";
-      out.push({at:Math.max(op.createdAt,...op.results.map(r=>r.at??0))*1000,id:0,drone:0,actorId:0,actor:agentOf(),cls:"c-amber",text:`Operation stopped: ${reason}`,state:["Blocked","c-amber"],problem:true,you:true,major:true,operationId:op.id,group:`${op.id}:closed`,detail:{operation:op.id,reason,workers:op.workers}});
+      out.push({at:Math.max(op.createdAt,...op.results.map(r=>r.at??0))*1000,id:0,drone:0,actorId:0,actor:agentOf(),cls:"c-amber",text:`Operation stopped: ${reason}`,state:[op.outcome?.status ?? (error?"Execution failed":"Blocked"),"c-amber"],problem:true,you:true,major:true,operationId:op.id,group:`${op.id}:closed`,detail:{operation:op.id,reason,workers:op.workers}});
     }
   }
   for(const turn of operationChat?.turns ?? [])if(turn.state==="failed"&&turn.error)out.push({at:turn.updatedAt*1000,id:0,drone:0,actorId:0,actor:agentOf(),cls:"c-amber",text:explainFleetError(turn.error),state:["Request failed","c-amber"],problem:true,you:false,major:true,group:turn.id,detail:turn});
@@ -948,7 +954,11 @@ function chat(d: Derived) {
       progress.textContent = ownTurn?.state === "running" ? "Assessing your request" : "Request queued";
       const response: HTMLElement[] = [];
       const reply = linked.find((m) => m.kind === "answer");
-      if (ownOp) response.push(bubble({who:"agent",text:"Objective accepted; follow progress in Activity.",id:reply?.id ?? user.id}));
+      if (ownOp) {
+        response.push(bubble({who:"agent",text:reply?.text ?? "Objective accepted; follow progress in Activity.",id:reply?.id ?? user.id}));
+        const adjustment=linked.findLast(m=>m.kind==="answer"&&m.text.startsWith("Plan adjustment:"));
+        if(adjustment&&adjustment!==reply)response.push(bubble({who:"agent",text:adjustment.text,id:adjustment.id}));
+      }
       else if (reply) response.push(bubble({ who: "agent", text: ownTurn?.error ? explainFleetError(ownTurn.error) : reply.text, id: reply.id }));
       if (resilienceMode && ownOp) for (const r of ownOp.results.filter((r) => r.status === "executed" && r.kind !== "wait").slice(-6)) {
         const action = el("div", "bubble action-card");
@@ -962,6 +972,11 @@ function chat(d: Derived) {
       }
       patchContent(group.querySelector<HTMLElement>(".interaction-response")!, response);
       const outcomes: HTMLElement[] = [];
+      if(ownOp&&!activeOperation(ownOp)){
+        const terminal=linked.findLast(m=>m.kind==="outcome");
+        const measured=ownOp.outcome ?? fleetOutcome(ownOp);
+        outcomes.push(bubble({who:"agent",text:terminal?.text ?? `${measured.status}: ${measured.summary}`,id:terminal?.id ?? user.id}));
+      }
       patchContent(group.querySelector<HTMLElement>(".interaction-outcome")!, outcomes);
       const detailData = { turn: ownTurn, operation: ownOp, messages: [user, ...linked] };
       patchContent(group.querySelector<HTMLElement>(".interaction-details")!, [technicalDetails(detailData, "Details and evidence")]);
@@ -1140,12 +1155,18 @@ const outposts = new THREE.InstancedMesh(outpostGeometry(), new THREE.MeshStanda
 outposts.name = "illustrative-outposts";
 scene.add(outposts);
 let terrainKey = "";
-function padHalfSize(box: THREE.Box3) {
-  const extent = Math.max(Math.abs(box.min.x), Math.abs(box.max.x), Math.abs(box.min.z), Math.abs(box.max.z));
-  return Math.ceil((extent + 14) / FLEET.spacing) * FLEET.spacing;
+let padRole: Role | undefined, padHalf = 30;
+function padHalfSize() {
+  if (padRole !== role) { padRole = role; padHalf = 30; }
+  if (frame.drones.length) {
+    // Stable authorized slots define the pad; motion and reset's empty frame cannot resize it.
+    const extent = Math.max(...frame.drones.flatMap(d => slot(d.id).map(Math.abs)));
+    padHalf = Math.ceil((extent + 26) / FLEET.spacing) * FLEET.spacing;
+  }
+  return padHalf;
 }
-function buildTerrain(box: THREE.Box3) {
-  const half = padHalfSize(box), key = String(half);
+function buildTerrain(half: number) {
+  const key = String(half);
   if (key === terrainKey) return;
   terrainKey = key;
   const cx = 0, cz = 0,
@@ -1207,7 +1228,7 @@ function buildTerrain(box: THREE.Box3) {
 }
 
 const sceneryBox = new THREE.Box3(new THREE.Vector3(-12, 0, -12), new THREE.Vector3(12, 14, 12));
-buildTerrain(sceneryBox);
+buildTerrain(30);
 
 // Per-drone parts. Neighbours can come within ~4 m, so every marker stays under a 2 m radius.
 const mat = (color: number) =>
@@ -1428,7 +1449,9 @@ function meshDrone(id: number) {
   return root;
 }
 let lastT = 0;
-/* ---------- formation rendering ---------- */
+/* ---------- flock rendering ---------- */
+const form: Formation = { ox: 0, oy: 0, rows: 1 },
+  formWant: Formation = { ox: 0, oy: 0, rows: 1 };
 /** Database axes [x, y, z] -> displayed Three position, optionally posing the model. */
 function place(
   raw: THREE.Vector3,
@@ -1438,8 +1461,8 @@ function place(
   model?: THREE.Object3D,
 ) {
   const pose = reduced.matches
-    ? display([raw.x, raw.z, raw.y], id)
-    : display([raw.x, raw.z, raw.y], id, clock.t, clock.sync);
+    ? display([raw.x, raw.z, raw.y], id, form)
+    : display([raw.x, raw.z, raw.y], id, form, clock.t, clock.sync);
   out.set(pose.x, pose.z, pose.y);
   model?.rotation.set(pose.pitch, pose.yaw, pose.roll);
   return out;
@@ -1523,6 +1546,9 @@ function updateInstances() {
 // Ease database positions (~0.15 s); jumps over 30 m snap when scrubbing a replay.
 function glide(dt: number, now: number) {
   const k = reduced.matches ? 1 : 1 - Math.exp(-dt / 0.15);
+  form.ox += (formWant.ox - form.ox) * k;
+  form.oy += (formWant.oy - form.oy) * k;
+  form.rows = formWant.rows;
   let moving = false;
   for (const g of drones.values()) {
     if (!g.visible) continue;
@@ -1588,7 +1614,7 @@ function effects(t: number) {
 const tipSel = $("tip-sel"),
   tipHover = $("tip-hover");
 function screen(d: Drone) {
-  const p = (renderer ? shown(d) : new THREE.Vector3(d.x, d.z, d.y)).project(camera);
+  const p = shown(d).project(camera);
   return [
     ((p.x + 1) * host.clientWidth) / 2,
     ((1 - p.y) * host.clientHeight) / 2,
@@ -1654,8 +1680,9 @@ function draw() {
   for (const d of [...frame.drones].sort((a, b) => b.y - a.y)) {
     const u = drones.get(d.id)?.userData;
     const color = HEX[(u?.tone as Tone) ?? "grey"];
-    const [x, y] = point(d.x, d.z, d.y),
-      shadow = point(d.x, 0, d.y);
+    const displayed = shown(d);
+    const [x, y] = point(displayed.x, displayed.y, displayed.z),
+      shadow = point(displayed.x, 0, displayed.z);
     c.strokeStyle = "#2c3b48";
     line([x, y], shadow);
     c.strokeStyle = c.fillStyle = color;
@@ -1751,6 +1778,7 @@ function mapScene(d: Derived) {
     if (!g.visible)
       g.userData.ghost.visible = g.userData.tether.visible = false;
   }
+  formWant.rows = 1;
   for (const x of frame.drones) {
     let g = drones.get(x.id);
     if (!g) {
@@ -1763,6 +1791,11 @@ function mapScene(d: Derived) {
     u.comp = d.state(x) === "comp";
     u.want.set(x.x, x.z, x.y);
     const e = d.expected.get(x.id);
+    if (e) {
+      formWant.ox = e[0] - slot(x.id)[0];
+      formWant.oy = e[1] - slot(x.id)[1];
+    }
+    formWant.rows = Math.max(formWant.rows, Math.floor((x.id - 1) / FLEET.columns) + 1);
     const off = (d.deviation.get(x.id) ?? 0) > OFF_FORMATION_M;
     u.ghost.visible = u.tether.visible = !!e && off;
     if (e) u.ghostWant.set(e[0], e[2], e[1]);
@@ -2191,7 +2224,7 @@ const DIR_PERSP = new THREE.Vector3(0.28, 0.65, 1).normalize(),
 function shown(d: Drone) {
   const u = drones.get(d.id)?.userData;
   if (u && !u.fresh) return (u.pos as THREE.Vector3).clone();
-  const p = display([d.x, d.y, d.z], d.id);
+  const p = display([d.x, d.y, d.z], d.id, form);
   return new THREE.Vector3(p.x, p.z, p.y);
 }
 function fit(force = false) {
@@ -2213,8 +2246,8 @@ function fit(force = false) {
   // The first frame can arrive before the ResizeObserver corrects the default aspect of 1.
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  const { dist, target, box } = solve(frame.drones, true);
-  buildTerrain(n ? box : sceneryBox);
+  const { dist, target } = solve(frame.drones, true);
+  buildTerrain(padHalfSize());
   controls.maxDistance = Math.max(900, dist * 2);
   controls.target.copy(target);
   controls.update();
@@ -2230,11 +2263,10 @@ function solve(list: Drone[], includePad = false) {
   box.min.y = 0;
   // Margin covers marker size, interpolation and the shared formation sweep.
   box.expandByVector(new THREE.Vector3(10, 8, 12));
-  const terrainBox = box.clone();
   if (includePad) {
-    const half = padHalfSize(box);
-    box.min.x = box.min.z = -half;
-    box.max.x = box.max.z = half;
+    const half = padHalfSize();
+    box.min.x = Math.min(box.min.x, -half); box.min.z = Math.min(box.min.z, -half);
+    box.max.x = Math.max(box.max.x, half); box.max.z = Math.max(box.max.z, half);
   }
   const corners = Array.from(
     { length: 8 },
@@ -2298,7 +2330,7 @@ function solve(list: Drone[], includePad = false) {
       );
   }
   place(dist);
-  return { dist, target, box: terrainBox };
+  return { dist, target };
 }
 function reframe() {
   userMoved = false;

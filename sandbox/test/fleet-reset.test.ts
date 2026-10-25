@@ -65,8 +65,8 @@ test("fleet and conversation resets fence stale work and survive reconnect", { s
       assert.ok(state.drones.every((d: any) => d.epoch === r.body.epoch && d.controller === "defender" && !d.isolated && !d.policy_version));
       assert.deepEqual(state.agents, []); assert.deepEqual(state.events, []);
       assert.deepEqual(await service.store.query("SELECT * FROM fleet_hold"), []);
-      assert.deepEqual(await service.store.query("SELECT * FROM fleet_chat_action"), []);
-      for (const table of ["battle_attempt", "battle_schedule", "battle_drone", "battle_retry", "hosted_job", "hosted_alarm"]) assert.deepEqual(await service.store.query("SELECT * FROM " + table), []);
+      assert.ok((await service.store.query("SELECT * FROM battle_attempt")).every((a:any)=>a.stage==="resolved"));
+      for (const table of ["battle_schedule", "battle_drone", "battle_retry", "hosted_alarm"]) assert.deepEqual(await service.store.query("SELECT * FROM " + table), []);
       await waitFor(async () => (await service.store.query("SELECT * FROM fleet_drone")).every((d: any) => d.tick > 0));
       await service.store.call("set_battle_seed", [233]);
       return c;

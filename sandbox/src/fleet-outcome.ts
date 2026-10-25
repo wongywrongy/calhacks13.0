@@ -12,14 +12,22 @@ export const explainFleetError = (code?: string) => ({
   provider_http_error: "The decision provider returned an error.",
   evidence_missing: "The backend did not return the required evidence.",
   cancelled: "The operation was stopped.",
-}[code ?? ""] ?? "The action was rejected; the backend did not provide a specific reason.");
+}[code?.split(":")[0] ?? ""] ?? "The action was rejected; the backend did not provide a specific reason.");
 
 type Receipt = {
-  agentId: number; target?: number; status: string; outcome?: string; kind?: string;
+  type?: string; completed?: number; total?: number; agentId: number; target?: number; status: string; outcome?: string; kind?: string;
   simulation?: { simulated: boolean; summary: string; succeeded: number; partial: number; total: number; results?: { target: number; success: boolean; partial: boolean }[] };
   verifiedEffectEvidenceId?: number; evidenceId?: number; verificationEvidenceIds?: number[]; responseStatus?: number;
 };
 export function fleetOutcome(op: { state: string; role: string; tasks: { agentId: number }[]; results: Receipt[] }) {
+  const mission = op.results.findLast(r => r.type === "mission");
+  if (mission) {
+    const status: Record<string,string> = {verified_success:"Completed",partial_completion:"Partially completed",blocked:"Blocked",budget_exhausted:"Budget exhausted",deadline_exhausted:"Deadline exhausted",execution_failure:"Execution failed",cancellation:"Stopped"};
+    const effects = op.results.filter(r => r.status === "executed" && r.evidenceId);
+    const succeeded = mission.completed ?? 0, total = mission.total ?? op.tasks.length;
+    return {status:status[mission.outcome ?? ""] ?? "Failed", summary:`${succeeded} of ${total} assignment objectives verified in the synthetic simulation. ${mission.outcome === "execution_failure" ? "Provider or execution failure is separate from simulated outcomes." : total > succeeded ? `${total-succeeded} remain unresolved.` : ""}`.trim(), succeeded, total,
+      evidenceIds:[...new Set(effects.flatMap(r => [r.evidenceId!, ...(r.verificationEvidenceIds ?? [])]))]};
+  }
   const simulated = op.results.filter((r) => r.status === "executed" && r.evidenceId && r.simulation?.simulated);
   if (simulated.length) {
     const effects = simulated.filter((r) => (op.role === "attacker" ? ["command", "spread"] : ["isolate", "harden", "verify", "release"]).includes(r.kind ?? ""));

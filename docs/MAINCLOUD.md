@@ -27,15 +27,145 @@ one operation per role, two to four specialists per operation, eight decisions p
 specialist, 33 model calls per operation including its coordinator, a 75-second operation
 deadline, a 30-second conversation deadline, and a 20-second HTTP timeout. Deadlines have
 scheduled watchdogs. Cancellation/reset cannot abort a provider request already sent;
-its result cannot apply, and it continues occupying its reservation until it returns or
-the watchdog expires. Failures are recorded without fixture replacement or provider retries.
+its result cannot apply, and it continues occupying its reservation until HTTP returns
+or the enforced HTTP timeout plus one second of watchdog grace has elapsed. An operation
+deadline alone does not release an outstanding HTTP reservation. Failures are recorded without fixture replacement or provider retries.
 
 The installed CLI/SDK is 2.13.0, with Rust's `unstable` feature enabled for procedures.
 A separate hosted capability probe verified a scheduled procedure, server-side environment
 access, and a real Bitdeer HTTP 200 before the runtime port. Its 20-second timeout worked
 on Maincloud despite an older 500 ms comment in the installed HTTP client's source.
 
+## Database storage and compatibility
+
+[ARCHITECTURE.md](ARCHITECTURE.md) is the production entry point. The database storage,
+scoping, retention, migration cutover and local scheduling measurements are documented in
+[DATABASE_DESIGN.md](DATABASE_DESIGN.md). Hosted assignments and history now live in private
+typed/current and history tables; the existing public operation/chat row shapes are preserved.
+Reset swarm cancels old-epoch work and preserves conversation history. Reset Demo and New Chat
+advance conversation generations and hide earlier chats. Simulation views remain current-epoch. Follow the
+migration runbook before publishing this schema to an existing database; it requires an
+acknowledged client disconnect and a bounded owner backfill, never `--delete-data`.
+
+## Persistent bounded missions
+
+The production loop remains in `arena-live/src/maincloud.rs`; no second scheduler or
+workflow framework is introduced. The Node chat service documented in `FLEET_CHAT_API.md`
+is a separate compatibility path and retains its existing finite worker loop.
+
+Review confirmed that current specialists already reassessed fallible commands; they did
+not universally end after one attempt. The remaining production limitations were terminal
+waits, immutable targets, missing teammate context, coarse terminal statuses, and chat
+rendering that hid durable plan/outcome content. Fleet size alone still cannot multiply
+useful work: the coordinator must choose complementary objectives and routes.
+
+The coordinator chooses 2–4 typed assignment goals and up to eight candidate target IDs
+per specialist. `shared/fleet-goals.json` describes the server predicates. The simulator
+verifies them; model explanations never establish completion. Candidate IDs are alternative
+assignment targets, while spread retains the simulator's existing local-neighbor scope.
+The initial plan persists immutable completion conditions: each assignment must achieve its
+typed goal on one of its approved targets. Individual required targets use singleton scopes;
+retargeting changes the worker assignment, not that mission contract. An explicitly selected
+target restricts the entire scope to that target. Identical
+active target/goal pairs are rejected, and same-role attempts on one target serialize.
+
+Each durable job observes current role-scoped state, recent measured receipts, teammate
+assignments, evidence handoffs, available routes, and the remaining original budgets.
+Discovery needed before entry is a server observation and makes no specialist inference
+call. Structured decisions contain an action, target, optional teammate recipient, a short
+operator-facing explanation, and supplied evidence IDs. Reassignment and handoff are
+validated atomically against the original scopes and current teammate ownership.
+
+Actions resolve once through the existing scheduled, seeded simulation. A resisted attempt
+does not close the assignment if useful alternatives remain. The existing state-dependent
+strategy fingerprint blocks equivalent attempts without new conditions. Wait schedules a
+1.5-second pause and fresh observation. Three waits against equivalent relevant state close
+the assignment as blocked; pending relevant attempts/countermeasure expiry use bounded
+one-second checks without inference. Neither ticks nor polls append activity messages.
+
+When assignments close, at most two coordinator reassessments may revise blocked specialists'
+targets. Replanning reuses identities, goals, action sequences, scopes, the 33-call total,
+and the original 75-second deadline, including initial planning. Provider failure/refusal
+does not trigger a replan retry or a fixture decision. No useful choice, an already satisfied
+goal, and budget bookkeeping require no model call. A policy change during inference defers
+the decision and causes fresh observation instead of recording a simulated attack failure.
+
+Assignment lifecycle, individual attempts, provider execution, and mission outcome are
+separate durable records. Mission records distinguish `verified_success`,
+`partial_completion`, `blocked`, `budget_exhausted`, `deadline_exhausted`, and
+`execution_failure`, and `cancellation`; the existing `cancelled` operation state fences
+cancellation. Already completed assignments keep their historical lifecycle when a mission
+is cancelled. Final
+verification rechecks previously completed conditions against current simulation state.
+The same existing chat bubbles, cards, history and Activity rows show acknowledgments,
+meaningful plan adjustments, handoffs, target changes, and an evidence-backed terminal
+summary. Terminal specialists leave active counts immediately. Suggestions continue to use
+the existing deterministic eligibility cache; no suggestion model calls are added.
+
+Job state/operation and attempt stage/operation indexes bound scheduler lookups. Terminal
+jobs discard provider request bodies, retaining decision results and inference metrics.
+Hosted admission caps history at 200 turns per role, preserving mission/evidence history
+instead of silently deleting it. Archival beyond that cap is not implemented; this remains
+a bounded demo session, not unattended multi-day hosting.
+
+## Local mission validation
+
+```sh
+npm run spacetime:build
+npm run build:fleet
+SPACETIME_BINARY=/path/to/spacetimedb-standalone npm test
+cargo test --manifest-path arena-live/Cargo.toml --lib
+npm run typecheck
+```
+
+Install the Playwright Chromium matching the installed package, or set
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an installed Chromium executable.
+
+`maincloud-mission.test.ts` builds a separate `mission-fixtures` WASM under
+`arena-live/target/mission-fixtures`, with owner-only reservation/reply seams and disabled
+Bitdeer HTTP execution. It injects explicitly labelled **Fixture decisions** into the same
+reservation and commit functions used in production, against a temporary real database and
+its real scheduled simulation. The default production build has no fixture endpoints;
+a production-procedure check verifies missing provider configuration fails honestly.
+**Never deploy the fixture WASM.** It is not credentialed model evidence.
+
+The tests exercise resisted entry followed by a different eligible decision, wait/resume,
+retarget/handoff rejection and acceptance, bounded replanning, provider refusal without
+retry, verified completion/roster cleanup, global admission/exhaustion/deadline enforcement,
+active-attempt database restart, idempotent replay, and cancellation/reset fencing. A local
+browser uses the Maincloud subscription adapter and existing UI to verify durable replies,
+terminal summary, active-card removal and reload without duplicate effects; desktop/mobile
+screenshots go to ignored `output/mission-loop/`. Browser checks use headless Canvas fallback,
+not a hardware GPU benchmark. The HTTP practice comparison remains separate fixture evidence.
+
+That validation was fixture-only. The later [end-to-end audit](AUDIT_2026-10-25.md) adds
+credentialed local Bitdeer evidence and read-only production browser checks; it does not
+claim that the current release was deployed.
+Queued legacy assignments fall back to their original single target; an in-flight reply
+using the old output schema fails validation visibly instead of being silently converted.
+A populated disposable database upgrade/backfill is covered in DATABASE_DESIGN.md.
+The earlier typed-storage cutover is present in production; the audit fixes still need deployment.
+
+Mission-loop verification before the database-design changes on 2026-10-25: **73 Node tests passed, zero failures/skips**, with
+SpacetimeDB 2.13.0 and an explicitly configured installed Chromium binary; **11 native
+Rust tests passed**. TypeScript checking, release WASM compilation, the fleet bundle, and
+both binding generations passed; generated public binding schemas remained unchanged.
+The separate `scripts/check-fleet-activity.ts` browser check also passed with no page errors,
+including concurrent interruption, suggestions, reset, desktop and mobile. Its roster wait
+now covers the existing 75-second mission deadline instead of assuming all delayed attempts
+end within 30 seconds; no runtime limit was increased.
+
+The separate four-second-per-mode HTTP fixture comparison (`3` attackers, `2` defenders,
+`4` clients per team) had zero agent/infrastructure errors. Baseline offered 58 attack and
+193 legitimate requests, with 193 legitimate completions and 9/20 passing isolation probes.
+Hardened offered 60 attack and 212 legitimate requests, with 211 legitimate completions and
+18/20 passing isolation probes. Each mode recorded one verified capture. This is one short
+fixture sample, not evidence of model behavior, perfect security, or fleet mission success.
+
 ## Deploy
+
+First follow [the schema migration runbook](DATABASE_DESIGN.md) for existing databases;
+the simple publish command below alone does not backfill old rows.
 
 1. Build and test the module: `npm run spacetime:build`, `cargo test --manifest-path arena-live/Cargo.toml`.
 2. Supply `BITDEER_API_KEY` in the publisher's environment and publish without clearing data:
@@ -86,6 +216,9 @@ the default is read from `shared/fleet.json` (200 actual persisted drones).
 
 Fleet defaults, layout and cap live in `shared/fleet.json`. Rust embeds this file at build
 time; TypeScript imports it. Rebuild WASM and browser assets together after a change.
-Updating code does not reset an existing session: an existing smaller fleet keeps its
-count until an operator explicitly starts a new default-size session. This destroys the
-old battle/chat state; do not run the initialization command on a live session casually.
+Updating code does not reset an existing session. An owner can grow an active persistent
+fleet in place with `grow_fleet(epoch, 200)`: existing drones, agents, evidence, policy,
+mission budgets and the shared clock are preserved. New drones receive their own movement
+schedules and battle state. Growth is epoch-fenced, idempotent and bounded by the existing
+256-drone ceiling; viewers cannot invoke it, and shrinking is rejected. `start_fleet` still
+resets battle/chat state and is not required for this growth.

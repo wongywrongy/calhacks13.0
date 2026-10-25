@@ -43,7 +43,9 @@ import EnqueueBackendRunReducer from "./enqueue_backend_run_reducer";
 import ExecuteFleetChatActionReducer from "./execute_fleet_chat_action_reducer";
 import GrantBackendViewerReducer from "./grant_backend_viewer_reducer";
 import GrantFleetViewReducer from "./grant_fleet_view_reducer";
+import GrowFleetReducer from "./grow_fleet_reducer";
 import HeartbeatBackendReducer from "./heartbeat_backend_reducer";
+import MigrateHostedWorkflowReducer from "./migrate_hosted_workflow_reducer";
 import NewChatReducer from "./new_chat_reducer";
 import NewMaincloudChatReducer from "./new_maincloud_chat_reducer";
 import PlanChatOperationReducer from "./plan_chat_operation_reducer";
@@ -254,7 +256,9 @@ const reducersSchema = __reducers(
   __reducerSchema("execute_fleet_chat_action", ExecuteFleetChatActionReducer),
   __reducerSchema("grant_backend_viewer", GrantBackendViewerReducer),
   __reducerSchema("grant_fleet_view", GrantFleetViewReducer),
+  __reducerSchema("grow_fleet", GrowFleetReducer),
   __reducerSchema("heartbeat_backend", HeartbeatBackendReducer),
+  __reducerSchema("migrate_hosted_workflow", MigrateHostedWorkflowReducer),
   __reducerSchema("new_chat", NewChatReducer),
   __reducerSchema("new_maincloud_chat", NewMaincloudChatReducer),
   __reducerSchema("plan_chat_operation", PlanChatOperationReducer),

@@ -47,7 +47,7 @@ test("bounded reassessment reuses agents, Continue reuses work, closed tasks sta
   const epoch=(await rows("fleet_session"))[0].epoch;await chat.endFleet(epoch,true);await delay(4500);
   assert.deepEqual(await viewer.query("SELECT * FROM visible_agent_tasks"),[]);
   assert.equal((await viewer.query("SELECT * FROM visible_team_activity"))[0].active_agents,0);
-  for(const table of ["battle_attempt","battle_options","battle_schedule","fleet_agent"])assert.deepEqual(await rows(table),[],table);
+  for(const table of ["battle_options","battle_schedule","fleet_agent"])assert.deepEqual(await rows(table),[],table);
   assert.equal((await chat.get(pending.id,"attacker")).state,"cancelled");
  }finally{clearInterval(heartbeat);await chat.close();await db.close();}
 });

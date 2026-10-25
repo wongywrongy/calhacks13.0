@@ -3,7 +3,7 @@ export type BattleOption = { role: string; drone: number; actions: string[]; rea
 export type AttemptActivity = { key: string; epoch: number; operation: string; role: string; agent: number; target: number; kind: string; stage: string; at: number; report: string };
 export type AgentTask = { agent: number; epoch: number; role: string; operation: string; name: string; specialty: string; target: number; goal: string; state: string; stage: string; summary: string; updated_at: number; finished_at: number };
 export type TeamActivity = { role: string; operation: string; objective: string; targets: number[]; stage: string; summary: string; active_agents: number };
-export const taskActive = (task: AgentTask) => ["queued", "running"].includes(task.state);
+export const taskActive = (task: AgentTask) => ["queued", "running", "observing", "deciding", "executing", "waiting"].includes(task.state);
 export function attemptReport(attempt: AttemptActivity): any {
   try { return JSON.parse(attempt.report); } catch { return {}; }
 }

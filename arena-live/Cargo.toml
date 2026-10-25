@@ -9,3 +9,6 @@ spacetimedb = { version = "=2.13.0", features = ["unstable"] }
 serde_json = "1"
 [build-dependencies]
 serde_json = "1"
+
+[features]
+mission-fixtures = []
