@@ -36,3 +36,9 @@ test("typed objectives bound reassessment and terminal tasks leave the active ro
  for(const state of ["completed","failed","cancelled"])assert.equal(taskActive({state} as any),false);
  for(const state of ["queued","running"])assert.equal(taskActive({state} as any),true);
 });
+
+test("discovery suggestions name only undiscovered permitted catalog targets",()=>{
+ const s={...initial(),drones:[{id:1,controller:"defender",isolated:false},{id:2,controller:"defender",isolated:false}],options:[1,2,3,4].map(drone=>({role:"attacker",drone,actions:["discover"],reachable:[],blocker:""}))};
+ assert.ok(stateSuggestions(s).some(o=>o.text==="Discover catalog drones DR-003 and DR-004"&&o.target===0));
+ s.options=s.options.slice(0,2);assert.ok(!stateSuggestions(s).some(o=>o.text.startsWith("Discover")));
+});

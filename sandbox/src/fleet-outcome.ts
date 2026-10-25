@@ -9,6 +9,7 @@ export const explainFleetError = (code?: string) => ({
   invalid_plan_size: "The plan must contain one to four useful specialists.",
   "Duplicate assignment": "The plan assigned the same target and objective twice.",
   "Invalid evidence reference": "The decision cited evidence outside its supplied observations.",
+  provider_invalid_reply: "The provider returned a routing label instead of an answer or clarification question.",
   provider_malformed_output: "The decision provider returned an invalid response.",
   provider_truncated_output: "The decision provider’s response was incomplete.",
   provider_transport_error: "The decision provider could not be reached.",

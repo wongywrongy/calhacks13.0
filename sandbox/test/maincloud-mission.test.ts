@@ -14,7 +14,7 @@ import { RunStore } from "../src/run-store.ts";
 // simulation reducers. The fixture endpoints are absent from the production module.
 test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { skip: !process.env.SPACETIME_BINARY, timeout: 180000 }, async t => {
   execFileSync("cargo", ["build", "--manifest-path", "arena-live/Cargo.toml", "--target", "wasm32-unknown-unknown", "--release", "--features", "mission-fixtures", "--target-dir", "arena-live/target/mission-fixtures"], {stdio:"pipe"});
-  await build({stdin:{contents:await readFile("web/fleet.ts","utf8")+"\nObject.assign(globalThis,{auditViewport:()=>({pad:pad.scale.toArray(),epoch:fleetEpoch,count:frame.drones.length})});",resolveDir:process.cwd()+"/web",loader:"ts"},bundle:true,format:"esm",outfile:"web/dist/fleet.js"});
+  await build({stdin:{contents:await readFile("web/fleet.ts","utf8")+"\nObject.assign(globalThis,{auditViewport:()=>({pad:pad.scale.toArray(),epoch:fleetEpoch,count:frame.drones.length}),auditSelect:(id)=>pull(id),auditSuggestionTick:()=>render({...frame,teams:[...(frame.teams??[]),{role:\"defender\",operation:\"\",objective:\"\",targets:[],stage:\"observing\",summary:\"Fixture unrelated update\",active_agents:0}]})});",resolveDir:process.cwd()+"/web",loader:"ts"},bundle:true,format:"esm",outfile:"web/dist/fleet.js"});
   const db = await testDatabase("arena-live/target/mission-fixtures/wasm32-unknown-unknown/release/sudoko_live.wasm");
   const owner = new RunStore({uri:db.env.SPACETIME_URI, database:db.env.SPACETIME_DATABASE, token:db.env.SPACETIME_TOKEN});
   const rows = async (table:string):Promise<any[]> => {
@@ -59,6 +59,7 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
       for(const intent of ["answer","clarify"]){
         const turn=await send(intent==="answer"?"What is this simulation?":"That drone, which one?");
         const request=JSON.parse((await job(turn.id)).request);assert.equal(request.response_format.json_schema.schema.properties.tasks.minItems,0);
+        await assert.rejects(reply(turn.id,{intent,answer:intent,evidenceIds:[],tasks:[]}),"Routing labels cannot substitute for an operator-facing reply");
         await reply(turn.id,{intent,answer:"Fixture: a short read-only response or clarification.",evidenceIds:[],tasks:[]});
         assert.equal((await rows("backend_chat_turn")).find(t=>t.id===turn.id).state,"completed");assert.equal((await rows("fleet_agent")).length,0);
       }
@@ -225,12 +226,28 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
         const sockets=new Set<any>();page.on("websocket",socket=>{sockets.add(socket);socket.on("close",()=>sockets.delete(socket));});
         await page.addInitScript(()=>sessionStorage.setItem("sudoko.role","attacker"));await page.goto(`http://127.0.0.1:${(server.address() as any).port}`);
         await page.waitForFunction(()=>document.querySelector("#live")?.textContent?.startsWith("Live"));
-        await page.locator("#say").fill("Discover two bounded catalog targets");await page.getByRole("button",{name:"Send",exact:true}).click();
-        const turn=await wait(async()=>(await rows("backend_chat_turn")).find(t=>JSON.parse(t.config).message==="Discover two bounded catalog targets"));
+        const suggestion=page.getByRole("button",{name:/Discover two catalog drones/});await suggestion.waitFor();
+        const heldSuggestion=await suggestion.elementHandle(),point=await suggestion.boundingBox();assert.ok(point);
+        await page.mouse.move(point.x+point.width/2,point.y+point.height/2);await page.mouse.down();
+        await page.evaluate(()=> (globalThis as any).auditSuggestionTick());
+        await page.mouse.up();assert.ok(await heldSuggestion!.evaluate(node=>node.isConnected),"Unrelated live updates must preserve the pressed suggestion button");
+        const turn=await wait(async()=>(await rows("backend_chat_turn")).find(t=>JSON.parse(t.config).message==="Discover two catalog drones"));
+        await page.waitForFunction(()=>Array.from(document.querySelectorAll<HTMLButtonElement>("#suggest button")).every(b=>b.disabled));
+        await page.locator("#say").fill("Explain another question while the first request is pending");await page.getByRole("button",{name:"Send",exact:true}).click();
+        await page.waitForFunction(()=>document.querySelector("#error")?.textContent?.includes("pending"));
+        await page.waitForTimeout(600);assert.match(await page.locator("#error").innerText(),/pending/);
+
         await reserve(turn.id);await reply(turn.id,{intent:"deploy",answer:"Discover the two assigned synthetic catalog targets.",evidenceIds:[],tasks:[8,10].map((target,i)=>({name:`Observer ${i+1}`,specialty:"recon",target,targets:[target],objective:"Verify catalog discovery",goal:"recon"}))});
         const op=(await rows("backend_chat")).find(o=>JSON.parse(o.config).turnId===turn.id),plan=await operation(op.id);
         await page.waitForFunction(()=>document.querySelectorAll("#agents .agent").length===2);
-        for(const task of plan.config.tasks)await reserve((await latest(op.id,task.agentId)).id);
+        await reserve((await latest(op.id,plan.config.tasks[0].agentId)).id);
+        await page.waitForFunction(()=> (globalThis as any).auditViewport().count>0);
+        await page.evaluate(()=> (globalThis as any).auditSelect(8));await page.locator("#say").fill("");await page.locator("#say").press("Tab");
+        assert.equal(await page.locator("#say").inputValue(),"Explain the current operation");await page.locator("#say").press("Enter");
+        const followup=await wait(async()=>(await rows("backend_chat_turn")).find(t=>JSON.parse(t.config).message==="Explain the current operation"));
+        assert.equal(JSON.parse(followup.config).target,null,"Tab acceptance preserves the suggestion's broad scope instead of the selected drone");
+        await reserve(followup.id);await reply(followup.id,{intent:"answer",answer:"Fixture: one recon assignment remains active.",evidenceIds:[],tasks:[]});
+        await reserve((await latest(op.id,plan.config.tasks[1].agentId)).id);
         await page.waitForFunction(()=>document.querySelectorAll("#agents .agent").length===0);
         await page.waitForFunction(id=>/2 of 2 objectives verified/.test(document.querySelector(`[data-turn-id="${id}"]`)?.textContent??""),turn.id);
         assert.match(await page.locator(`[data-turn-id="${turn.id}"]`).innerText(),/Discover the two assigned synthetic catalog targets/);
