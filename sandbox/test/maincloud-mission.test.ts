@@ -256,7 +256,9 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
         await page.waitForFunction(()=>document.querySelectorAll("#agents .agent").length===2);
         await reserve((await latest(op.id,plan.config.tasks[0].agentId)).id);
         await page.waitForFunction(()=> (globalThis as any).auditViewport().count>0);
-        await page.evaluate(()=> (globalThis as any).auditSelect(8));await page.locator("#say").fill("");await page.locator("#say").press("Tab");
+        await page.evaluate(()=> (globalThis as any).auditSelect(8));
+        await page.waitForFunction(()=>!document.querySelector<HTMLButtonElement>("#suggest button")?.disabled&&document.querySelector("#suggest button")?.textContent?.includes("Explain the current operation"));
+        await page.locator("#say").fill("");await page.locator("#say").press("Tab");
         assert.equal(await page.locator("#say").inputValue(),"Explain the current operation");await page.locator("#say").press("Enter");
         const followup=await wait(async()=>(await rows("backend_chat_turn")).find(t=>JSON.parse(t.config).message==="Explain the current operation"));
         assert.equal(JSON.parse(followup.config).target,null,"Tab acceptance preserves the suggestion's broad scope instead of the selected drone");

@@ -261,3 +261,28 @@ release WASM and Vercel static build.** An actual credentialed local run complet
 on two drones, then used one specialist on selected DR-001: prepare → command →
 server-verified capture, with three calls for that mission. This is local provider evidence,
 not a claim about every possible model response. No shared production reset was used.
+
+## Suggestion interaction and discovery replies, 2026-10-25
+
+Live snapshots previously rebuilt suggestion buttons when unrelated telemetry changed,
+which could detach a pressed button before mouse-up. Rendering now compares the actual
+offers and reuses the existing list patcher. Buttons show their disabled state while a
+request is being sent or awaiting its reply. Submission errors use the existing status
+area and survive successful cache refreshes; connection errors remain separate.
+
+An explicit SDK `SenderError` now clears the rejected pending submission, matching HTTP
+4xx handling. `UnknownCallResultError` still preserves the same idempotency key for retry.
+Tab acceptance carries the offered target scope through Enter instead of silently using
+the currently selected drone.
+
+Discovery suggestions name currently undiscovered, permitted catalog IDs. The ambiguous
+“Discover drones on FC-01” template is removed. Coordinator context identifies FC-01 as
+the existing fleet controller, and prompts/schema annotations distinguish operator replies
+from routing labels and separate required targets from alternative scopes. A bare routing
+label is rejected visibly; no fixture decision or fabricated clarification is substituted.
+
+The browser regression holds a suggestion through an unrelated subscription update,
+checks one durable submission, exposes a rejected follow-up, and then submits a Tab-accepted
+broad question while a drone is selected. A real Bitdeer run in a disposable local database
+verified recon on 1/2, followed by the new discovery suggestion verifying 3/4. These local
+provider decisions are separate from fixture-driven UI tests. No production reset is used.

@@ -2,8 +2,8 @@
 
 All state-changing runs used temporary local databases. The public frontend was inspected
 read-only. No production publish, reset, DNS change, merge or credit purchase occurred.
-Real-provider requests: **68 / 100**, including coordinators, specialists and cancelled work.
-No further real calls were made after the final run. Fixture tests make no Bitdeer calls.
+Real-provider requests: **71 / 100**, including coordinators, specialists and cancelled work.
+The three full runs used 68 calls; the post-integration selected-target check used 3 more. No further real calls were made after that check. Fixture tests make no Bitdeer calls.
 
 Audit correction: the initial existing public-browser smoke read its shipped role configuration
 and made read-only scoped-view queries before failing on removed controls. That was outside
@@ -18,7 +18,8 @@ used for mutations; all subsequent state-changing checks used locally generated 
 | Attack + explanation | Same / real Bitdeer | Each run captured DR-001 while DR-002 resisted; persisted partial completion, never 2/2 success. Initial explanation incorrectly inferred hardening; tightened instructions yielded an explicit unknown cause. [Partial outcome](attack-partial.png). |
 | Continue unresolved work | First disposable run / real Bitdeer | Model selected spread from captured DR-001; persisted spread succeeded and affected DR-002, with a separate resisted neighbor. This is a fresh bounded mission, not replenishment of an old mission. [Initial report](provider-initial.json). Not rerun after prompt tightening to conserve budget. |
 | Defense recovery / participation | Three disposable runs / real Bitdeer | Initial plan chose `recover`, cleaning two drones but leaving them isolated. Fixed goal instructions selected `restore`. Second run recovered and released DR-001, 200/200 available. Final run recovered DR-001 but two resisted releases led to decision-budget exhaustion: 199/200 available, one isolated, no active terminal agents. Both outcomes retained. [Successful restoration](restoration-success.png), [final report](provider-final.json). |
-| Observer assessment | Disposable production WASM / real records | 2 unique tested targets / 200, 198 unknown, one historical paired recovery, one isolated in final run. Evidence selection, current-policy distinction, reload and forced socket reconnect verified; no private table/chat reads or mutations permitted by observer credential. [Laptop](assessment-laptop.png), [narrow](assessment-narrow.png). |
+| Observer assessment | Disposable production WASM / real records | 2 unique tested targets / 200, 198 unknown, one historical paired recovery, one isolated in final run. Evidence selection, current-policy distinction, reload and forced socket reconnect verified; no private table/chat reads or mutations permitted by observer credential. [Laptop](assessment-laptop.png), [narrow](assessment-narrow.png). The later toolbar fix is shown in the [final fixture browser screenshot](final-fixture-narrow.png), separately labelled fixture evidence. |
+| Post-integration selected target | Final merged production WASM / fixture discovery, real Bitdeer plan and actions | Contributor `ebbf9a4` was integrated after the full runs. Seeded only DR-001 discovery; one real capture specialist chose prepare then command and completed capture in 3 calls. No fixture security outcome. [Merged smoke](provider-selected-merged.json), `scripts/check-judge-selected.ts`. |
 | Stop | Disposable / real provider + deterministic fixtures | Final real run observed running inference then immediately cancelled via scoped reducer; late result could not revive work, UI showed persisted stop. Browser `Stop.` during held fixture inference also tested. [Final report](provider-final.json), `maincloud-mission.test.ts`. |
 | Delayed reconnect | Disposable / fixture decisions, actual Chromium | Delayed config during reconnect retains 200 last-known drones and marks assessment disconnected. Live requires a populated subscription snapshot. No synthetic progress while offline. `maincloud-mission.test.ts`. |
 | Reset / New Chat / refresh / roles | Disposable / fixtures | Active inference and pending attempts fenced by epoch/generation; active New Chat preserves epoch; three swarm resets preserve history and pad; Reset Demo clears current chats; refresh/role switches restore persisted state. Same test. |
@@ -54,3 +55,5 @@ documents private tables and caller-specific views. The official
 [Bitdeer chat completion API](https://developers.bitdeer.ai/docs/api/bitdeer-llm/inference/create-chat-completion)
 documents the fixed endpoint and JSON-schema output option used here. Local code and
 actual reducer/provider evidence, rather than documentation alone, establish these runs.
+
+Final integrated verification: **87 Node tests, zero failures/skips; 14 native Rust tests**, release WASM, fleet/static builds and TypeScript passed. The contributor merge preserves the matching retry fix, explicit discovery assignments, controller catalog identity, and both sets of regression checks. Browser-test assets now use a separate ignored output path so normal builds cannot remove test hooks.

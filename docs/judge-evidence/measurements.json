@@ -2,8 +2,9 @@
   "actualProviderRequests": {
     "initial": 25,
     "restoration": 21,
-    "final": 22,
-    "total": 68,
+    "finalFullJourney": 22,
+    "postIntegrationSelected": 3,
+    "total": 71,
     "limit": 100
   },
   "conditions": "Disposable standalone SpacetimeDB 2.13.0 / production WASM / Chromium SwiftShader / 200 synthetic drones",
@@ -43,17 +44,18 @@
       "outcome": "budget_exhausted"
     }
   ],
-  "wasmSha256": "f759094518043bbf5edd9fa22ab102d3edc6da32abd8cfa37a2d527bcb038c8d",
   "fixtureTimings": {
     "simulation": [
       {
-        "queueReceiptToResolvedMs": 4069
+        "queueReceiptToResolvedMs": 3957
       },
       {
-        "queueReceiptToResolvedMs": 3733
+        "queueReceiptToResolvedMs": 3833
       }
     ],
-    "persistedToVisibleMs": 312,
+    "persistedToVisibleMs": 279,
     "method": "Fixture decisions, real database: action queue receipt to observed resolution; recon persistence receipt to visible terminal summary. Includes HTTP/polling overhead; not GPU render time."
-  }
+  },
+  "fullRunWasmSha256": "f759094518043bbf5edd9fa22ab102d3edc6da32abd8cfa37a2d527bcb038c8d",
+  "mergedWasmSha256": "f15e8421fe38b3ad361cd3c2b29468d5c27bdb27074a33e8bf7e5524e44bd81b"
 }

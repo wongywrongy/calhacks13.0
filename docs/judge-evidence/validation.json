@@ -1,8 +1,8 @@
 {
   "at": "2026-10-25T10:17:21.887Z",
   "node": {
-    "tests": 86,
-    "pass": 86,
+    "tests": 87,
+    "pass": 87,
     "fail": 0,
     "skipped": 0,
     "command": "SPACETIME_BINARY=... PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=... MIGRATION_FROM_WASM=... npm test"
@@ -20,5 +20,6 @@
     "Generated public bindings unchanged except trailing blank lines",
     "Impeccable mechanical detector: no findings"
   ],
-  "environment": "SpacetimeDB 2.13.0 standalone, disposable per-test databases, installed Chromium in SwiftShader mode; fixture decisions unless the provider reports explicitly say otherwise"
+  "environment": "SpacetimeDB 2.13.0 standalone, disposable per-test databases, installed Chromium in SwiftShader mode; fixture decisions unless the provider reports explicitly say otherwise",
+  "integration": "Includes contributor ebbf9a4; merged production WASM also passed selected-target Bitdeer smoke (3 calls; fixture discovery only)."
 }

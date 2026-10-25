@@ -1,0 +1,400 @@
+{
+  "scope": "Disposable production WASM; selected DR-001; fixture discovery only, actual Bitdeer planning and specialist actions",
+  "priorRequests": 68,
+  "passed": true,
+  "turn": {
+    "state": "completed",
+    "result": {
+      "intent": "deploy",
+      "metric": {
+        "agentId": 0,
+        "at": 1792923670871,
+        "durationMs": 1063,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "coordinator",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 104,
+          "prompt_tokens": 5279,
+          "total_tokens": 5383
+        }
+      },
+      "operationId": "230ebd8b-8ae9-4099-9a8b-70fad6c8f80a"
+    }
+  },
+  "operation": {
+    "id": "230ebd8b-8ae9-4099-9a8b-70fad6c8f80a",
+    "state": "completed",
+    "config": {
+      "completionConditions": [
+        {
+          "agentId": 2,
+          "goal": "capture",
+          "required": 1,
+          "targets": [
+            1
+          ]
+        }
+      ],
+      "conversation": 1,
+      "createdAt": 1792923670833,
+      "deadline": 1792923745833,
+      "epoch": 1,
+      "maxDecisionsPerAgent": 8,
+      "maxModelCalls": 33,
+      "message": "Attempt entry on DR-001 using one capture specialist. Report the measured outcome honestly.",
+      "models": {
+        "coordinator": "zai-org/GLM-5.3-Flash",
+        "specialist": "zai-org/GLM-5.3-Flash"
+      },
+      "objective": "- Deploying one capture specialist on DR-001 to attempt entry; effects are simulated and fallible.\n- Measured outcome will be reported from actual operation results, not assumptions.",
+      "replans": 0,
+      "target": 1,
+      "tasks": [
+        {
+          "agentId": 2,
+          "goal": "capture",
+          "name": "Entry-1",
+          "objective": "Attempt entry on DR-001 and report the measured outcome honestly.",
+          "specialty": "capture entry",
+          "target": 1
+        }
+      ],
+      "turnId": "b924975f-5bac-4c04-8368-ad57f30f0648"
+    },
+    "records": [
+      {
+        "agentId": 0,
+        "at": 1792923670871,
+        "durationMs": 1063,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "coordinator",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 104,
+          "prompt_tokens": 5279,
+          "total_tokens": 5383
+        }
+      },
+      {
+        "agentId": 2,
+        "at": 1792923671934,
+        "error": null,
+        "reason": "",
+        "state": "queued",
+        "target": 1,
+        "type": "worker"
+      },
+      {
+        "agentId": 2,
+        "at": 1792923671967,
+        "error": null,
+        "reason": "Choosing the next permitted action.",
+        "state": "deciding",
+        "target": 1,
+        "type": "worker"
+      },
+      {
+        "agentId": 2,
+        "at": 1792923671967,
+        "durationMs": 760,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "specialist",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 67,
+          "prompt_tokens": 1284,
+          "total_tokens": 1351
+        }
+      },
+      {
+        "actionId": "230ebd8b-8ae9-4099-9a8b-70fad6c8f80a:2:1",
+        "agentId": 2,
+        "at": 1792923676734,
+        "evidenceId": 2,
+        "evidenceIds": [
+          1
+        ],
+        "explanation": "Discovery for DR-001 is confirmed (evidence 1). Preparing before the entry command to improve the attempt's success odds.",
+        "kind": "prepare",
+        "outcome": "attempt_resolved",
+        "policyVersion": 0,
+        "responseStatus": 409,
+        "simulation": {
+          "at": 1792923676575764,
+          "outcome": "attempt_resolved",
+          "partial": 0,
+          "results": [
+            {
+              "beforeContamination": 0,
+              "beforeController": "defender",
+              "beforeIsolated": false,
+              "contamination": 0,
+              "controller": "defender",
+              "eligible": true,
+              "evidenceIds": [],
+              "factors": {
+                "base": 85,
+                "chance": 85,
+                "exposure": 0,
+                "foothold": 0,
+                "preparation": 0,
+                "readiness": 0,
+                "recentCountermeasure": 0
+              },
+              "isolated": false,
+              "openedRoutes": [],
+              "partial": false,
+              "reason": "resisted",
+              "roll": 89,
+              "success": false,
+              "target": 1
+            }
+          ],
+          "simulated": true,
+          "succeeded": 0,
+          "summary": "Attempt failed: targets resisted.",
+          "total": 1
+        },
+        "stage": "resolved",
+        "stateKey": "504d4e5bb440e7e8",
+        "status": "executed",
+        "step": 1,
+        "target": 1,
+        "verificationEvidenceIds": []
+      },
+      {
+        "agentId": 2,
+        "at": 1792923672727,
+        "error": null,
+        "reason": "Waiting for the authoritative simulated attempt result.",
+        "state": "executing",
+        "target": 1,
+        "type": "worker"
+      },
+      {
+        "agentId": 2,
+        "at": 1792923676734,
+        "error": null,
+        "reason": "Observing the latest result before choosing another action.",
+        "state": "observing",
+        "target": 1,
+        "type": "worker"
+      },
+      {
+        "agentId": 2,
+        "at": 1792923676778,
+        "error": null,
+        "reason": "Choosing the next permitted action.",
+        "state": "deciding",
+        "target": 1,
+        "type": "worker"
+      },
+      {
+        "agentId": 2,
+        "at": 1792923676778,
+        "durationMs": 1208,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "specialist",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 150,
+          "prompt_tokens": 1746,
+          "total_tokens": 1896
+        }
+      },
+      {
+        "actionId": "230ebd8b-8ae9-4099-9a8b-70fad6c8f80a:2:2",
+        "agentId": 2,
+        "at": 1792923681987,
+        "evidenceId": 4,
+        "evidenceIds": [
+          1,
+          2
+        ],
+        "explanation": "Last entry attempt on DR-001 was resisted (roll 89 vs 85). Repeating the same command is ineligible, so I'll prepare first to raise the odds before a modified retry.",
+        "kind": "command",
+        "outcome": "unauthorized_command_accepted",
+        "policyVersion": 0,
+        "responseStatus": 200,
+        "simulation": {
+          "at": 1792923681576168,
+          "outcome": "unauthorized_command_accepted",
+          "partial": 0,
+          "results": [
+            {
+              "beforeContamination": 0,
+              "beforeController": "defender",
+              "beforeIsolated": false,
+              "contamination": 100,
+              "controller": "attacker",
+              "eligible": true,
+              "evidenceIds": [
+                3
+              ],
+              "factors": {
+                "base": 40,
+                "chance": 40,
+                "exposure": 0,
+                "foothold": 0,
+                "preparation": 0,
+                "readiness": 0,
+                "recentCountermeasure": 0
+              },
+              "isolated": false,
+              "openedRoutes": [
+                2,
+                21
+              ],
+              "partial": false,
+              "reason": "succeeded",
+              "roll": 6,
+              "success": true,
+              "target": 1
+            }
+          ],
+          "simulated": true,
+          "succeeded": 1,
+          "summary": "Success: 1 drone(s) compromised.",
+          "total": 1
+        },
+        "stage": "resolved",
+        "stateKey": "edf6652d061639f2",
+        "status": "executed",
+        "step": 2,
+        "target": 1,
+        "verificationEvidenceIds": []
+      },
+      {
+        "agentId": 2,
+        "at": 1792923677986,
+        "error": null,
+        "reason": "Waiting for the authoritative simulated attempt result.",
+        "state": "executing",
+        "target": 1,
+        "type": "worker"
+      },
+      {
+        "agentId": 2,
+        "at": 1792923681987,
+        "error": null,
+        "reason": "Objective verified by simulation state.",
+        "state": "completed",
+        "target": 1,
+        "type": "worker"
+      },
+      {
+        "at": 1792923681987,
+        "completed": 1,
+        "conditions": [
+          {
+            "acceptedTargets": [
+              1
+            ],
+            "agentId": 2,
+            "goal": "capture",
+            "target": 1,
+            "verified": true
+          }
+        ],
+        "outcome": "verified_success",
+        "total": 1,
+        "type": "mission"
+      }
+    ]
+  },
+  "attempts": [
+    {
+      "key": "230ebd8b-8ae9-4099-9a8b-70fad6c8f80a:2:1",
+      "epoch": 1,
+      "operation": "230ebd8b-8ae9-4099-9a8b-70fad6c8f80a",
+      "role": "attacker",
+      "agent": 2,
+      "target": 1,
+      "kind": "prepare",
+      "stage": "resolved",
+      "at": 1792923676575764,
+      "report": "{\"at\":1792923676575764,\"outcome\":\"attempt_resolved\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":false,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[],\"factors\":{\"base\":85,\"chance\":85,\"exposure\":0,\"foothold\":0,\"preparation\":0,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":false,\"openedRoutes\":[],\"partial\":false,\"reason\":\"resisted\",\"roll\":89,\"success\":false,\"target\":1}],\"simulated\":true,\"succeeded\":0,\"summary\":\"Attempt failed: targets resisted.\",\"total\":1}"
+    },
+    {
+      "key": "230ebd8b-8ae9-4099-9a8b-70fad6c8f80a:2:2",
+      "epoch": 1,
+      "operation": "230ebd8b-8ae9-4099-9a8b-70fad6c8f80a",
+      "role": "attacker",
+      "agent": 2,
+      "target": 1,
+      "kind": "command",
+      "stage": "resolved",
+      "at": 1792923681576168,
+      "report": "{\"at\":1792923681576168,\"outcome\":\"unauthorized_command_accepted\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":false,\"contamination\":100,\"controller\":\"attacker\",\"eligible\":true,\"evidenceIds\":[3],\"factors\":{\"base\":40,\"chance\":40,\"exposure\":0,\"foothold\":0,\"preparation\":0,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":false,\"openedRoutes\":[2,21],\"partial\":false,\"reason\":\"succeeded\",\"roll\":6,\"success\":true,\"target\":1}],\"simulated\":true,\"succeeded\":1,\"summary\":\"Success: 1 drone(s) compromised.\",\"total\":1}"
+    }
+  ],
+  "evidence": [
+    {
+      "id": 1,
+      "epoch": 1,
+      "at": 1792923670520177,
+      "actor": 1,
+      "drone": 1,
+      "kind": "discovered",
+      "status": 200,
+      "policy_version": 0
+    },
+    {
+      "id": 2,
+      "epoch": 1,
+      "at": 1792923676575764,
+      "actor": 2,
+      "drone": 1,
+      "kind": "attempt_resolved",
+      "status": 409,
+      "policy_version": 0
+    },
+    {
+      "id": 3,
+      "epoch": 1,
+      "at": 1792923681576168,
+      "actor": 2,
+      "drone": 1,
+      "kind": "unauthorized_command_accepted",
+      "status": 200,
+      "policy_version": 0
+    },
+    {
+      "id": 4,
+      "epoch": 1,
+      "at": 1792923681576168,
+      "actor": 2,
+      "drone": 1,
+      "kind": "attempt_resolved",
+      "status": 200,
+      "policy_version": 0
+    }
+  ],
+  "actualBitdeerRequests": 3,
+  "totalOvernightRequests": 71
+}

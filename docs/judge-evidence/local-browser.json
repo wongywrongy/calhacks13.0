@@ -8,27 +8,27 @@
     168
   ],
   "heapBefore": {
-    "usedSize": 11481996,
-    "totalSize": 14151680,
-    "embedderHeapUsedSize": 2289640,
-    "backingStorageSize": 4177111
+    "usedSize": 10840052,
+    "totalSize": 13627392,
+    "embedderHeapUsedSize": 2384000,
+    "backingStorageSize": 4176389
   },
   "heapAfter": {
-    "usedSize": 11193484,
-    "totalSize": 13103104,
-    "embedderHeapUsedSize": 2194720,
-    "backingStorageSize": 4178024
+    "usedSize": 11324008,
+    "totalSize": 13627392,
+    "embedderHeapUsedSize": 2153432,
+    "backingStorageSize": 4185592
   },
   "timings": {
     "simulation": [
       {
-        "queueReceiptToResolvedMs": 4069
+        "queueReceiptToResolvedMs": 3957
       },
       {
-        "queueReceiptToResolvedMs": 3733
+        "queueReceiptToResolvedMs": 3833
       }
     ],
-    "persistedToVisibleMs": 312,
+    "persistedToVisibleMs": 279,
     "method": "Fixture decisions, real database: action queue receipt to observed resolution; recon persistence receipt to visible terminal summary. Includes HTTP/polling overhead; not GPU render time."
   }
 }
