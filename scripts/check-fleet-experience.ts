@@ -1,3 +1,4 @@
+import { FLEET } from "../shared/fleet.ts";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -31,7 +32,7 @@ globalThis.fetch = async (input: any, init?: any) => {
 const db = await testDatabase();
 const env = { ...process.env, ...db.env, FLEET_PUBLIC_URI: db.env.SPACETIME_URI, SUDOKO_PUBLIC_ORIGIN: "", BITDEER_API_KEY: "mock-only", SUDOKO_DEMO_MODE: "1" };
 const service = await startService({ operatorToken: randomBytes(32).toString("hex"), env });
-await service.store.call("start_fleet", [48, 0, 0, false]);
+await service.store.call("start_fleet", [FLEET.drones, 0, 0, false]);
 const call = service.store.call.bind(service.store);
 service.store.call = async (name, args) => {
   if (mode === "partial" && name === "execute_fleet_chat_action") {
@@ -81,7 +82,7 @@ try {
   assert.equal((await conversation()).operations.length, 0);
   assert.equal(calls, 0);
   await page.waitForFunction(() => document.querySelector("#transcript")?.textContent?.includes("currently compromised"));
-  assert.match(await page.locator("#transcript").innerText(), /48 drones; 0 currently compromised/);
+  assert.match(await page.locator("#transcript").innerText(), new RegExp(`${FLEET.drones} drones; 0 currently compromised`));
   report.checks.push("Exact fleet-status question is read-only, concise and uses no model call");
   const accepted = await send("Deploy two agents to contain affected drones and verify control.");
   const running = await waitOp(false);

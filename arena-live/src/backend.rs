@@ -550,7 +550,7 @@ pub fn create_chat_turn(ctx:&ReducerContext,session:String,id:String,key:String,
     let message=v["message"].as_str().filter(|m|!m.trim().is_empty()&&m.len()<=8000).ok_or("Invalid message")?;
     let target=v["target"].as_u64().unwrap_or(0);
     let deadline=v["deadline"].as_i64().ok_or("Missing turn deadline")?;
-    if deadline<=now(ctx)||deadline>now(ctx)+30000||target>256{return Err("Invalid turn budget".into())}
+    if deadline<=now(ctx)||deadline>now(ctx)+30000||target>u64::from(crate::formation::MAX_DRONES){return Err("Invalid turn budget".into())}
     if target>0{crate::fleet::validate_chat_target(ctx,&role,target as u32)?;}
     append_chat_message(ctx,config_generation(&config),format!("{}:user",key),&role,"","operator",message.into(),target as u32)?;
     append_chat_message(ctx,config_generation(&config),format!("{}:accepted",id),&role,"","coordinator","Message accepted. Considering your request…".into(),target as u32)?;

@@ -137,7 +137,7 @@ Implementation files: `arena-live/src/resilience.rs`, `arena-live/src/fleet.rs`,
 `sandbox/src/fleet-outcome.ts`, `sandbox/src/fleet-web.ts`, `web/fleet.ts`,
 `web/fleet.html`, `web/fleet-chat.ts`, `sandbox/test/resilience.test.ts`,
 `scripts/check-resilience.ts`, `package.json`, and `README.md`. Legacy checks now select
-48 drones explicitly in `scripts/check-fleet-chat.ts`,
+the shared default count explicitly in `scripts/check-fleet-chat.ts`,
 `scripts/check-fleet-conversation.ts`, and `scripts/check-fleet-experience.ts`.
 Both `web/module_bindings/` and `sandbox/module_bindings/` contain regenerated indexes,
 types and the three new `visible_resilience_*_table.ts` view bindings.

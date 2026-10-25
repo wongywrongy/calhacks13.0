@@ -1,3 +1,4 @@
+import { FLEET } from "../shared/fleet.ts";
 import assert from "node:assert/strict";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
@@ -14,21 +15,21 @@ const wait=async (fn:()=>Promise<any>,ms=85000)=>{const until=Date.now()+ms;whil
 const clients:MaincloudChat[]=[];
 try {
   const initial=rows(owner("SELECT * FROM fleet_session"));
-  if(!initial.length) callOwner("start_fleet",[120,0,0,false]);
+  if(!initial.length) callOwner("start_fleet",[FLEET.drones,0,0,false]);
   const before=rows(owner("SELECT * FROM fleet_drone"));
-  assert.equal(before.length,120);
+  assert.equal(before.length,FLEET.drones);
   if (!initial.length) assert.equal(rows(owner("SELECT * FROM fleet_agent")).length,0);
   await delay(800);
   const after=rows(owner("SELECT * FROM fleet_drone"));
   assert.ok(after.every((d:any)=>d.tick>before.find((v:any)=>v.id===d.id).tick));
-  report.checks.push("120 persisted drones update independently; initialization deploys zero agents");
+  report.checks.push(`${FLEET.drones} persisted drones update independently; initialization deploys zero agents`);
   for(const role of ["attacker","defender"]){
     const client=await MaincloudChat.connect({...config,...config.workspaces[role]});clients.push(client);
     const snapshot=await client.snapshot();
     assert.ok(snapshot.messages.every((m:any)=>!m.role||m.role===role));
     const privateRead=await fetch(`${config.uri}/v1/database/${config.database}/sql`,{method:"POST",headers:{authorization:`Bearer ${config.workspaces[role].token}`},body:"SELECT * FROM hosted_job"});
     assert.ok(!privateRead.ok,"Role must not read inference reservations");
-    const forbidden=await fetch(`${config.uri}/v1/database/${config.database}/call/start_fleet`,{method:"POST",headers:{authorization:`Bearer ${config.workspaces[role].token}`,"content-type":"application/json"},body:JSON.stringify([120,0,0,false])});
+    const forbidden=await fetch(`${config.uri}/v1/database/${config.database}/call/start_fleet`,{method:"POST",headers:{authorization:`Bearer ${config.workspaces[role].token}`,"content-type":"application/json"},body:JSON.stringify([FLEET.drones,0,0,false])});
     assert.ok(!forbidden.ok,"Role cannot start arbitrary fixture fleet");
   }
   const [attack,defend]=clients;
@@ -69,7 +70,7 @@ try {
     await defend.reset(state.fleet.epoch,true);
     await wait(async()=> (await defend.snapshot()).fleet.epoch>state.fleet.epoch,10000);
     const reset=await defend.snapshot();
-    assert.equal(rows(owner("SELECT * FROM fleet_drone")).length,120);
+    assert.equal(rows(owner("SELECT * FROM fleet_drone")).length,FLEET.drones);
     assert.equal(rows(owner("SELECT * FROM fleet_agent")).length,0);
     await assert.rejects(attack.submit(crypto.randomUUID(),"Stale work",0,state.fleet.epoch,reset.conversation),/Stale/);
     const stale=await fetch(`${config.uri}/v1/database/${config.database}/call/reset_maincloud_fleet`,{method:"POST",headers:{authorization:`Bearer ${config.workspaces.attacker.token}`,"content-type":"application/json"},body:JSON.stringify([reset.fleet.epoch,true])});assert.ok(!stale.ok);
@@ -79,7 +80,7 @@ try {
     const jobs=rows(owner("SELECT * FROM hosted_job"));
     report.jobs=jobs.map(({id,operation,agent,state,started,finished,result}:any)=>({id,operation,agent,state,started,finished,result}));
     assert.ok(jobs.filter((j:any)=>j.agent===0&&j.epoch===state.fleet.epoch).some((j:any)=>j.state==="failed"));
-    report.checks.push("Reset retains 120 drones, clears active agents, rejects stale epoch and attacker reset, discards a real in-flight provider completion");
+    report.checks.push(`Reset retains ${FLEET.drones} drones, clears active agents, rejects stale epoch and attacker reset, discards a real in-flight provider completion`);
     const concurrent=jobs.flatMap((j:any)=>j.started?[{at:j.started,n:1},{at:j.finished||Date.now(),n:-1}]:[]).sort((a:any,b:any)=>a.at-b.at||a.n-b.n);
     let active=0,max=0;for(const e of concurrent){active+=e.n;max=Math.max(max,active)}assert.ok(max<=4);report.maxConcurrent=max;
     const budgets=rows(owner("SELECT * FROM hosted_budget"));assert.ok(budgets.every((b:any)=>b.calls<=33));report.budgets=budgets;

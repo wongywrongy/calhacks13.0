@@ -90,7 +90,7 @@ pub fn set_battle_seed(ctx:&ReducerContext,seed:u64)->Result<(),String>{
  let mut b=ctx.db.battle_state().id().find(0).unwrap();b.seed=seed;ctx.db.battle_state().id().update(b);Ok(())
 }
 // Fixed logical grid links, independent of presentation positions and animations.
-fn adjacent(a:u32,b:u32)->bool {a!=b&&((a-1)/16==(b-1)/16&&a.abs_diff(b)==1||a.abs_diff(b)==16)}
+fn adjacent(a:u32,b:u32)->bool {let cols=crate::formation::COLUMNS;a!=b&&((a-1)/cols==(b-1)/cols&&a.abs_diff(b)==1||a.abs_diff(b)==cols)}
 fn health(ctx:&ReducerContext,id:u32)->Health{ctx.db.battle_drone().drone().find(id).unwrap()}
 fn connected_sources(ctx:&ReducerContext,target:u32)->Vec<u32>{
  if ctx.db.fleet_drone().id().find(target).map(|d|d.isolated).unwrap_or(true){return vec![]}
@@ -288,7 +288,7 @@ pub(super) fn receipt(ctx:&ReducerContext,key:&str)->Option<Value>{ctx.db.battle
 #[cfg(test)]
 mod tests {
  use super::*;
- #[test]fn graph_is_local(){assert!(adjacent(1,2));assert!(adjacent(1,17));assert!(!adjacent(16,17));assert!(!adjacent(1,3));}
+ #[test]fn graph_is_local(){let cols=crate::formation::COLUMNS;assert!(adjacent(1,2));assert!(adjacent(1,cols+1));assert!(!adjacent(cols,cols+1));assert!(!adjacent(1,3));}
  #[test]fn quality_is_bounded_and_reproducible(){
   let (weak,_)=chance("spread",0,false,false,0,false);let (strong,_)=chance("spread",2,true,true,0,false);let (defended,_)=chance("spread",2,true,true,90,true);
   assert!(strong>weak&&defended<strong);assert!(strong<=90&&defended>=5);

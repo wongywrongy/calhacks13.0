@@ -6,8 +6,9 @@ fleet is separate from the local HTTP scenario suite. No real aircraft are invol
 
 Database: `sudoko-maincloud-20261025` at `https://maincloud.spacetimedb.com`.
 The previous `sudoko-chat-live-20261024` database is retained intact for rollback;
-publishing a module does not copy its rows or grants. The replacement has explicitly
-provisioned role grants and a new 120-drone session, with zero agents until prompted.
+publishing a module does not copy its rows or grants. New-session defaults come from
+`shared/fleet.json`; publishing preserves the current session count and role grants.
+New sessions have zero agents until prompted.
 
 `backend::hosted` in `arena-live/src/maincloud.rs` schedules conversation decisions and
 specialist loops. It reuses the existing prompts, chat tables, plan validation,
@@ -43,8 +44,8 @@ on Maincloud despite an older 500 ms comment in the installed HTTP client's sour
    frontend configuration, a table view, a prompt, or a browser credential.
 3. `npm run maincloud:prepare` provisions attacker/defender identities and saves scoped
    demo configuration under ignored `output/maincloud/`. It never resets existing data.
-   On a new empty database only, initialize with `spacetime call -s maincloud sudoko-maincloud-20261025 start_fleet 120 0 0 false -y`.
-4. `npm run test:maincloud` checks the real connection, 120 updating rows, subscriptions,
+   On a new empty database only, initialize with `spacetime call -s maincloud sudoko-maincloud-20261025 start_fleet "$(node -p "require('./shared/fleet.json').drones")" 0 0 false -y`.
+4. `npm run test:maincloud` checks the real connection, the configured number of updating rows, subscriptions,
    private-table denial and owner-only mutation rejection. Add `-- --live` only for an
    explicitly intended paid model interaction and shared reset: it verifies takeover,
    defense, reconnect, budgets, concurrency and rejection of an in-flight completion after reset.
@@ -56,7 +57,7 @@ on Maincloud despite an older 500 ms comment in the installed HTTP client's sour
 6. `node scripts/check-maincloud-browser.ts` verifies the deployed browser, both guided
    roles, laptop layout, refresh, forced WebSocket reconnect and absence of legacy requests.
    `--send --reset` also runs the actual judge challenge/defense flow, follows evidence,
-   and resets to 120 drones with zero agents. Use `MAINCLOUD_FRONTEND_URL` for a candidate.
+   and resets to the configured session count with zero agents. Use `MAINCLOUD_FRONTEND_URL` for a candidate.
 
 The browser subscribes directly to identity-scoped fleet/chat views and invokes scoped
 reducers through SpacetimeDB. Maincloud reconnect uses Maincloud again, without an API
@@ -81,4 +82,10 @@ worktrees, unreachable commits and the remote's branch listing. Available uncomm
 fleet/reset/resilience/viewport work was preserved on `preserve/pre-maincloud-workspace`
 and integrated with latest main `be8a54b` on `feat/maincloud-runtime`. Compact controls,
 Activity, viewport, concise conversation, and the newer judge/findings flow are retained;
-the new default is 120 actual persisted drones.
+the default is read from `shared/fleet.json` (200 actual persisted drones).
+
+Fleet defaults, layout and cap live in `shared/fleet.json`. Rust embeds this file at build
+time; TypeScript imports it. Rebuild WASM and browser assets together after a change.
+Updating code does not reset an existing session: an existing smaller fleet keeps its
+count until an operator explicitly starts a new default-size session. This destroys the
+old battle/chat state; do not run the initialization command on a live session casually.

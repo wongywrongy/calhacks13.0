@@ -1,3 +1,4 @@
+import { FLEET } from "../shared/fleet.ts";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -101,7 +102,7 @@ const output = demo
     : "output/fleet-ui-smoke";
 await mkdir(output, { recursive: true });
 try {
-  await service.store.call("start_fleet", [48, 0, 0, false]);
+  await service.store.call("start_fleet", [FLEET.drones, 0, 0, false]);
   let fleet: any;
   assert.equal(
     (await service.store.query("SELECT * FROM fleet_session")).length,

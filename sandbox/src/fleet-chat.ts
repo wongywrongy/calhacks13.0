@@ -1,3 +1,4 @@
+import { FLEET } from "../../shared/fleet.ts";
 import { goalActions, goalSatisfied, validGoal, type Goal } from "./fleet-goals.ts";
 import prompts from "../../shared/fleet-prompts.json" with { type: "json" };
 import { resilienceContext, resilienceActions, RESILIENCE_COORDINATOR, RESILIENCE_SPECIALIST } from "./resilience.ts";
@@ -177,7 +178,7 @@ export class FleetChat {
   }
   private async validateTarget(role: ChatRole, target?: number) {
     if (target === undefined) return;
-    if (!Number.isInteger(target) || target < 1 || target > 256)
+    if (!Number.isInteger(target) || target < 1 || target > FLEET.maxDrones)
       return reject(400, "Invalid selected drone");
     const [drone] = await this.store.query(
       `SELECT * FROM fleet_drone WHERE id=${target}`,
@@ -365,7 +366,7 @@ export class FleetChat {
         .map((m: any) => ({ speaker: m.speaker, text: m.text.slice(0, 700), target: m.target }));
       const taskSchema = {
         type: "object", additionalProperties: false, required: ["name", "specialty", "target", "objective", "goal"],
-        properties: { name: { type: "string" }, specialty: { type: "string" }, target: { type: "integer", minimum: 1, maximum: fleet?.drones || 256 }, objective: { type: "string" }, goal: { type: "string", enum: ["recon","capture","spread","contain","recover","restore","harden"] } },
+        properties: { name: { type: "string" }, specialty: { type: "string" }, target: { type: "integer", minimum: 1, maximum: fleet?.drones || FLEET.maxDrones }, objective: { type: "string" }, goal: { type: "string", enum: ["recon","capture","spread","contain","recover","restore","harden"] } },
       };
       const schema = { type: "object", additionalProperties: false, required: ["intent", "answer", "evidenceIds", "tasks"], properties: {
         intent: { type: "string", enum: ["answer", "clarify", "deploy", "replace"] }, answer: { type: "string" },
@@ -376,12 +377,12 @@ export class FleetChat {
         stage: "coordinator", tokens: CHAT_LIMITS.coordinatorTokens, timeoutMs: CHAT_LIMITS.coordinatorTimeoutMs, metric, progress,
         schema, system: {
           task: resilience ? RESILIENCE_COORDINATOR : prompts.coordinator,
-          role, agents: { min: 2, max: 4 }, targets: { min: 1, max: fleet?.drones || 256 },
+          role, agents: { min: 2, max: 4 }, targets: { min: 1, max: fleet?.drones || FLEET.maxDrones },
           allowed: resilience ? ["discover", ...resilienceActions(role)] : role === "attacker" ? ["discover", "prepare", "command", "spread", "wait"] : ["prepare", "isolate", "harden", "verify", "release", "wait"],
         }, input: { message: config.message, selectedTarget: config.target, history: recent,
           eligibleOptions: options.filter((o:any)=>o.role===role).map(({drone,actions,reachable,blocker}:any)=>({target:drone,actions,reachable,blocker})),
           session: { active: fleet?.active ?? false, epoch: fleet?.epoch ?? null },
-          catalog: { targetIds: Array.from({ length: fleet?.drones || 256 }, (_, i) => i + 1), communicationGraph: "16-column grid; links join horizontal neighbors in the same row and IDs 16 apart; isolation breaks incident links", discoveryAvailableBeforeObservation: role === "attacker" },
+          catalog: { targetIds: Array.from({ length: fleet?.drones || FLEET.maxDrones }, (_, i) => i + 1), communicationGraph: `${FLEET.columns}-column grid; links join horizontal neighbors in the same row and IDs ${FLEET.columns} apart; isolation breaks incident links`, discoveryAvailableBeforeObservation: role === "attacker" },
           observations, battle: battle.filter((h: any) => role === "defender" || known.has(h.drone)).map((h: any) => ({ drone: h.drone, contamination: h.contamination,
             prepared: role === "attacker" ? h.attack_prepared : h.defense_prepared, ...(role === "defender" ? { readiness: h.readiness } : {}) })),
           evidence: visibleEvidence, operations: recentOps, resilience },
@@ -390,8 +391,8 @@ export class FleetChat {
             : !["answer", "clarify", "deploy", "replace"].includes(v.intent) ? "intent"
             : typeof v.answer !== "string" || !v.answer.trim() || v.answer.length > 2000 ? "answer"
             : !Array.isArray(v.evidenceIds) || v.evidenceIds.length > 16 || !v.evidenceIds.every((n: any) => Number.isSafeInteger(n) && evidenceIdsAllowed.has(n)) ? "evidence_references"
-            : !Array.isArray(v.tasks) || (["deploy", "replace"].includes(v.intent) ? !this.validTasks(v.tasks, fleet?.drones || 256, config.target, role) : v.tasks.length !== 0) ? "assignments" : undefined;
-          if (metric.validationFailure === "assignments") metric.assignmentValidation = { intent: v.intent, count: v.tasks?.length, tasks: Array.isArray(v.tasks) ? v.tasks.slice(0, 4).map((t: any) => ({ fields: object(t, ["name", "specialty", "target", "objective", "goal"]), nameFormat: validGoal(role,t.goal) && typeof t.name === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,27}$/.test(t.name) && t.name.trim() === t.name, specialtyFormat: typeof t.specialty === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,47}$/.test(t.specialty), objectiveLength: typeof t.objective === "string" ? t.objective.length : null, targetInRange: Number.isInteger(t.target) && t.target >= 1 && t.target <= (fleet?.drones || 256), targetMatches: config.target === null || config.target === t.target })) : [] };
+            : !Array.isArray(v.tasks) || (["deploy", "replace"].includes(v.intent) ? !this.validTasks(v.tasks, fleet?.drones || FLEET.maxDrones, config.target, role) : v.tasks.length !== 0) ? "assignments" : undefined;
+          if (metric.validationFailure === "assignments") metric.assignmentValidation = { intent: v.intent, count: v.tasks?.length, tasks: Array.isArray(v.tasks) ? v.tasks.slice(0, 4).map((t: any) => ({ fields: object(t, ["name", "specialty", "target", "objective", "goal"]), nameFormat: validGoal(role,t.goal) && typeof t.name === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,27}$/.test(t.name) && t.name.trim() === t.name, specialtyFormat: typeof t.specialty === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{0,47}$/.test(t.specialty), objectiveLength: typeof t.objective === "string" ? t.objective.length : null, targetInRange: Number.isInteger(t.target) && t.target >= 1 && t.target <= (fleet?.drones || FLEET.maxDrones), targetMatches: config.target === null || config.target === t.target })) : [] };
           return !metric.validationFailure;
         },
       });

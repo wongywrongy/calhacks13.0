@@ -2,6 +2,9 @@
 !package.json
 !package-lock.json
 !tsconfig.json
+!shared/
+!shared/fleet.ts
+!shared/fleet.json
 !vercel.json
 !scripts/
 scripts/*

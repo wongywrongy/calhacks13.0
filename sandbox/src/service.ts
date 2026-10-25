@@ -1,3 +1,4 @@
+import { FLEET } from "../../shared/fleet.ts";
 import { createServer } from "node:http";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { pathToFileURL } from "node:url";
@@ -544,7 +545,7 @@ export async function startService(options: {
         if (typeof b.hardened !== "boolean")
           fail(400, "Explicit hardened boolean required");
         await fleetCall("start_fleet", [
-          integer(b.drones, 1, 256, "drones"),
+          integer(b.drones ?? FLEET.drones, 1, FLEET.maxDrones, "drones"),
           integer(b.attackers, 0, 32, "attackers"),
           integer(b.defenders, 0, 32, "defenders"),
           b.hardened,

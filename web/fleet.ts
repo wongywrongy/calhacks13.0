@@ -6,7 +6,8 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { droneGeometry, FleetLines, ViewportResolution, DuskBackdrop, basinHeight, outpostGeometry } from "./fleet-render.ts";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { display, FlockClock, linkFade, neighbours, type Formation } from "./flock.ts";
+import { display, FlockClock, linkFade, neighbours } from "./flock.ts";
+import { FLEET, slot } from "../shared/fleet.ts";
 import { DbConnection } from "./module_bindings/index.ts";
 
 type Role = "attacker" | "defender" | "observer";
@@ -108,11 +109,6 @@ const workerFor = (id: number): Worker | undefined =>
 const assignedTarget = (a: Agent) => workerFor(a.id)?.target ?? a.target;
 
 /* ---------- derived metrics (evidence rows + visible drones only) ---------- */
-// Mirrors formation::slot in arena-live/src/formation.rs.
-const slot = (id: number) => [
-  ((id - 1) % 16) * 6,
-  Math.floor((id - 1) / 16) * 7,
-];
 const median = (v: number[]) => {
   const s = [...v].sort((a, b) => a - b),
     m = s.length >> 1;
@@ -131,13 +127,13 @@ function formationOf(drones: Drone[]) {
     zAll = median(healthy.map((d) => d.z));
   const colZ = new Map<number, number[]>();
   for (const d of healthy) {
-    const c = (d.id - 1) % 16;
+    const c = (d.id - 1) % FLEET.columns;
     if (!colZ.has(c)) colZ.set(c, []);
     colZ.get(c)!.push(d.z);
   }
   for (const d of drones) {
     const [sx, sy] = slot(d.id),
-      zs = colZ.get((d.id - 1) % 16);
+      zs = colZ.get((d.id - 1) % FLEET.columns);
     const e: [number, number, number] = [
       sx + ox,
       sy + oy,
@@ -1144,16 +1140,17 @@ const outposts = new THREE.InstancedMesh(outpostGeometry(), new THREE.MeshStanda
 outposts.name = "illustrative-outposts";
 scene.add(outposts);
 let terrainKey = "";
+function padHalfSize(box: THREE.Box3) {
+  const extent = Math.max(Math.abs(box.min.x), Math.abs(box.max.x), Math.abs(box.min.z), Math.abs(box.max.z));
+  return Math.ceil((extent + 14) / FLEET.spacing) * FLEET.spacing;
+}
 function buildTerrain(box: THREE.Box3) {
-  const key = [box.min.x, box.max.x, box.min.z, box.max.z]
-    .map((v) => Math.round(v / 6))
-    .join();
+  const half = padHalfSize(box), key = String(half);
   if (key === terrainKey) return;
   terrainKey = key;
-  const cx = (box.min.x + box.max.x) / 2,
-    cz = (box.min.z + box.max.z) / 2,
-    hx = (box.max.x - box.min.x) / 2 + 14,
-    hz = (box.max.z - box.min.z) / 2 + 14,
+  const cx = 0, cz = 0,
+    hx = half,
+    hz = hx,
     size = 1400,
     seg = 128;
   const geo = new THREE.PlaneGeometry(size, size, seg, seg).rotateX(
@@ -1209,7 +1206,7 @@ function buildTerrain(box: THREE.Box3) {
   outposts.computeBoundingSphere();
 }
 
-const sceneryBox = new THREE.Box3(new THREE.Vector3(-3, 0, -3), new THREE.Vector3(93, 14, 24));
+const sceneryBox = new THREE.Box3(new THREE.Vector3(-12, 0, -12), new THREE.Vector3(12, 14, 12));
 buildTerrain(sceneryBox);
 
 // Per-drone parts. Neighbours can come within ~4 m, so every marker stays under a 2 m radius.
@@ -1414,7 +1411,7 @@ function meshDrone(id: number) {
     tone: "blue",
     phase: (id * 0.37) % 1,
     // Displayed position eases toward the latest database position between updates.
-    // Displayed position = flock warp of the eased database position (raw/want), in Three axes.
+    // Database coordinates eased between updates, converted to Three axes.
     pos: new THREE.Vector3(),
     raw: new THREE.Vector3(),
     want: new THREE.Vector3(),
@@ -1431,10 +1428,7 @@ function meshDrone(id: number) {
   return root;
 }
 let lastT = 0;
-/* ---------- flock: display-only warp of the slot grid (web/flock.ts) ---------- */
-// Formation origin eases toward the measured one so a changing median never snaps the shape.
-const form: Formation = { ox: 0, oy: 0, rows: 3 },
-  formWant: Formation = { ox: 0, oy: 0, rows: 3 };
+/* ---------- formation rendering ---------- */
 /** Database axes [x, y, z] -> displayed Three position, optionally posing the model. */
 function place(
   raw: THREE.Vector3,
@@ -1444,8 +1438,8 @@ function place(
   model?: THREE.Object3D,
 ) {
   const pose = reduced.matches
-    ? display([raw.x, raw.z, raw.y], id, form)
-    : display([raw.x, raw.z, raw.y], id, form, clock.t, clock.sync);
+    ? display([raw.x, raw.z, raw.y], id)
+    : display([raw.x, raw.z, raw.y], id, clock.t, clock.sync);
   out.set(pose.x, pose.z, pose.y);
   model?.rotation.set(pose.pitch, pose.yaw, pose.roll);
   return out;
@@ -1526,12 +1520,9 @@ function updateInstances() {
       mesh.instanceMatrix.needsUpdate = true;
     }
 }
-// Ease database positions (~0.15 s); jumps over 30 m snap (scrubbing). Display adds the flock warp.
+// Ease database positions (~0.15 s); jumps over 30 m snap when scrubbing a replay.
 function glide(dt: number, now: number) {
   const k = reduced.matches ? 1 : 1 - Math.exp(-dt / 0.15);
-  form.ox += (formWant.ox - form.ox) * k;
-  form.oy += (formWant.oy - form.oy) * k;
-  form.rows = formWant.rows;
   let moving = false;
   for (const g of drones.values()) {
     if (!g.visible) continue;
@@ -1760,7 +1751,6 @@ function mapScene(d: Derived) {
     if (!g.visible)
       g.userData.ghost.visible = g.userData.tether.visible = false;
   }
-  formWant.rows = 1;
   for (const x of frame.drones) {
     let g = drones.get(x.id);
     if (!g) {
@@ -1773,11 +1763,6 @@ function mapScene(d: Derived) {
     u.comp = d.state(x) === "comp";
     u.want.set(x.x, x.z, x.y);
     const e = d.expected.get(x.id);
-    if (e) {
-      formWant.ox = e[0] - slot(x.id)[0];
-      formWant.oy = e[1] - slot(x.id)[1];
-    }
-    formWant.rows = Math.max(formWant.rows, Math.floor((x.id - 1) / 16) + 1);
     const off = (d.deviation.get(x.id) ?? 0) > OFF_FORMATION_M;
     u.ghost.visible = u.tether.visible = !!e && off;
     if (e) u.ghostWant.set(e[0], e[2], e[1]);
@@ -2199,15 +2184,14 @@ let overhead = false;
 let fitted = "";
 let userMoved = false;
 let dragging = false;
-const DIR_PERSP = new THREE.Vector3(0.14, 0.20, 1).normalize(),
+const DIR_PERSP = new THREE.Vector3(0.28, 0.65, 1).normalize(),
   DIR_TOP = new THREE.Vector3(0, 1, 0.002).normalize();
-// Frame the visible fleet with the real frustum: a 48-drone strip is 90 m x 14 m, a
-// 256-drone block is 90 m x 105 m, and both should fill the map at any aspect ratio.
-/** Displayed position of a drone: the live one when known, else the static flock shape. */
+// Fit only visible positions and the square operating pad, never a hidden fleet total.
+/** Displayed position of a drone: interpolated when available, otherwise authoritative. */
 function shown(d: Drone) {
   const u = drones.get(d.id)?.userData;
   if (u && !u.fresh) return (u.pos as THREE.Vector3).clone();
-  const p = display([d.x, d.y, d.z], d.id, form);
+  const p = display([d.x, d.y, d.z], d.id);
   return new THREE.Vector3(p.x, p.z, p.y);
 }
 function fit(force = false) {
@@ -2229,7 +2213,7 @@ function fit(force = false) {
   // The first frame can arrive before the ResizeObserver corrects the default aspect of 1.
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  const { dist, target, box } = solve(frame.drones);
+  const { dist, target, box } = solve(frame.drones, true);
   buildTerrain(n ? box : sceneryBox);
   controls.maxDistance = Math.max(900, dist * 2);
   controls.target.copy(target);
@@ -2240,12 +2224,18 @@ function fit(force = false) {
   redraw();
 }
 /** Solve the camera distance and target that frame `list`; leaves the camera placed there. */
-function solve(list: Drone[]) {
+function solve(list: Drone[], includePad = false) {
   const box = list.length ? new THREE.Box3() : sceneryBox.clone();
   for (const d of list) box.expandByPoint(shown(d));
   box.min.y = 0;
-  // Margin covers the flow waves (±3.5 m lateral, ±4.5 m altitude) on top of the static shape.
+  // Margin covers marker size, interpolation and the shared formation sweep.
   box.expandByVector(new THREE.Vector3(10, 8, 12));
+  const terrainBox = box.clone();
+  if (includePad) {
+    const half = padHalfSize(box);
+    box.min.x = box.min.z = -half;
+    box.max.x = box.max.z = half;
+  }
   const corners = Array.from(
     { length: 8 },
     (_, i) =>
@@ -2308,7 +2298,7 @@ function solve(list: Drone[]) {
       );
   }
   place(dist);
-  return { dist, target, box };
+  return { dist, target, box: terrainBox };
 }
 function reframe() {
   userMoved = false;

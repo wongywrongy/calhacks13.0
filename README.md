@@ -29,7 +29,7 @@ Requires Node 24, a Rust toolchain with `wasm32-unknown-unknown`, and SpacetimeD
 ```bash
 npm ci
 npm run spacetime:build
-SPACETIME_BINARY=/path/to/spacetimedb-standalone npm run test:fleet   # 128 drones / 32 agents integration check
+SPACETIME_BINARY=/path/to/spacetimedb-standalone npm run test:fleet   # configured fleet / 32 agents integration check
 SPACETIME_BINARY=/path/to/spacetimedb-standalone npm run demo:fleet   # verify, then serve on :4174
 npm run export:fleet                                                   # static recorded replay
 ```
@@ -231,3 +231,6 @@ The deployed app uses the existing persistent `sudoko-chat-live-20261024` databa
 `.demo.env`, and `output/deployment/backend.env` configuration in that order; it does
 not provision a database. `npm run smoke:resilience` verifies that deployed connection
 with real models, without spawning SpacetimeDB or clearing the shared session.
+
+Fleet defaults and layout live in [`shared/fleet.json`](shared/fleet.json). The default is
+200 drones in a centered square formation; see [validation and screenshots](docs/FLEET_200_VALIDATION.md).
