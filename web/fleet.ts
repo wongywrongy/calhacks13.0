@@ -3,6 +3,20 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { DbConnection } from "./module_bindings/index.ts";
+import {
+  type Grid,
+  type Trail,
+  Segments,
+  TRAIL_DT,
+  centre,
+  drawTrail,
+  flow,
+  margin,
+  newTrail,
+  phase,
+  pushTrail,
+  warp,
+} from "./flock.ts";
 
 type Role = "attacker" | "defender" | "observer";
 type Drone = {
@@ -1165,6 +1179,20 @@ const tetherMat = new THREE.LineDashedMaterial({
 });
 const ghosts = new THREE.Group();
 scene.add(ghosts);
+// Flock layer (web/flock.ts): flight trails and the cohesion net between neighbouring slots.
+const trails = new Segments(4096),
+  links = new Segments(1024);
+scene.add(trails.mesh, links.mesh);
+const TONE_COL = Object.fromEntries(
+  Object.entries({ red: 0xf02d38, blue: 0x5b9dff, green: 0x2bd47f, grey: 0xa9b4c1, dim: 0x77818d }).map(
+    ([k, v]) => [k, new THREE.Color(v)],
+  ),
+) as Record<"red" | "blue" | "green" | "grey" | "dim", THREE.Color>;
+const grid: Grid = { rows: 1, offX: 0, offZ: 0 },
+  gridWant: Grid = { rows: 1, offX: 0, offZ: 0 };
+let gridFresh = true;
+let linkPairs: [number, number][] = [],
+  linkKey = "";
 const DRONE_SCALE = 1.45; // model is ~2.4 m across
 const body = new THREE.BoxGeometry(1.2, 0.3, 0.65),
   arm = new THREE.BoxGeometry(2.4, 0.09, 0.12),
@@ -1250,6 +1278,21 @@ function meshDrone(id: number) {
     tether,
     tone: "blue",
     phase: (id * 0.37) % 1,
+    // Flock layer state: displayed pose, in-step pose, sync weight and flow clock.
+    disp: new THREE.Vector3(),
+    inStep: new THREE.Vector3(),
+    comp: false,
+    hasSlot: false,
+    sync: 1,
+    clock: NaN,
+    ph: [phase(id), phase(id, 3.1), phase(id, 7.3)],
+    scatter: new THREE.Vector3(
+      1.2 * Math.sin(phase(id, 3.7)),
+      1.8 * Math.sin(phase(id, 2.3)),
+      1.2 * Math.sin(phase(id, 5.1)),
+    ),
+    trail: newTrail() as Trail,
+    trailReset: false,
     // Displayed position eases toward the latest database position between updates.
     pos: new THREE.Vector3(),
     want: new THREE.Vector3(),
@@ -1271,27 +1314,119 @@ function glide(dt: number) {
       u.pos.copy(u.want);
       u.ghostPos.copy(u.ghostWant);
       u.fresh = false;
+      u.trailReset = true;
     } else {
       if (u.pos.distanceToSquared(u.want) > 1e-4) moving = true;
       u.pos.lerp(u.want, k);
       u.ghostPos.lerp(u.ghostWant, k);
     }
-    g.position.set(u.pos.x, 0, u.pos.z);
-    u.craft.position.y = u.pos.y;
-    u.stem.scale.y = Math.max(0.01, u.pos.y - 0.3);
-    if (u.ghost.visible) {
-      u.ghost.position.copy(u.ghostPos);
-      const a = u.tether.geometry.attributes.position as THREE.BufferAttribute;
-      a.setXYZ(0, u.ghostPos.x, u.ghostPos.y, u.ghostPos.z);
-      a.setXYZ(1, u.pos.x, u.pos.y, u.pos.z);
-      a.needsUpdate = true;
-      u.tether.computeLineDistances();
-    }
   }
   return moving;
 }
+// Display-only flock pass: database positions (eased above) -> swept wing -> flock flow.
+// A compromised drone leaves the shared flow clock and loses cohesion; see web/flock.ts.
+const warped = new THREE.Vector3(),
+  flockC = new THREE.Vector3(),
+  att = { yaw: 0, roll: 0, pitch: 0 },
+  attStep = { yaw: 0, roll: 0, pitch: 0 },
+  uv = { u: 0, v: 0 },
+  linkCol = new THREE.Color();
+let sampleAcc = 0;
+function flock(t: number, dt: number) {
+  const still = reduced.matches,
+    tau = t / 1000;
+  const k = still ? 1 : 1 - Math.exp(-dt / 0.15);
+  grid.rows += (gridWant.rows - grid.rows) * k;
+  if (gridFresh || Math.hypot(gridWant.offX - grid.offX, gridWant.offZ - grid.offZ) > 30) {
+    Object.assign(grid, gridWant);
+    gridFresh = false;
+  } else {
+    grid.offX += (gridWant.offX - grid.offX) * k;
+    grid.offZ += (gridWant.offZ - grid.offZ) * k;
+  }
+  centre(grid, flockC);
+  sampleAcc += dt;
+  const sample = !still && sampleAcc >= TRAIL_DT;
+  if (sample) sampleAcc = 0;
+  trails.begin();
+  for (const g of drones.values()) {
+    if (!g.visible) continue;
+    const u = g.userData;
+    const want = u.comp ? 0 : 1;
+    // Takeover breaks sync quickly; a recovered drone rejoins over a couple of seconds.
+    u.sync = still ? want : u.sync + (want - u.sync) * (1 - Math.exp(-dt / (want ? 2.2 : 0.7)));
+    // Flow clock: a compromised drone's clock runs slow, so it misses the flock's turns;
+    // once recovered it runs fast until it is back in phase, then locks.
+    if (Number.isNaN(u.clock) || still) u.clock = tau;
+    else if (u.comp) u.clock += dt * 0.45;
+    else {
+      const behind = tau - u.clock;
+      u.clock = behind < 0.03 ? tau : u.clock + dt * (1 + Math.min(1.5, behind * 0.8));
+    }
+    // In-step pose: where the drone would fly with the flock (ghost slot, link rest length).
+    // Each drone keeps a fixed scatter around its slot so the flock reads loose, not gridded.
+    const slotPos = u.hasSlot ? u.ghostPos : u.pos;
+    warp(grid, slotPos.x, slotPos.y, slotPos.z, warped, uv).add(u.scatter);
+    flow(grid, flockC, warped, uv, tau, still ? 0 : 1, u.inStep, attStep);
+    // Displayed pose: the drone's own database position on its own flow clock.
+    warp(grid, u.pos.x, u.pos.y, u.pos.z, warped, uv).add(u.scatter);
+    flow(grid, flockC, warped, uv, u.clock, still ? 0 : u.sync, u.disp, att);
+    const loose = still ? 0 : 1 - u.sync,
+      [p1, p2, p3] = u.ph as number[];
+    if (loose > 0.001) {
+      u.disp.x += loose * (1.3 * Math.sin(tau * 2.1 + p1) + 0.25 * Math.sin(tau * 11 + p2));
+      u.disp.y = Math.max(1.2, u.disp.y + loose * (0.7 * Math.sin(tau * 3.3 + p2) + 0.2 * Math.sin(tau * 13 + p3)));
+      u.disp.z += loose * (1.3 * Math.sin(tau * 1.7 + p3) + 0.25 * Math.sin(tau * 9 + p1));
+    }
+    g.position.set(u.disp.x, 0, u.disp.z);
+    u.craft.position.y = u.disp.y;
+    u.stem.scale.y = Math.max(0.01, u.disp.y - 0.3);
+    // Fly level with the flock's bank and heading; a compromised drone tumbles off-axis.
+    u.model.rotation.set(
+      att.pitch + loose * 0.42 * Math.sin(tau * 2.6 + p1),
+      att.yaw + loose * 0.9 * Math.sin(tau * 0.8 + p3),
+      -att.roll + loose * 0.5 * Math.sin(tau * 1.9 + p2),
+    );
+    if (u.ghost.visible) {
+      u.ghost.position.copy(u.inStep);
+      const a = u.tether.geometry.attributes.position as THREE.BufferAttribute;
+      a.setXYZ(0, u.inStep.x, u.inStep.y, u.inStep.z);
+      a.setXYZ(1, u.disp.x, u.disp.y, u.disp.z);
+      a.needsUpdate = true;
+      u.tether.computeLineDistances();
+    }
+    if (u.trailReset) {
+      u.trail.n = 0;
+      u.trailReset = false;
+    }
+    if (still) continue;
+    if (sample) pushTrail(u.trail, u.disp);
+    const tone = u.tone as keyof typeof TONE_COL;
+    drawTrail(trails, u.trail, u.disp, TONE_COL[tone], u.comp ? 0.8 : u.sync < 0.97 ? 0.55 : 0.34);
+  }
+  trails.finish();
+  // Cohesion net: links stretch as neighbours fall out of step and snap past ~1.75x.
+  links.begin();
+  for (const [ia, ib] of linkPairs) {
+    const a = drones.get(ia)?.userData,
+      b = drones.get(ib)?.userData;
+    if (!a || !b) continue;
+    const rest = Math.max(1, a.inStep.distanceTo(b.inStep)),
+      stretch = a.disp.distanceTo(b.disp) / rest;
+    const fade = 1 - THREE.MathUtils.smoothstep(stretch, 1.25, 1.75);
+    if (fade <= 0.01) continue;
+    const hot = a.comp || b.comp;
+    linkCol.copy(TONE_COL[hot ? "red" : (a.tone as keyof typeof TONE_COL)]);
+    const alpha =
+      fade * (hot ? 0.3 + 0.5 * Math.min(1, Math.max(0, (stretch - 1) / 0.5)) : 0.11);
+    links.write(a.disp.x, a.disp.y, a.disp.z, b.disp.x, b.disp.y, b.disp.z, linkCol, alpha, alpha);
+  }
+  links.finish();
+}
 function effects(t: number) {
-  const moving = glide(Math.min(0.1, (t - lastT) / 1000 || 0));
+  const dt = Math.min(0.1, (t - lastT) / 1000 || 0);
+  const moving = glide(dt);
+  flock(t, dt);
   lastT = t;
   if (reduced.matches) return moving;
   const k = 1 + 0.08 * Math.sin(t / 260);
@@ -1318,7 +1453,7 @@ function effects(t: number) {
 const tipSel = $("tip-sel"),
   tipHover = $("tip-hover");
 function screen(d: Drone) {
-  const shown = drones.get(d.id)?.userData.pos as THREE.Vector3 | undefined;
+  const shown = drones.get(d.id)?.userData.disp as THREE.Vector3 | undefined;
   const p = (
     shown && renderer ? shown.clone() : new THREE.Vector3(d.x, d.z, d.y)
   ).project(camera);
@@ -1449,8 +1584,40 @@ function mapScene(d: Derived) {
   const ids = new Set(frame.drones.map((x) => x.id));
   for (const [id, g] of drones) {
     g.visible = ids.has(id);
-    if (!g.visible)
+    if (!g.visible) {
       g.userData.ghost.visible = g.userData.tether.visible = false;
+      g.userData.trailReset = true;
+    }
+  }
+  // Flock frame: the formation's slot offset (from the measured healthy drones) and grid size.
+  let maxId = 0,
+    off: number[] | undefined;
+  for (const x of frame.drones) {
+    maxId = Math.max(maxId, x.id);
+    const e = d.expected.get(x.id);
+    if (!off && e) off = [e[0] - slot(x.id)[0], e[1] - slot(x.id)[1]];
+  }
+  if (!off && frame.drones.length)
+    off = [
+      median(frame.drones.map((x) => x.x - slot(x.id)[0])),
+      median(frame.drones.map((x) => x.y - slot(x.id)[1])),
+    ];
+  if (off) {
+    gridWant.offX = off[0];
+    gridWant.offZ = off[1];
+    gridWant.rows = Math.max(1, Math.ceil(maxId / 16));
+  }
+  // Neighbour links follow the slot lattice (right, below, diagonal) of visible drones.
+  const key = frame.drones.length + ":" + frame.drones.reduce((s, x) => (s * 31 + x.id) % 1e9, 7);
+  if (key !== linkKey) {
+    linkKey = key;
+    linkPairs = [];
+    for (const id of ids) {
+      const col = (id - 1) % 16;
+      if (col < 15 && ids.has(id + 1)) linkPairs.push([id, id + 1]);
+      if (ids.has(id + 16)) linkPairs.push([id, id + 16]);
+      if (col < 15 && ids.has(id + 17)) linkPairs.push([id, id + 17]);
+    }
   }
   for (const x of frame.drones) {
     let g = drones.get(x.id);
@@ -1463,6 +1630,9 @@ function mapScene(d: Derived) {
     g.visible = true;
     u.want.set(x.x, x.z, x.y);
     const e = d.expected.get(x.id);
+    u.hasSlot = !!e;
+    u.comp = d.state(x) === "comp";
+    if (u.fresh) u.sync = u.comp ? 0 : 1;
     const off = (d.deviation.get(x.id) ?? 0) > OFF_FORMATION_M;
     u.ghost.visible = u.tether.visible = !!e && off;
     if (e) u.ghostWant.set(e[0], e[2], e[1]);
@@ -1840,11 +2010,12 @@ function fit(force = false) {
   // The first frame can arrive before the ResizeObserver corrects the default aspect of 1.
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  const box = new THREE.Box3();
-  for (const d of frame.drones)
-    box.expandByPoint(new THREE.Vector3(d.x, d.z, d.y));
+  // Frame the swept flock shape plus room for its turns, not the raw slot grid.
+  const box = new THREE.Box3(),
+    v = new THREE.Vector3();
+  for (const d of frame.drones) box.expandByPoint(warp(gridWant, d.x, d.z, d.y, v));
   box.min.y = 0;
-  box.expandByVector(new THREE.Vector3(3, 1.5, 3));
+  box.expandByVector(margin(v));
   buildTerrain(box);
   const corners = Array.from(
     { length: 8 },
