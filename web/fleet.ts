@@ -1928,14 +1928,8 @@ function render(next: Frame) {
   if (modalAgent) fillModal(d);
   redraw();
 }
-function setStatus(text: string, kind: "live" | "stale" | "replay") {
-  const p = $("live");
-  p.textContent = kind === "live" && modelDriven
-    ? operationChat?.fleet?.active === false ? "Fleet ended"
-      : `Live · ${operationChat?.operation ? (operationChat.operation.outcome ?? fleetOutcome(operationChat.operation)).status : "Awaiting objective"}`
-    : kind === "live" ? "Live" : kind === "stale" ? text.startsWith("Disconnected") ? "Disconnected" : "Stale" : "Replay";
-  p.className = "pill " + (kind === "live" ? "" : kind);
-  p.title = text;
+function setStatus(_text: string, _kind: "live" | "stale" | "replay") {
+  // Live / connection pill removed from the header (redundant on a live page).
   renderJudgeGuide();
 }
 async function workspace(next: Role, reconnect = false) {

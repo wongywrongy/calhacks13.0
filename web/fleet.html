@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Sudo-KO · Synthetic resilience simulation</title>
+    <title>Sudo-KO Â· Synthetic resilience simulation</title>
     <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
@@ -295,33 +295,6 @@
       #timeline {
         width: 120px;
         accent-color: var(--team);
-      }
-      .pill {
-        width: max-content;
-        min-width: 64px;
-        padding: 0 10px;
-        white-space: nowrap;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: 600;
-        border: 1px solid #7ee8b0;
-        color: #7ee8b0;
-        background: var(--green-bg);
-        flex-shrink: 0;
-      }
-      .pill.stale {
-        border-color: var(--amber);
-        color: var(--amber);
-        background: var(--amber-bg);
-      }
-      .pill.replay {
-        border-color: var(--line2);
-        color: var(--grey);
-        background: #141e28;
       }
       .clock {
         width: 112px;
@@ -1008,8 +981,8 @@
       </div>
       <div class="h-mid">
         <div class="match">
-          <span id="match" class="ellipsis">Blue team · FC-01</span>
-          <span class="badge" id="badge">—</span>
+          <span id="match" class="ellipsis">Blue team Â· FC-01</span>
+          <span class="badge" id="badge">â€”</span>
         </div>
         <span id="context" class="sub ellipsis"></span>
       </div>
@@ -1022,7 +995,6 @@
           </button>
           <input id="timeline" type="range" min="0" max="1" value="0" aria-label="Scrub recording" />
         </div>
-        <span class="pill replay" id="live" role="status" title="Loading…">Connecting</span>
         <button id="reset-swarm" type="button" title="Restore the shared fleet and stop agents; keep conversations" hidden>Reset Swarm</button>
         <button id="reset-sandbox" type="button" title="Reset the shared fleet and both conversations" hidden>Reset Demo</button>
         <div class="clock">
@@ -1098,7 +1070,7 @@
           <span class="dot" id="modal-dot"></span>
           <span class="name" id="modal-name"></span>
           <span class="tag" id="modal-state"></span>
-          <button id="modal-close" aria-label="Close agent inspector">×</button>
+          <button id="modal-close" aria-label="Close agent inspector">Ã—</button>
         </div>
         <p id="modal-specialty"></p>
         <div id="modal-target"></div>
