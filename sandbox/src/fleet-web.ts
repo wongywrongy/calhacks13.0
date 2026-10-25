@@ -207,7 +207,6 @@ export function fleetWeb(options: {
         status: 200,
         body: {
           uri: (url.searchParams.get("internet") === "1" ? env.FLEET_INTERNET_URI : undefined) || env.FLEET_PUBLIC_URI || fleet.uri,
-          fallbackUri: url.searchParams.get("internet") === "1" && env.FLEET_INTERNET_URI !== env.FLEET_PUBLIC_URI ? env.FLEET_PUBLIC_URI : undefined,
           database: fleet.database,
           sandbox: fleet.database,
           role: viewer.role,
@@ -221,6 +220,18 @@ export function fleetWeb(options: {
           models: chatModels(env),
         },
       });
+      return true;
+    }
+    if (url.pathname === "/api/chat/state" && req.method === "GET") {
+      const reader = new RunStore({ ...fleet, token: viewer.token });
+      const [drones, agents, profiles, events] = await Promise.all(
+        ["visible_drones", "visible_agents", "visible_agent_profiles", "visible_evidence"].map((table) => reader.query(`SELECT * FROM ${table}`)),
+      );
+      send(res, { status: 200, body: {
+        drones,
+        agents: agents.map((agent: any) => ({ ...agent, ...profiles.find((profile: any) => profile.id === agent.id) })),
+        events: events.sort((a: any, b: any) => a.id - b.id),
+      } });
       return true;
     }
     if (viewer.role === "observer")

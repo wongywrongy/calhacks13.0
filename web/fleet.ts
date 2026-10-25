@@ -67,7 +67,7 @@ let role: Role = "defender",
   close = () => {},
   version = 0,
   live = false,
-  socketConnected = false,
+  stateConnected = false,
   lastReceived = 0,
   filter: "all" | "problems" | "you" = "all",
   onlySel = false,
@@ -1587,7 +1587,7 @@ async function workspace(next: Role) {
   if (next === role && operationChat) return;
   const v = ++version;
   close();
-  socketConnected = false;
+  stateConnected = false;
   lastReceived = 0;
   operationChat?.close();
   operationChat = undefined;
@@ -1682,6 +1682,34 @@ async function workspace(next: Role) {
     void operationChat.resume();
   }
   let attempt = 0;
+  const pollState = () => {
+    ++attempt;
+    close();
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    close = () => { stopped = true; clearTimeout(timer); };
+    const poll = async () => {
+      try {
+        const response = await fetch("/api/chat/state", {
+          signal: AbortSignal.timeout(8000),
+          headers: { "x-sudoko-role": role },
+        });
+        if (!response.ok) throw Error("Fleet state unavailable");
+        const snapshot: Frame = await response.json();
+        if (stopped || v !== version) return;
+        stateConnected = true;
+        lastReceived = Date.now();
+        render(snapshot);
+        setStatus("Connected · authoritative snapshots every second", "live");
+      } catch {
+        if (stopped || v !== version) return;
+        stateConnected = false;
+        setStatus("Disconnected · state frozen", "stale");
+      }
+      if (!stopped && v === version) timer = setTimeout(() => void poll(), 1000);
+    };
+    void poll();
+  };
   const connect = (uri: string) => {
     const current = ++attempt;
     const conn = DbConnection.builder()
@@ -1693,7 +1721,7 @@ async function workspace(next: Role) {
           c.disconnect();
           return;
         }
-        socketConnected = true;
+        stateConnected = true;
         let queued = false;
         const update = () => {
           if (queued) return;
@@ -1744,14 +1772,16 @@ async function workspace(next: Role) {
       })
       .onConnectError(() => {
         if (v !== version || current !== attempt) return;
-        socketConnected = false;
+        stateConnected = false;
         setStatus("Disconnected · state frozen", "stale");
-        // Tailnet DNS can resolve the public Funnel hostname to a different private TLS listener.
-        if (current === 1 && config.fallbackUri && uri !== config.fallbackUri)
-          connect(config.fallbackUri);
+        pollState();
       })
       .onDisconnect(() => {
-        if (v === version && current === attempt) { socketConnected = false; setStatus("Disconnected · state frozen", "stale"); }
+        if (v === version && current === attempt) {
+          stateConnected = false;
+          setStatus("Disconnected · state frozen", "stale");
+          pollState();
+        }
       })
       .build();
     close = () => conn.disconnect();
@@ -1957,7 +1987,7 @@ document.addEventListener("keydown", (e) => {
 });
 setInterval(() => {
   if (!live) return;
-  if (!socketConnected) { setStatus("Disconnected · state frozen", "stale"); return; }
+  if (!stateConnected) { setStatus("Disconnected · state frozen", "stale"); return; }
   const updated = modelDriven ? operationChat?.lastUpdated || lastReceived : lastReceived;
   if (updated && Date.now() - updated > 5000)
     setStatus("No recent backend updates · state frozen", "stale");

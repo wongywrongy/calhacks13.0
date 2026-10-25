@@ -178,6 +178,11 @@ test(
         cookies[role] = cookie.split(";")[0];
       }
       assert.equal((await browser("/api/chat/reset", "attacker", { epoch: fleet.epoch })).status, 403);
+      assert.equal((await browser("/api/chat/state", "none")).status, 401);
+      const attackerSnapshot = await browser("/api/chat/state", "attacker");
+      assert.equal(attackerSnapshot.status, 200);
+      assert.deepEqual(attackerSnapshot.body, { drones: [], agents: [], events: [] });
+      assert.equal((await browser("/api/chat/state", "defender")).body.drones.length, 4);
       assert.equal(
         (
           await browser("/api/chat/operations", "none", {

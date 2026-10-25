@@ -234,12 +234,18 @@ try {
     await page.route("**/fleet-config?role=*", async (route) => {
       const response = await route.fetch();
       const config = await response.json();
-      await route.fulfill({ response, json: { ...config, uri: "http://127.0.0.1:1", fallbackUri: config.uri } });
+      await route.fulfill({ response, json: { ...config, uri: "http://127.0.0.1:1" } });
     });
     await page.reload();
     await page.waitForFunction(() => document.querySelector("#live")?.textContent === "Live · Awaiting objective");
+    await switchTo("defender");
+    await page.waitForFunction(() => document.querySelector("#context")?.textContent?.includes("4 drones"));
+    await page.context().setOffline(true);
+    await page.waitForFunction(() => document.querySelector("#live")?.textContent === "Disconnected");
+    await page.context().setOffline(false);
+    await page.waitForFunction(() => document.querySelector("#live")?.textContent === "Live · Awaiting objective");
     await page.unroute("**/fleet-config?role=*");
-    report.checks.push("A failed primary subscription connects through the configured fallback without changing fleet or chat state");
+    report.checks.push("Failed WebSockets fall back to authenticated role-scoped HTTPS snapshots; offline freezes state, online recovers without changing fleet/history");
   }
   assert.deepEqual(errors, []);
   report.inferencePool = service.pool.status();
