@@ -16,6 +16,7 @@ const originalDraw = draw;
 draw = () => { const start = performance.now(); originalDraw(); drawSamples.push(performance.now()-start); if(drawSamples.length>2000)drawSamples.shift(); };
 Object.assign(globalThis, {formationCheck: () => ({
   resetCheck: () => { const saved = frame; render({...EMPTY, epoch: fleetEpoch + 1}); fit(true); const empty = pad.scale.toArray(); render({...saved, epoch: fleetEpoch}); fit(true); return {empty, restored: pad.scale.toArray()}; },
+  mode: cameraMode, following: camGoal.active,
   role, count: frame.drones.length, webgl: !!renderer, pad: {size: pad.scale.toArray(), center: pad.position.toArray()},
   positions: frame.drones.map(d=>[d.id,...shown(d).toArray()]), rawPositions: frame.drones.map(d=>[d.id,d.x,d.y,d.z]), points: frame.drones.map(d=>screen(d)),
   ground: [[-1,-1],[-1,1],[1,-1],[1,1]].map(([x,z]) => new THREE.Vector3(x*pad.scale.x/2,0,z*pad.scale.z/2).project(camera).toArray()),
@@ -52,8 +53,7 @@ try {
   await page.waitForFunction(count => (globalThis as any).formationCheck?.().instances === count, FLEET.drones);
   await page.waitForFunction(() => (globalThis as any).formationCheck().landscape === "ready");
   for (const name of ["fit", "top-down"]) {
-    if (name === "top-down") await page.locator("#camera").click();
-    await page.locator("#reframe").click();
+    await page.locator(name === "top-down" ? "#camera" : "#reframe").click();
     await page.waitForTimeout(300);
     const current = await state(page);
     assert.equal(current.webgl, true); assert.equal(current.count, FLEET.drones); assert.equal(current.instances, FLEET.drones);
@@ -62,10 +62,26 @@ try {
     for (const p of current.ground) assert.ok(Math.abs(p[0]) < 1 && Math.abs(p[1]) < 1 && p[2] < 1, "Fit keeps the whole square pad in view");
     assert.match(await page.locator("#context").innerText(), new RegExp(`${FLEET.drones} drones`));
     assert.match(await page.locator("#poss-bar").getAttribute("aria-label") ?? "", new RegExp(`blue holds ${FLEET.drones} of ${FLEET.drones}`));
-    await page.screenshot({ path: `docs/screenshots/fleet-${FLEET.drones}-${name}.png` });
+    await page.screenshot({ path: `${output}/fleet-${FLEET.drones}-${name}.png` });
     report[name] = current;
   }
   report.checks.push("Defend at 1440x900: centered flock waves, full instanced fleet and scoped counts in Fit and Top-down");
+  for (const [id, mode] of [["follow","follow"],["camera","top-down"],["reframe","fit"],["camera","top-down"],["follow","follow"],["reframe","fit"]]) {
+    await page.locator(`#${id}`).click();
+    assert.equal((await state(page)).mode,mode);
+    assert.equal(await page.locator('#cam button[aria-pressed="true"]').count(),1,"Only the selected camera mode stays active");
+    assert.equal(await page.locator(`#${id}`).getAttribute("aria-pressed"),"true");
+    if(mode!=="follow")assert.equal((await state(page)).following,false,"Changing modes cancels follow animation");
+  }
+  await page.locator("#follow").click();
+  const viewport=await page.locator("#viewport").boundingBox();assert.ok(viewport);
+  await page.mouse.move(viewport.x+viewport.width/2,viewport.y+viewport.height/2);await page.mouse.wheel(0,100);
+  assert.equal((await state(page)).mode,null,"Manual camera control leaves automatic modes");
+  assert.equal(await page.locator('#cam button[aria-pressed="true"]').count(),0);
+  await page.locator("#camera").click();await page.locator("#viewport").dblclick();
+  assert.equal((await state(page)).mode,"fit","Double-click Fit clears Top-down and Follow");
+  assert.equal(await page.locator('#cam button[aria-pressed="true"]').count(),1);
+  report.checks.push("Camera modes are exclusive; Fit and double-click cancel other modes; manual controls stop automation");
   const before = (await state(page)).rawPositions;
   await page.reload();
   await page.waitForFunction(count => (globalThis as any).formationCheck?.().instances === count, FLEET.drones);

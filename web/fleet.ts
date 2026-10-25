@@ -2250,7 +2250,7 @@ $("timeline").oninput = () => {
   setPlaying(false);
   seek(Number(($("timeline") as HTMLInputElement).value));
 };
-let overhead = false;
+let cameraMode: "fit" | "top-down" | "follow" | null = "fit";
 let fitted = "";
 let userMoved = false;
 let dragging = false;
@@ -2265,6 +2265,7 @@ function shown(d: Drone) {
   return new THREE.Vector3(p.x, p.z, p.y);
 }
 function fit(force = false) {
+  const overhead = cameraMode === "top-down";
   const n = frame.drones.length,
     w = host.clientWidth,
     h = host.clientHeight;
@@ -2295,6 +2296,7 @@ function fit(force = false) {
 }
 /** Solve the camera distance and target that frame `list`; leaves the camera placed there. */
 function solve(list: Drone[], includePad = false) {
+  const overhead = cameraMode === "top-down";
   const box = list.length ? new THREE.Box3() : sceneryBox.clone();
   for (const d of list) box.expandByPoint(shown(d));
   box.min.y = 0;
@@ -2369,15 +2371,20 @@ function solve(list: Drone[], includePad = false) {
   place(dist);
   return { dist, target };
 }
-function reframe() {
-  userMoved = false;
+function setCameraMode(mode: typeof cameraMode) {
+  cameraMode = mode;
+  userMoved = mode === null;
   camGoal.active = false;
-  fit(true);
+  for (const [id, value] of [["reframe", "fit"], ["camera", "top-down"], ["follow", "follow"]])
+    $(id).setAttribute("aria-pressed", String(mode === value));
+  if (mode !== null) fit(true);
+  if (mode === "follow") follow(derive(frame));
+}
+function reframe() {
+  setCameraMode("fit");
 }
 /* ---------- Follow: ease the camera onto drones whose state just changed ---------- */
-let followMode = false,
-  lastUserCam = -Infinity;
-const FOLLOW_PAUSE_MS = 5000, FOLLOW_WINDOW_MS = 6000;
+const FOLLOW_WINDOW_MS = 6000;
 const camGoal = { active: false, position: new THREE.Vector3(), target: new THREE.Vector3() };
 const prevState = new Map<number, string>(), changedAt = new Map<number, number>();
 /** Called from mapScene after fit(): remember state flips, then aim at the recent ones. */
@@ -2389,7 +2396,7 @@ function follow(d: Derived) {
     prevState.set(x.id, st);
   }
   for (const [id, t] of changedAt) if (now - t > FOLLOW_WINDOW_MS || !drones.get(id)?.visible) changedAt.delete(id);
-  if (!followMode || now - lastUserCam < FOLLOW_PAUSE_MS) return;
+  if (cameraMode !== "follow") return;
   const list = frame.drones.filter((x) => changedAt.has(x.id));
   if (!list.length) return;
   // solve() moves the camera while searching; take its answer as the goal and put the camera back.
@@ -2414,26 +2421,16 @@ function easeCamera(dt: number) {
 }
 controls.addEventListener("start", () => {
   dragging = true;
-  lastUserCam = performance.now();
-  camGoal.active = false;
+  setCameraMode(null);
 });
 controls.addEventListener("end", () => (dragging = false));
 controls.addEventListener("change", () => {
   if (dragging) userMoved = true;
   redraw();
 });
-$("camera").onclick = () => {
-  overhead = !overhead;
-  $("camera").setAttribute("aria-pressed", String(overhead));
-  reframe();
-};
+$("camera").onclick = () => setCameraMode("top-down");
 $("reframe").onclick = reframe;
-$("follow").onclick = () => {
-  followMode = !followMode;
-  $("follow").setAttribute("aria-pressed", String(followMode));
-  if (followMode) follow(derive(frame));
-  else camGoal.active = false;
-};
+$("follow").onclick = () => setCameraMode("follow");
 async function resetFleet(demo: boolean) {
   if (!demoMode || resetting) return;
   if (demo && !confirm("Reset the shared demo for both roles? This stops all agents, restores the fleet, and clears both conversations.")) return;
