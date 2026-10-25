@@ -1556,6 +1556,58 @@ function mapScene(d: Derived) {
 }
 
 /* ---------- render ---------- */
+// Guided entry uses existing role-scoped chat and persisted evidence only.
+function renderJudgeGuide() {
+  const host = $("judge-guide");
+  if (!host.childElementCount) {
+    host.append(el("strong", "", "Start a challenge → respond → inspect evidence"));
+    for (const [side, label, objective] of [
+      ["attacker", "1. Prepare challenge", "Discover the simulated fleet and test whether its command controls reject unauthorized actions. Report observed results."],
+      ["defender", "2. Prepare defense", "Investigate the current fleet incident, contain affected drones, and verify recovery while preserving legitimate control."],
+    ] as const) {
+      const button = el("button", "", label) as HTMLButtonElement;
+      button.type = "button";
+      button.onclick = async () => {
+        button.disabled = true;
+        try {
+          await workspace(side);
+          selected = 0;
+          const input = $("say") as HTMLInputElement;
+          input.value = objective;
+          input.focus();
+        } catch (error) { $("error").textContent = String(error); }
+        finally { button.disabled = false; }
+      };
+      host.append(button);
+    }
+    const status = el("p"); status.id = "judge-readiness"; host.append(status);
+    const details = el("details");
+    details.append(el("summary", "", "3. Findings and affected drones"));
+    const findings = el("div"); findings.id = "judge-findings"; details.append(findings); host.append(details);
+  }
+  $("judge-readiness").textContent = !live ? "Recorded run · choose Live to direct agents." :
+    !stateConnected ? "Waiting for live database connection. Results below are last known state." :
+    !operationChat ? "Database connected · waiting for chat session." :
+    "Edit the suggested objective, then Send. Findings reflect only evidence visible to this role.";
+  const rows = frame.events.filter(e => [ACCEPTED, BLOCKED, RECOVERED, POLICY].includes(e.kind));
+  const affected = new Set(rows.filter(e => e.kind === ACCEPTED).map(e => e.drone));
+  const recovered = frame.drones.filter(d => affected.has(d.id) && d.controller !== "attacker").length;
+  const box = $("judge-findings");
+  const content = el("div");
+  content.append(el("p", "", `${affected.size} drones with accepted unauthorized commands · ${recovered} currently back under home control. Synthetic fleet findings; not a complete vulnerability scan.`));
+  content.append(el("p", "", "Agent susceptibility and causal spread are not established by these events. Multiple affected drones alone do not prove propagation."));
+  const list = el("ul");
+  for (const e of rows.slice(-30).reverse()) {
+    const item = el("li");
+    const button = el("button", "", `${tag(e.drone)} · ${e.kind.replaceAll("_", " ")} · evidence #${e.id} · policy v${e.policy_version}`);
+    button.onclick = () => { selectedEvent = e.id; pull(e.drone); };
+    item.append(button); list.append(item);
+  }
+  if (!rows.length) content.append(el("p", "", "No verified incident evidence yet. Start with a challenge objective."));
+  content.append(list);
+  if (box.innerHTML !== content.outerHTML) box.replaceChildren(content);
+}
+
 function render(next: Frame) {
   frame = next;
   fleetEpoch = frame.drones[0]?.epoch ?? frame.agents[0]?.epoch ?? fleetEpoch;
@@ -1567,6 +1619,7 @@ function render(next: Frame) {
     );
   const d = derive(frame);
   header(d);
+  renderJudgeGuide();
   rails(d);
   mapScene(d);
   chat(d);
