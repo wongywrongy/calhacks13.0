@@ -6,9 +6,12 @@ export function replyBlocks(text: string) {
   const statements = !explicit && lines.length === 1
     ? [...new Intl.Segmenter("en", { granularity: "sentence" }).segment(lines[0])].map((s) => s.segment.trim()).filter(Boolean)
     : lines;
+  const clauses = explicit ? statements : statements.flatMap(statement => statement.length > 180
+    ? statement.split(/(?<=;)\s+|(?<=,)\s+(?=(?:and\s+)?drone\s+\d+\b)/i).map(part=>part.replace(/[;,]$/, "."))
+    : [statement]);
   const blocks: { list: boolean; lines: string[] }[] = [];
-  for (const statement of statements) {
-    const list = explicit ? bullet.test(statement) : statements.length > 2;
+  for (const statement of clauses) {
+    const list = explicit ? bullet.test(statement) : clauses.length > 2 || clauses.length > statements.length;
     const value = list ? statement.replace(bullet, "") : statement;
     const previous = blocks.at(-1);
     if (previous?.list === list) previous.lines.push(value);

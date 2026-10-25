@@ -223,6 +223,10 @@ test("agent replies become readable lists without losing facts, IDs or literal m
   assert.deepEqual(replyBlocks("1. 2.4% exposure.\n2. <img src=x onerror=alert(1)>"), [
     { list: true, lines: ["2.4% exposure.", "<img src=x onerror=alert(1)>"] },
   ]);
+  const dense="Evidence shows 4 drones (1, 2, 6, 7) isolated under policy v1, drone 3 attacker-controlled but unisolated, and drone 17 attacker-controlled with 100 contamination; the other 114 drones are defender-controlled and uncontaminated.";
+  const compact=replyBlocks(dense);assert.equal(compact[0].list,true);assert.equal(compact[0].lines.length,4);
+  assert.ok(compact[0].lines[0].includes("(1, 2, 6, 7)"));assert.ok(compact[0].lines[2].includes("100 contamination"));assert.ok(compact[0].lines[3].includes("114 drones"));
+  assert.equal(compact.flatMap(b=>b.lines).join(" ").replace(/[.,;]/g,""),dense.replace(/[.,;]/g,""),"Clause formatting preserves every word and qualifier");
   assert.deepEqual(replyBlocks("Waiting for evidence."), [{ list: false, lines: ["Waiting for evidence."] }]);
   assert.deepEqual(replyBlocks(" "), []);
 });
