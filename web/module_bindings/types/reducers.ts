@@ -16,10 +16,12 @@ import ExecuteFleetChatActionReducer from "../execute_fleet_chat_action_reducer"
 import GrantBackendViewerReducer from "../grant_backend_viewer_reducer";
 import GrantFleetViewReducer from "../grant_fleet_view_reducer";
 import HeartbeatBackendReducer from "../heartbeat_backend_reducer";
+import NewChatReducer from "../new_chat_reducer";
 import PlanChatOperationReducer from "../plan_chat_operation_reducer";
 import PublishSnapshotReducer from "../publish_snapshot_reducer";
 import RecordChatExchangeReducer from "../record_chat_exchange_reducer";
 import ReleaseBackendReducer from "../release_backend_reducer";
+import ResetChatFleetReducer from "../reset_chat_fleet_reducer";
 import SaveBackendSnapshotReducer from "../save_backend_snapshot_reducer";
 import StartFleetReducer from "../start_fleet_reducer";
 import StopFleetReducer from "../stop_fleet_reducer";
@@ -37,10 +39,12 @@ export type ExecuteFleetChatActionParams = __Infer<typeof ExecuteFleetChatAction
 export type GrantBackendViewerParams = __Infer<typeof GrantBackendViewerReducer>;
 export type GrantFleetViewParams = __Infer<typeof GrantFleetViewReducer>;
 export type HeartbeatBackendParams = __Infer<typeof HeartbeatBackendReducer>;
+export type NewChatParams = __Infer<typeof NewChatReducer>;
 export type PlanChatOperationParams = __Infer<typeof PlanChatOperationReducer>;
 export type PublishSnapshotParams = __Infer<typeof PublishSnapshotReducer>;
 export type RecordChatExchangeParams = __Infer<typeof RecordChatExchangeReducer>;
 export type ReleaseBackendParams = __Infer<typeof ReleaseBackendReducer>;
+export type ResetChatFleetParams = __Infer<typeof ResetChatFleetReducer>;
 export type SaveBackendSnapshotParams = __Infer<typeof SaveBackendSnapshotReducer>;
 export type StartFleetParams = __Infer<typeof StartFleetReducer>;
 export type StopFleetParams = __Infer<typeof StopFleetReducer>;

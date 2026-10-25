@@ -11,8 +11,15 @@ web/*
 !web/fleet.html
 !web/fleet.ts
 !web/fleet-chat.ts
+!web/flock.ts
+!web/fleet-render.ts
 !web/module_bindings/
 !web/module_bindings/**
 !web/assets/
 web/assets/*
 !web/assets/swarm-blockout.glb
+!sandbox/
+sandbox/*
+!sandbox/src/
+sandbox/src/*
+!sandbox/src/fleet-outcome.ts

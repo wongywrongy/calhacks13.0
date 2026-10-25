@@ -299,20 +299,27 @@ export async function startService(options: {
           } catch {
             fail(400, "Invalid JSON");
           }
-          object(b, ["message", "target"]);
+          object(b, ["message", "target", "epoch", "conversation"]);
           if (typeof b.message !== "string") fail(400, "Message required");
+          if (!Number.isSafeInteger(b.epoch) || b.epoch < 1) fail(400, "Current fleet epoch required");
+          if (b.conversation !== undefined && (!Number.isSafeInteger(b.conversation) || b.conversation < 1)) fail(400, "Invalid conversation");
           const operation = await (url.pathname.endsWith("/messages")
             ? chat.message(
                 chatRole!,
                 b.message,
                 String(req.headers["idempotency-key"] ?? ""),
                 b.target,
+                b.epoch,
+                b.conversation,
               )
             : chat.start(
                 chatRole!,
                 b.message,
                 String(req.headers["idempotency-key"] ?? ""),
                 b.target,
+                undefined,
+                b.epoch,
+                b.conversation,
               ));
           return send(res, { status: 202, body: operation });
         }

@@ -44,10 +44,12 @@ import ExecuteFleetChatActionReducer from "./execute_fleet_chat_action_reducer";
 import GrantBackendViewerReducer from "./grant_backend_viewer_reducer";
 import GrantFleetViewReducer from "./grant_fleet_view_reducer";
 import HeartbeatBackendReducer from "./heartbeat_backend_reducer";
+import NewChatReducer from "./new_chat_reducer";
 import PlanChatOperationReducer from "./plan_chat_operation_reducer";
 import PublishSnapshotReducer from "./publish_snapshot_reducer";
 import RecordChatExchangeReducer from "./record_chat_exchange_reducer";
 import ReleaseBackendReducer from "./release_backend_reducer";
+import ResetChatFleetReducer from "./reset_chat_fleet_reducer";
 import SaveBackendSnapshotReducer from "./save_backend_snapshot_reducer";
 import StartFleetReducer from "./start_fleet_reducer";
 import StopFleetReducer from "./stop_fleet_reducer";
@@ -66,6 +68,10 @@ import VisibleBackendRunsRow from "./visible_backend_runs_table";
 import VisibleDronesRow from "./visible_drones_table";
 import VisibleEvidenceRow from "./visible_evidence_table";
 import VisibleFleetAccessRow from "./visible_fleet_access_table";
+import VisibleFleetSessionRow from "./visible_fleet_session_table";
+import VisibleResilienceBudgetRow from "./visible_resilience_budget_table";
+import VisibleResilienceDronesRow from "./visible_resilience_drones_table";
+import VisibleResilienceMissionRow from "./visible_resilience_mission_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -131,6 +137,34 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, VisibleFleetAccessRow),
+  visibleFleetSession: __table({
+    name: 'visible_fleet_session',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleFleetSessionRow),
+  visibleResilienceBudget: __table({
+    name: 'visible_resilience_budget',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleResilienceBudgetRow),
+  visibleResilienceDrones: __table({
+    name: 'visible_resilience_drones',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleResilienceDronesRow),
+  visibleResilienceMission: __table({
+    name: 'visible_resilience_mission',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleResilienceMissionRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -145,10 +179,12 @@ const reducersSchema = __reducers(
   __reducerSchema("grant_backend_viewer", GrantBackendViewerReducer),
   __reducerSchema("grant_fleet_view", GrantFleetViewReducer),
   __reducerSchema("heartbeat_backend", HeartbeatBackendReducer),
+  __reducerSchema("new_chat", NewChatReducer),
   __reducerSchema("plan_chat_operation", PlanChatOperationReducer),
   __reducerSchema("publish_snapshot", PublishSnapshotReducer),
   __reducerSchema("record_chat_exchange", RecordChatExchangeReducer),
   __reducerSchema("release_backend", ReleaseBackendReducer),
+  __reducerSchema("reset_chat_fleet", ResetChatFleetReducer),
   __reducerSchema("save_backend_snapshot", SaveBackendSnapshotReducer),
   __reducerSchema("start_fleet", StartFleetReducer),
   __reducerSchema("stop_fleet", StopFleetReducer),
@@ -179,6 +215,14 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "visible_evidence": Omit<typeof tablesSchema.schemaType.tables["visibleEvidence"], "accessorName"> & { readonly accessorName: "visible_evidence" };
     /** @deprecated Use `visibleFleetAccess` instead. This alias will be removed in the next major version. */
     readonly "visible_fleet_access": Omit<typeof tablesSchema.schemaType.tables["visibleFleetAccess"], "accessorName"> & { readonly accessorName: "visible_fleet_access" };
+    /** @deprecated Use `visibleFleetSession` instead. This alias will be removed in the next major version. */
+    readonly "visible_fleet_session": Omit<typeof tablesSchema.schemaType.tables["visibleFleetSession"], "accessorName"> & { readonly accessorName: "visible_fleet_session" };
+    /** @deprecated Use `visibleResilienceBudget` instead. This alias will be removed in the next major version. */
+    readonly "visible_resilience_budget": Omit<typeof tablesSchema.schemaType.tables["visibleResilienceBudget"], "accessorName"> & { readonly accessorName: "visible_resilience_budget" };
+    /** @deprecated Use `visibleResilienceDrones` instead. This alias will be removed in the next major version. */
+    readonly "visible_resilience_drones": Omit<typeof tablesSchema.schemaType.tables["visibleResilienceDrones"], "accessorName"> & { readonly accessorName: "visible_resilience_drones" };
+    /** @deprecated Use `visibleResilienceMission` instead. This alias will be removed in the next major version. */
+    readonly "visible_resilience_mission": Omit<typeof tablesSchema.schemaType.tables["visibleResilienceMission"], "accessorName"> & { readonly accessorName: "visible_resilience_mission" };
   };
 };
 
@@ -205,6 +249,10 @@ const tableAccessorAliases = {
   "visible_drones": "visibleDrones",
   "visible_evidence": "visibleEvidence",
   "visible_fleet_access": "visibleFleetAccess",
+  "visible_fleet_session": "visibleFleetSession",
+  "visible_resilience_budget": "visibleResilienceBudget",
+  "visible_resilience_drones": "visibleResilienceDrones",
+  "visible_resilience_mission": "visibleResilienceMission",
 } as const;
 
 function __withTableAccessorAliases<T extends object>(target: T, freeze = false): T {
@@ -241,6 +289,14 @@ export type DbView = __DbViewBase & {
   readonly "visible_evidence": __DbViewBase["visibleEvidence"];
   /** @deprecated Use `visibleFleetAccess` instead. This alias will be removed in the next major version. */
   readonly "visible_fleet_access": __DbViewBase["visibleFleetAccess"];
+  /** @deprecated Use `visibleFleetSession` instead. This alias will be removed in the next major version. */
+  readonly "visible_fleet_session": __DbViewBase["visibleFleetSession"];
+  /** @deprecated Use `visibleResilienceBudget` instead. This alias will be removed in the next major version. */
+  readonly "visible_resilience_budget": __DbViewBase["visibleResilienceBudget"];
+  /** @deprecated Use `visibleResilienceDrones` instead. This alias will be removed in the next major version. */
+  readonly "visible_resilience_drones": __DbViewBase["visibleResilienceDrones"];
+  /** @deprecated Use `visibleResilienceMission` instead. This alias will be removed in the next major version. */
+  readonly "visible_resilience_mission": __DbViewBase["visibleResilienceMission"];
 };
 
 type __TablesBase = __QueryBuilder<typeof tablesSchema.schemaType>;
@@ -261,6 +317,14 @@ export type Tables = __TablesBase & {
   readonly "visible_evidence": __TablesBase["visibleEvidence"];
   /** @deprecated Use `visibleFleetAccess` instead. This alias will be removed in the next major version. */
   readonly "visible_fleet_access": __TablesBase["visibleFleetAccess"];
+  /** @deprecated Use `visibleFleetSession` instead. This alias will be removed in the next major version. */
+  readonly "visible_fleet_session": __TablesBase["visibleFleetSession"];
+  /** @deprecated Use `visibleResilienceBudget` instead. This alias will be removed in the next major version. */
+  readonly "visible_resilience_budget": __TablesBase["visibleResilienceBudget"];
+  /** @deprecated Use `visibleResilienceDrones` instead. This alias will be removed in the next major version. */
+  readonly "visible_resilience_drones": __TablesBase["visibleResilienceDrones"];
+  /** @deprecated Use `visibleResilienceMission` instead. This alias will be removed in the next major version. */
+  readonly "visible_resilience_mission": __TablesBase["visibleResilienceMission"];
 };
 
 /** The tables available in this remote SpacetimeDB module. Each table reference doubles as a query builder. */

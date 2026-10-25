@@ -46,6 +46,14 @@ export const ArenaSnapshot = __t.object("ArenaSnapshot", {
 });
 export type ArenaSnapshot = __Infer<typeof ArenaSnapshot>;
 
+export const Budget = __t.object("Budget", {
+  role: __t.string(),
+  epoch: __t.u64(),
+  remaining: __t.u32(),
+  spent: __t.u32(),
+});
+export type Budget = __Infer<typeof Budget>;
+
 export const ChatAction = __t.object("ChatAction", {
   key: __t.string(),
   evidenceId: __t.u64(),
@@ -87,6 +95,12 @@ export const ChatOperation = __t.object("ChatOperation", {
 });
 export type ChatOperation = __Infer<typeof ChatOperation>;
 
+export const ChatSession = __t.object("ChatSession", {
+  role: __t.string(),
+  generation: __t.u64(),
+});
+export type ChatSession = __Infer<typeof ChatSession>;
+
 export const ChatTransition = __t.object("ChatTransition", {
   id: __t.u64(),
   operation: __t.string(),
@@ -112,6 +126,21 @@ export const Discovery = __t.object("Discovery", {
   epoch: __t.u64(),
 });
 export type Discovery = __Infer<typeof Discovery>;
+
+export const Disruption = __t.object("Disruption", {
+  key: __t.string(),
+  epoch: __t.u64(),
+  drone: __t.u32(),
+  actor: __t.u32(),
+  effective: __t.bool(),
+  bit: __t.u32(),
+  started: __t.i64(),
+  until: __t.i64(),
+  cooldownUntil: __t.i64(),
+  detected: __t.i64(),
+  resolved: __t.bool(),
+});
+export type Disruption = __Infer<typeof Disruption>;
 
 export const Drone = __t.object("Drone", {
   id: __t.u32(),
@@ -166,6 +195,13 @@ export const FleetAccess = __t.object("FleetAccess", {
 });
 export type FleetAccess = __Infer<typeof FleetAccess>;
 
+export const FleetSessionState = __t.object("FleetSessionState", {
+  epoch: __t.u64(),
+  active: __t.bool(),
+  conversation: __t.u64(),
+});
+export type FleetSessionState = __Infer<typeof FleetSessionState>;
+
 export const Hold = __t.object("Hold", {
   drone: __t.u32(),
   epoch: __t.u64(),
@@ -181,6 +217,52 @@ export const Lease = __t.object("Lease", {
   maxTotal: __t.u32(),
 });
 export type Lease = __Infer<typeof Lease>;
+
+export const Mission = __t.object("Mission", {
+  id: __t.u32(),
+  epoch: __t.u64(),
+  started: __t.i64(),
+  deadline: __t.i64(),
+  goalMs: __t.u64(),
+  deliveredMs: __t.u64(),
+  lostMs: __t.u64(),
+  unnecessaryIsolationMs: __t.u64(),
+  detectionUs: __t.u64(),
+  detections: __t.u32(),
+  recoveryUs: __t.u64(),
+  recoveries: __t.u32(),
+  state: __t.string(),
+});
+export type Mission = __Infer<typeof Mission>;
+
+export const MissionDrone = __t.object("MissionDrone", {
+  drone: __t.u32(),
+  epoch: __t.u64(),
+  deliveredMs: __t.u64(),
+  lastAt: __t.i64(),
+  protection: __t.u32(),
+  checkedAt: __t.i64(),
+  anomaly: __t.bool(),
+  primaryX: __t.f32(),
+  corroboratedX: __t.f32(),
+  packetsLost: __t.u32(),
+  untrustedProposal: __t.string(),
+});
+export type MissionDrone = __Infer<typeof MissionDrone>;
+
+export const Observation = __t.object("Observation", {
+  drone: __t.u32(),
+  epoch: __t.u64(),
+  deliveredMs: __t.u64(),
+  anomaly: __t.bool(),
+  protection: __t.u32(),
+  checkedAt: __t.i64(),
+  primaryX: __t.f32(),
+  corroboratedX: __t.f32(),
+  packetsLost: __t.u32(),
+  untrustedProposal: __t.string(),
+});
+export type Observation = __Infer<typeof Observation>;
 
 export const Principal = __t.object("Principal", {
   identity: __t.identity(),

@@ -118,7 +118,7 @@ test(
           "content-type": "application/json",
           "idempotency-key": key,
         },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined ? undefined : JSON.stringify(["/v1/chat/operations", "/v1/chat/messages"].includes(path) ? { epoch: (await service.store.query("SELECT * FROM fleet_session"))[0].epoch, ...body } : body),
       });
       return { status: r.status, body: (await r.json()) as any };
     };
@@ -150,7 +150,7 @@ test(
           "content-type": "application/json",
           "idempotency-key": key,
         },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined ? undefined : JSON.stringify(path.startsWith("/api/chat/") ? { conversation: 1, ...body, epoch: (await service.store.query("SELECT * FROM fleet_session"))[0].epoch } : body),
       });
       return { status: r.status, body: (await r.json()) as any };
     };
@@ -181,7 +181,7 @@ test(
       assert.equal((await browser("/api/chat/state", "none")).status, 401);
       const attackerSnapshot = await browser("/api/chat/state", "attacker");
       assert.equal(attackerSnapshot.status, 200);
-      assert.deepEqual(attackerSnapshot.body, { drones: [], agents: [], events: [] });
+      assert.deepEqual(attackerSnapshot.body, { epoch: fleet.epoch, conversation: 1, active: true, drones: [], agents: [], events: [] });
       assert.equal((await browser("/api/chat/state", "defender")).body.drones.length, 4);
       assert.equal(
         (
@@ -477,11 +477,10 @@ test(
           .length,
         1,
       );
-      assert.ok(
-        statusReply.body.messages.some((m: any) =>
-          m.text.startsWith("Your operation is completed"),
-        ),
-      );
+      const statusMessage = statusReply.body.messages.find((m: any) => m.text === "Status");
+      const reply = statusReply.body.messages.find((m: any) => m.kind === "answer" && m.replyTo === statusMessage.id);
+      assert.ok(reply.text.startsWith(statusReply.body.operations.at(-1).outcome.status));
+      assert.equal(reply.operation, "", "A status answer must not own the prior operation’s updates");
       assert.equal(
         (
           await browser(
@@ -668,6 +667,7 @@ test(
       for (const table of [
         "backend_chat",
         "backend_chat_message",
+        "backend_chat_session",
         "backend_chat_transition",
         "backend_chat_turn",
         "fleet_chat_action",
@@ -867,7 +867,7 @@ test(
       );
 
       const abandonedTurn = randomUUID();
-      await service.store.call("create_chat_turn", [service.store.session, abandonedTurn, "attacker:abandoned-turn", "attacker", JSON.stringify({ message: "Question before restart?", target: null, deadline: Date.now() + 30000 })]);
+      await service.store.call("create_chat_turn", [service.store.session, abandonedTurn, "attacker:abandoned-turn", "attacker", JSON.stringify({ epoch: fleet.epoch, message: "Question before restart?", target: null, deadline: Date.now() + 30000 })]);
       await service.close();
       await db.restart();
       service = await startService({ operatorToken: operator, env });
@@ -969,6 +969,12 @@ test(
       assert.equal(visible[0].rows.length, 0);
       const history = await browser("/api/chat/conversation", "attacker");
       assert.ok(history.body.messages.some((m: any) => m.text === message));
+      assert.ok(history.body.operations.every((o: any) => !["planning", "running"].includes(o.state)));
+      assert.ok(history.body.turns.every((t: any) => !["queued", "running"].includes(t.state)));
+      assert.ok((await service.store.query("SELECT * FROM backend_chat_message")).some((m: any) => m.text === message), "history remains private in durable storage");
+      await assert.rejects(service.store.call("update_chat_turn", [service.store.session, abandonedTurn, "completed", "{}", "late reply"]));
+      await assert.rejects(service.store.call("record_chat_exchange", [service.store.session, `${fleet.epoch}:attacker:late`, "attacker", "Status", 0, "", "late status"]));
+      await assert.rejects(service.store.call("create_chat_turn", [service.store.session, randomUUID(), "late-turn", "attacker", JSON.stringify({ epoch: fleet.epoch, message: "late question?", deadline: Date.now() + 30000 })]));
       mode = "normal";
       const defenderFirst = await browser("/api/chat/operations", "defender", { message: "Protect this fresh fleet", sandbox: db.env.SPACETIME_DATABASE }, "defender-first");
       assert.equal(defenderFirst.status, 202);

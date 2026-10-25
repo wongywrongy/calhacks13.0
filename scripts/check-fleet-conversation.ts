@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "@playwright/test";
 import { build } from "esbuild";
@@ -9,7 +9,15 @@ import { startService } from "../sandbox/src/service.ts";
 const real = process.argv.includes("--real");
 const output = `output/conversation-${real ? "real" : "mocked"}`;
 await mkdir(output, { recursive: true });
-await build({ entryPoints: ["web/fleet.ts"], bundle: true, format: "esm", minify: true, outfile: "web/dist/fleet.js" });
+const { outputFiles } = await build({ stdin: { contents: await readFile("web/fleet.ts", "utf8") + `
+Object.assign(globalThis, { sceneCheck: () => ({
+  epoch: fleetEpoch, selected, frame, camera: camera.position.toArray(), target: controls.target.toArray(),
+  terrainVertices: terrain.geometry.attributes.position.count,
+  terrainAttached: scene.children.includes(terrain),
+  aspect: camera.aspect, width: host.clientWidth, height: host.clientHeight,
+  canvasWidth: renderer?.domElement.width, canvasHeight: renderer?.domElement.height,
+  points: frame.drones.map(d => shown(d).project(camera).toArray()),
+}) });`, resolveDir: process.cwd() + "/web", loader: "ts" }, bundle: true, format: "esm", minify: true, write: false, outfile: "web/dist/fleet.js" });
 const original = globalThis.fetch;
 let mode = "normal";
 const inputs: any[] = [];
@@ -17,7 +25,8 @@ if (!real) globalThis.fetch = async (input: any, init?: any) => {
   if (String(input) !== "https://api-inference.bitdeer.ai/v1/chat/completions") return original(input, init);
   const b = JSON.parse(init.body), system = JSON.parse(b.messages[0].content), context = JSON.parse(b.messages[1].content);
   inputs.push({ system, context });
-  if (mode === "blocked" || (mode === "blocked-specialists" && !system.agents)) await delay(30000, undefined, { signal: init.signal });
+  if (mode === "late") await delay(6000); // Provider response deliberately arrives after cancellation.
+  else if (mode === "blocked" || (mode === "blocked-specialists" && !system.agents)) await delay(30000, undefined, { signal: init.signal });
   else await delay(60, undefined, { signal: init.signal });
   if (mode === "failure") return new Response("{}", { status: 429 });
   let value: any;
@@ -39,26 +48,45 @@ if (!real) globalThis.fetch = async (input: any, init?: any) => {
 const db = await testDatabase();
 const env = { ...process.env, ...db.env, FLEET_PUBLIC_URI: db.env.SPACETIME_URI, SUDOKO_PUBLIC_ORIGIN: "", BITDEER_API_KEY: real ? process.env.BITDEER_API_KEY : "mock-only", SUDOKO_DEMO_MODE: "1" };
 const service = await startService({ operatorToken: randomBytes(32).toString("hex"), env });
+await service.store.call("start_fleet", [48, 0, 0, false]);
 const report: any = { engine: real ? "bitdeer" : "mocked-inference", at: new Date().toISOString(), turns: [], operations: [], latency: [], checks: [] };
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 try {
-  for (const role of ["attacker", "defender"]) {
+  for (const role of ["attacker", "defender", "observer"]) {
     const viewer: any = await original(db.env.SPACETIME_URI + "/v1/identity", { method: "POST" }).then((r) => r.json());
     await service.store.call("grant_fleet_view", [viewer.identity, role]);
     (env as NodeJS.ProcessEnv)[`SUDOKO_DEMO_${role.toUpperCase()}_VIEWER_TOKEN`] = viewer.token;
   }
   browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, args: ["--no-sandbox"] });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const browserContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  await browserContext.route("**/fleet.js", route => route.fulfill({ contentType: "text/javascript", body: outputFiles[0].text }));
+  const page = await browserContext.newPage();
   const errors: string[] = [];
+  report.consoleErrors = [];
+  page.on("console", message => { if (message.type() === "error") report.consoleErrors.push(message.text()); });
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(service.url);
   let role = "attacker";
   const switchTo = async (next: string) => {
     role = next;
     await page.locator(`nav [data-role="${role}"]`).click();
-    await page.waitForFunction((r) => document.body.dataset.role === r && document.querySelector("#live")?.textContent?.startsWith("Live"), role);
+    await page.waitForFunction((r) => document.body.dataset.role === r && sessionStorage.getItem("sudoko.role") === r && document.querySelector("#live")?.textContent?.startsWith("Live"), role);
   };
   await switchTo("attacker");
+  const scene = async (targetPage = page) => targetPage.evaluate(() => (globalThis as any).sceneCheck());
+  const checkScene = async (targetPage = page) => {
+    const s = await scene(targetPage);
+    assert.ok(s.terrainAttached && s.terrainVertices > 40000, "persistent terrain is built with zero discoveries");
+    assert.ok(Math.abs(s.aspect - s.width / s.height) < 0.001, "camera aspect follows layout");
+    assert.ok(Math.abs(s.canvasWidth / s.canvasHeight - s.width / s.height) <= (1 + s.width / s.height) / s.canvasHeight, "renderer dimensions follow layout within pixel rounding");
+    assert.ok(s.camera.every(Number.isFinite));
+    for (const p of s.points) assert.ok(Math.abs(p[0]) < 0.98 && Math.abs(p[1]) < 0.98 && p[2] > -1 && p[2] < 1, `Drone outside viewport: ${JSON.stringify(p)}`);
+    return s;
+  };
+  await checkScene();
+  await page.getByRole("button", { name: "Top-down", exact: true }).click();
+  await checkScene();
+  await page.getByRole("button", { name: "Top-down", exact: true }).click();
   const conversation = async () => {
     const r = await page.request.get(service.url + "/api/chat/conversation", { headers: { "x-sudoko-role": role } });
     assert.equal(r.status(), 200); return r.json();
@@ -87,7 +115,7 @@ try {
           await delay(200);
         }
         assert.equal(turn?.state, "completed", JSON.stringify(turn));
-        const reply = latest.messages.find((m: any) => m.key === body.accepted.id + ":reply");
+        const reply = latest.messages.find((m: any) => m.key.endsWith(":" + body.accepted.id + ":reply"));
         if (reply) await page.waitForSelector(`#transcript [data-message-id="${reply.id}"]`);
         timing.firstUsefulResponseMs = Date.now() - began;
         timing.serverResponseMs = turn.updatedAt - turn.createdAt;
@@ -200,25 +228,54 @@ try {
     const failed = await send("How does this simulation work?", false);
     for (let i = 0; i < 40 && (await conversation()).turns.find((t: any) => t.id === failed.body.accepted.id)?.state !== "failed"; i++) await delay(100);
     assert.equal((await conversation()).turns.find((t: any) => t.id === failed.body.accepted.id).error, "provider_rate_limit");
-    mode = "blocked";
+    // Keep the other role open while resetting, including an old HTTP response held past reset.
+    const other = await page.context().newPage();
+    other.on("pageerror", (e) => errors.push(e.message));
+    await other.goto(service.url);
+    await other.locator('nav [data-role="defender"]').click();
+    await other.waitForFunction(() => document.body.dataset.role === "defender" && (globalThis as any).sceneCheck().frame.drones.length === 4);
+    mode = "normal";
+    const oldEpoch = (await scene(other)).epoch;
+    await other.request.post(service.url + "/api/chat/messages", { headers: { origin: service.url, "x-sudoko-role": "defender", "idempotency-key": "old-defense-question" }, data: { sandbox: db.env.SPACETIME_DATABASE, epoch: oldEpoch, conversation: 1, message: "Old defender session?" } });
+    await other.waitForFunction(() => document.querySelector("#transcript")?.textContent?.includes("Old defender session?"));
+    const oldDefense = await other.request.get(service.url + "/api/chat/conversation", { headers: { "x-sudoko-role": "defender" } }).then(r => r.json());
+    let releaseOld!: () => void;
+    let captured!: () => void;
+    const held = new Promise<void>(r => { releaseOld = r; });
+    const intercepted = new Promise<void>(r => { captured = r; });
+    let holdFirst = true;
+    await other.route("**/api/chat/conversation?*", async route => {
+      if (!holdFirst) return route.continue();
+      holdFirst = false;
+      captured();
+      await held;
+      await route.fulfill({ json: oldDefense });
+    });
+    await intercepted;
+    await page.locator('#log .row[role="button"]').first().click();
+    assert.ok((await scene()).selected > 0);
+    mode = "late";
     const pending = await send("Inspect the swarm with two agents", false);
     const beforeReset = await conversation();
-    const actionCountBeforeReset = (await service.store.query("SELECT * FROM fleet_chat_action")).length;
     await page.waitForFunction(() => document.querySelector("#transcript")?.textContent?.includes("Inspect the swarm with two agents"));
     page.once("dialog", (dialog) => void dialog.dismiss());
-    await page.getByRole("button", { name: "Reset sandbox", exact: true }).click();
+    await page.getByRole("button", { name: "Reset Demo", exact: true }).click();
     assert.equal((await conversation()).fleet.epoch, beforeReset.fleet.epoch);
     page.once("dialog", (dialog) => void dialog.accept());
     await Promise.all([
-      page.waitForNavigation(),
-      page.getByRole("button", { name: "Reset sandbox", exact: true }).click(),
+      page.waitForResponse(r => r.url().endsWith("/api/chat/reset-demo") && r.request().method() === "POST"),
+      page.getByRole("button", { name: "Reset Demo", exact: true }).click(),
     ]);
+    await page.waitForFunction(() => document.querySelector("#reset-status")?.textContent?.includes("Demo reset verified"));
     await page.waitForFunction(() => document.querySelector("#live")?.textContent?.startsWith("Live"));
     const reset = await conversation();
     assert.equal(reset.fleet.epoch, beforeReset.fleet.epoch + 1);
     assert.equal(reset.fleet.active, true);
-    assert.equal(reset.turns.find((t: any) => t.id === pending.body.accepted.id).state, "cancelled");
-    assert.ok(reset.messages.some((m: any) => m.text === "Why did that fail?"));
+    assert.deepEqual(reset.turns, []);
+    assert.deepEqual(reset.messages, []);
+    assert.deepEqual(reset.operations, []);
+    assert.equal((await service.store.query("SELECT * FROM backend_chat_turn")).find((t: any) => t.id === pending.body.accepted.id).state, "cancelled");
+    assert.equal(await page.locator("#transcript .bubble:not(.hint):not(.typing)").count(), 0);
     assert.equal(await page.locator(".agent").count(), 0);
     assert.match(await page.locator("#rail-left").textContent() || "", /No agents deployed/);
     const staleReset = await page.request.post(service.url + "/api/chat/reset", { headers: { origin: service.url, "x-sudoko-role": role }, data: { epoch: beforeReset.fleet.epoch } });
@@ -226,11 +283,80 @@ try {
     const crossSiteReset = await page.request.post(service.url + "/api/chat/reset", { headers: { origin: "https://unrelated.example", "x-sudoko-role": role }, data: { epoch: reset.fleet.epoch } });
     assert.equal(crossSiteReset.status(), 403);
     await delay(300);
-    assert.equal((await service.store.query("SELECT * FROM fleet_chat_action")).length, actionCountBeforeReset);
+    assert.equal((await service.store.query("SELECT * FROM fleet_chat_action")).length, 0);
     assert.equal((await service.store.query("SELECT * FROM fleet_agent")).length, 0);
     assert.equal((await service.store.query("SELECT * FROM agent_schedule")).length, 0);
+    assert.equal((await checkScene()).selected, 0);
+    assert.equal((await scene()).frame.events.length, 0);
+    assert.equal(await page.locator("#log .row").count(), 0);
     await page.screenshot({ path: output + "/sandbox-reset.png" });
-    report.checks.push("Demo Sandbox reset confirms both sides, cancels pending inference, preserves history, starts zero-agent persistent fleet, and rejects stale/cross-site requests");
+    await other.waitForFunction(epoch => (globalThis as any).sceneCheck().epoch === epoch, reset.fleet.epoch);
+    releaseOld();
+    await delay(1000);
+    assert.equal(await other.locator("#transcript .bubble:not(.hint):not(.typing)").count(), 0, "late conversation response must not restore old chat");
+    assert.equal(await other.locator(".agent").count(), 0);
+    assert.equal((await scene(other)).frame.events.length, 0);
+    await checkScene(other);
+    await other.screenshot({ path: output + "/reset-defender.png" });
+    await other.close();
+    const staleMessage = await page.request.post(service.url + "/api/chat/messages", { headers: { origin: service.url, "x-sudoko-role": role, "idempotency-key": "stale-browser" }, data: { epoch: beforeReset.fleet.epoch, conversation: beforeReset.conversation, sandbox: db.env.SPACETIME_DATABASE, message: "Old deployment" } });
+    assert.equal(staleMessage.status(), 409);
+    mode = "normal";
+    const fresh = await send("What can you do in this fresh session?");
+    const context = inputs.filter(i => i.system.task.startsWith("Route")).at(-1).context;
+    assert.deepEqual(context.operations, []);
+    assert.deepEqual(context.evidence, []);
+    assert.deepEqual(context.observations, []);
+    assert.deepEqual(context.history.map((m: any) => m.text), ["What can you do in this fresh session?"]);
+    assert.equal(fresh.turn.state, "completed");
+    await switchTo("defender");
+    assert.equal(await page.locator("#transcript .bubble:not(.hint):not(.typing)").count(), 0);
+    await checkScene();
+    await switchTo("observer");
+    await page.waitForFunction(() => (globalThis as any).sceneCheck().frame.drones.length === 4);
+    await checkScene();
+    await page.screenshot({ path: output + "/reset-observer.png" });
+    await switchTo("attacker");
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector("#transcript")?.textContent?.includes("fresh session?"));
+    assert.ok(!(await page.locator("#transcript").textContent())?.includes("Why did that fail?"));
+    assert.equal((await conversation()).fleet.epoch, reset.fleet.epoch);
+    mode = "blocked-specialists";
+    const runningAtReset = await send("Deploy two recon specialists");
+    await page.waitForSelector(`.agent[data-operation-id="${runningAtReset.turn.operationId}"][data-state="working"]`);
+    page.once("dialog", d => void d.accept());
+    await Promise.all([page.waitForResponse(r => r.url().endsWith("/api/chat/reset-demo") && r.request().method() === "POST"), page.getByRole("button", { name: "Reset Demo", exact: true }).click()]);
+    await page.waitForFunction(() => document.querySelector("#live")?.textContent === "Live · Awaiting objective");
+    assert.equal((await conversation()).fleet.epoch, reset.fleet.epoch + 1);
+    assert.deepEqual((await conversation()).messages, []);
+    assert.equal(await page.locator(".agent").count(), 0);
+    await checkScene();
+    await page.screenshot({ path: output + "/second-reset-attacker.png" });
+    mode = "normal";
+    // Zero, one and many visible drones use the same framing controls.
+    await switchTo("defender");
+    for (const count of [1, 256, 4]) {
+      await service.store.call("start_fleet", [count, 0, 0, false]);
+      await page.waitForFunction(n => (globalThis as any).sceneCheck().frame.drones.length === n, count);
+      for (const size of [{ width: 1440, height: 900 }, { width: 1100, height: 720 }]) {
+        await page.setViewportSize(size);
+        await delay(150);
+        await page.getByRole("button", { name: "Fit", exact: true }).click();
+        await checkScene();
+        await page.getByRole("button", { name: "Top-down", exact: true }).click();
+        await checkScene();
+        await page.getByRole("button", { name: "Top-down", exact: true }).click();
+      }
+    }
+    const beforeMotion = await scene();
+    await delay(2500);
+    const afterMotion = await checkScene();
+    assert.deepEqual(afterMotion.camera, beforeMotion.camera, "telemetry must not reset the camera");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await delay(150);
+    await page.screenshot({ path: output + "/second-reset-defender.png" });
+    report.checks.push("Late HTTP responses and cancelled provider replies cannot repopulate sessions; same-epoch role switching and refresh; second reset during specialist execution; zero/one/256-drone Fit and Top-down; renderer resize and stable camera during telemetry");
+    report.checks.push("Reset Demo confirms both sides, cancels pending inference, hides historical chat/results, starts zero-agent persistent fleet, and rejects stale/cross-site requests");
     await page.route("**/fleet-config?role=*", async (route) => {
       const response = await route.fetch();
       const config = await response.json();
@@ -246,6 +372,45 @@ try {
     await page.waitForFunction(() => document.querySelector("#live")?.textContent === "Live · Awaiting objective");
     await page.unroute("**/fleet-config?role=*");
     report.checks.push("Failed WebSockets fall back to authenticated role-scoped HTTPS snapshots; offline freezes state, online recovers without changing fleet/history");
+  }
+  if (!real) {
+    mode = "normal";
+    await send("Status");
+    const historyBeforeSwarm = await conversation();
+    const swarmEpoch = historyBeforeSwarm.fleet.epoch;
+    await page.getByRole("button", { name: "Reset Swarm", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("#reset-status")?.textContent?.includes("Swarm reset verified"));
+    assert.equal((await conversation()).fleet.epoch, swarmEpoch + 1);
+    await page.waitForFunction(() => document.querySelector("#transcript")?.textContent?.includes("Status"));
+    const roleBeforeNew = role;
+    const otherRole = role === "attacker" ? "defender" : "attacker";
+    const otherChat = await page.request.get(service.url + "/api/chat/conversation", { headers: { "x-sudoko-role": otherRole } }).then(r => r.json());
+    mode = "blocked";
+    await send("Pending work before New Chat", false);
+    const beforeNew = await conversation();
+    await page.getByRole("button", { name: "New Chat", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("#reset-status")?.textContent?.includes("New chat started"));
+    assert.equal((await conversation()).fleet.epoch, beforeNew.fleet.epoch);
+    assert.deepEqual((await conversation()).messages, []);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector("#live")?.textContent?.startsWith("Live"));
+    assert.equal(await page.locator("#transcript .interaction").count(), 0);
+    const otherAfterNew = await page.request.get(service.url + "/api/chat/conversation", { headers: { "x-sudoko-role": otherRole } }).then(r => r.json());
+    assert.deepEqual(otherAfterNew.messages, otherChat.messages);
+    mode = "normal";
+    await send("Status");
+    assert.ok(!(await page.locator("#transcript").textContent())?.includes("Pending work before New Chat"));
+    assert.equal(role, roleBeforeNew);
+    report.checks.push("Reset Swarm preserves chat without navigation; New Chat cancels pending work and survives reload while preserving the other role and fleet");
+  }
+  if (!real) {
+    await page.route("**/api/chat/reset-demo", route => route.fulfill({ status: 503, json: { error: "Reset unavailable (test)" } }));
+    page.once("dialog", d => void d.accept());
+    await page.getByRole("button", { name: "Reset Demo", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector("#reset-status")?.textContent?.includes("Reset unavailable (test)"));
+    await page.waitForFunction(() => document.querySelector("#live")?.textContent?.startsWith("Live"));
+    assert.equal(await page.locator("#reset-sandbox").isEnabled(), true);
+    report.checks.push("Failed reset reports the server error and reconnects the interface without a reload");
   }
   assert.deepEqual(errors, []);
   report.inferencePool = service.pool.status();

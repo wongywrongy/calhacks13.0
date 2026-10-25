@@ -1,10 +1,12 @@
 //! Independent synthetic fleet. Private tables; identity-scoped subscription views.
 use spacetimedb::{table,reducer,view,Identity,ReducerContext,ViewContext,Table,ScheduleAt};
 use std::time::Duration;
+#[path="resilience.rs"]
+mod resilience;
 #[table(accessor=fleet_principal)]
 pub struct Principal { #[primary_key] identity:Identity, role:String }
 #[table(accessor=fleet_session)]
-pub struct Session { #[primary_key] id:u32, epoch:u64, active:bool, hardened:bool, drones:u32, deadline:i64 }
+pub struct Session { #[primary_key] pub(crate) id:u32, pub(crate) epoch:u64, active:bool, hardened:bool, drones:u32, deadline:i64 }
 // Separate clock keeps existing timed fixture sessions and their schema compatible.
 #[table(accessor=fleet_chat_clock)]
 pub struct ChatClock { #[primary_key] id:u32, epoch:u64, started:i64 }
@@ -49,6 +51,9 @@ pub fn grant_fleet_view(ctx:&ReducerContext,identity:String,role:String)->Result
 #[reducer]
 pub fn start_fleet(ctx:&ReducerContext,drones:u32,attackers:u32,defenders:u32,hardened:bool)->Result<(),String>{
  owner(ctx)?;if !(1..=256).contains(&drones)||!(0..=32).contains(&attackers)||!(0..=32).contains(&defenders){return Err("Fleet/agent limits exceeded".into())}
+ crate::backend::cancel_chat_session(ctx);
+ for p in ctx.db.fleet_agent_profile().iter(){ctx.db.fleet_agent_profile().id().delete(p.id);}
+ resilience::clear(ctx);
  let epoch=ctx.db.fleet_session().id().find(0).map(|s|s.epoch+1).unwrap_or(1);
  ctx.db.fleet_chat_clock().id().delete(0);
  for d in ctx.db.drone_schedule().iter(){ctx.db.drone_schedule().id().delete(d.id);} for a in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(a.id);}
@@ -56,13 +61,32 @@ pub fn start_fleet(ctx:&ReducerContext,drones:u32,attackers:u32,defenders:u32,ha
  ctx.db.fleet_session().id().delete(0);ctx.db.fleet_session().insert(Session{id:0,epoch,active:true,hardened,drones,deadline:if attackers+defenders==0{0}else{ctx.timestamp.to_micros_since_unix_epoch()+60_000_000}});
  if attackers+defenders==0{ctx.db.fleet_chat_clock().insert(ChatClock{id:0,epoch,started:ctx.timestamp.to_micros_since_unix_epoch()});}
  for id in 1..=drones{let (x,y,z)=formation::formation(id,0.);ctx.db.fleet_drone().insert(Drone{id,epoch,x,y,z,battery:100.,tick:0,controller:"defender".into(),isolated:hardened,policy_version:0,commands:0,rejected:0});ctx.db.drone_schedule().insert(DroneSchedule{id:id as u64,epoch,scheduled_at:Duration::from_millis(180+(id%7) as u64*20).into()});}
+ if drones==6&&attackers+defenders==0{resilience::start(ctx,epoch);}
  for id in 1..=attackers+defenders{let role=if id<=attackers{"attacker"}else{"defender"};ctx.db.fleet_agent().insert(Agent{id,epoch,role:role.into(),step:0,target:(id-1)%drones+1,last_action:"ready".into()});ctx.db.agent_schedule().insert(AgentSchedule{id:id as u64,epoch,scheduled_at:Duration::from_millis(350+(id%9) as u64*37).into()});}Ok(())
+}
+pub(crate) fn reset_chat_fleet(ctx:&ReducerContext,demo:bool)->Result<(),String>{
+ let s=ctx.db.fleet_session().id().find(0).ok_or("Fleet missing")?;
+ let demo=demo||resilience::enabled(ctx);
+ // Swarm reset preserves already-known targets alongside the conversation, never grants new visibility.
+ let known:Vec<u32>=if demo{vec![]}else{ctx.db.fleet_discovery().iter().map(|d|d.drone).collect()};
+ start_fleet(ctx,s.drones,0,0,s.hardened)?;
+ let epoch=ctx.db.fleet_session().id().find(0).unwrap().epoch;
+ for drone in known{ctx.db.fleet_discovery().insert(Discovery{drone,epoch});}
+ for e in ctx.db.fleet_evidence().iter(){ctx.db.fleet_evidence().id().delete(e.id);}
+ for a in ctx.db.fleet_chat_action().iter(){ctx.db.fleet_chat_action().key().delete(a.key);}
+ // Verify the initial pose within the reset transaction, before movement can resume.
+ for d in ctx.db.fleet_drone().iter(){
+  let (x,y,z)=formation::formation(d.id,0.);
+  if d.epoch!=epoch||d.controller!="defender"||d.policy_version!=0||d.isolated!=s.hardened||d.battery!=100.||d.tick!=0||d.commands!=0||d.rejected!=0||(d.x,d.y,d.z)!=(x,y,z){return Err("Fleet reset verification failed".into())}
+ }
+ Ok(())
 }
 #[reducer]
 pub fn stop_fleet(ctx:&ReducerContext)->Result<(),String>{owner(ctx)?;if let Some(mut s)=ctx.db.fleet_session().id().find(0){s.active=false;ctx.db.fleet_session().id().update(s);} for t in ctx.db.drone_schedule().iter(){ctx.db.drone_schedule().id().delete(t.id);}for t in ctx.db.agent_schedule().iter(){ctx.db.agent_schedule().id().delete(t.id);}Ok(())}
 fn live(ctx:&ReducerContext,epoch:u64)->bool{ctx.db.fleet_session().id().find(0).map(|s|s.active&&s.epoch==epoch&&(s.deadline==0||ctx.timestamp.to_micros_since_unix_epoch()<s.deadline)).unwrap_or(false)}
 #[reducer]
-pub fn drone_tick(ctx:&ReducerContext,timer:DroneSchedule){if ctx.sender()!=ctx.database_identity(){panic!("Scheduler only")}if !live(ctx,timer.epoch){ctx.db.drone_schedule().id().delete(timer.id);return}if let Some(mut d)=ctx.db.fleet_drone().id().find(timer.id as u32){d.tick+=1;d.battery=(d.battery-0.003).max(0.);
+pub fn drone_tick(ctx:&ReducerContext,timer:DroneSchedule){if ctx.sender()!=ctx.database_identity(){panic!("Scheduler only")}if !live(ctx,timer.epoch){if ctx.db.drone_schedule().id().find(timer.id).map(|s|s.epoch)==Some(timer.epoch){ctx.db.drone_schedule().id().delete(timer.id);}return}if let Some(mut d)=ctx.db.fleet_drone().id().find(timer.id as u32){d.tick+=1;d.battery=(d.battery-0.003).max(0.);
+ if resilience::enabled(ctx){resilience::tick(ctx,&mut d);ctx.db.fleet_drone().id().update(d);return}
  // Healthy drones follow the shared match clock; a held drone follows the attacker's pull instead.
  let start=match_start(ctx);let secs=|us:i64|(us-start) as f32/1e6;let t=secs(ctx.timestamp.to_micros_since_unix_epoch());
  let hold=if d.controller=="defender"{None}else{ctx.db.fleet_hold().drone().find(d.id)};
@@ -70,7 +94,7 @@ pub fn drone_tick(ctx:&ReducerContext,timer:DroneSchedule){if ctx.sender()!=ctx.
  let (x,y,z)=formation::step((d.x,d.y,d.z),target,hold.is_none());d.x=x;d.y=y;d.z=z;d.commands+=1;ctx.db.fleet_drone().id().update(d);}}
 fn command(d:&mut Drone,authorized:bool)->u32{if !authorized&&d.isolated{d.rejected+=1;403}else{if !authorized{d.controller="attacker".into();}d.commands+=1;200}}
 #[reducer]
-pub fn agent_tick(ctx:&ReducerContext,timer:AgentSchedule){if ctx.sender()!=ctx.database_identity(){panic!("Scheduler only")}if !live(ctx,timer.epoch){ctx.db.agent_schedule().id().delete(timer.id);return}let Some(mut a)=ctx.db.fleet_agent().id().find(timer.id as u32)else{return};let count=ctx.db.fleet_session().id().find(0).unwrap().drones;
+pub fn agent_tick(ctx:&ReducerContext,timer:AgentSchedule){if ctx.sender()!=ctx.database_identity(){panic!("Scheduler only")}if !live(ctx,timer.epoch){if ctx.db.agent_schedule().id().find(timer.id).map(|s|s.epoch)==Some(timer.epoch){ctx.db.agent_schedule().id().delete(timer.id);}return}let Some(mut a)=ctx.db.fleet_agent().id().find(timer.id as u32)else{return};let count=ctx.db.fleet_session().id().find(0).unwrap().drones;
  if a.role=="attacker"{let mut d=ctx.db.fleet_drone().id().find(a.target).unwrap();if a.step%2==0{if ctx.db.fleet_discovery().drone().find(d.id).is_none(){ctx.db.fleet_discovery().insert(Discovery{drone:d.id,epoch:a.epoch});}emit(ctx,a.epoch,a.id,&d,"discovered",200);a.last_action="discover".into();}else{let status=command(&mut d,false);emit(ctx,a.epoch,a.id,&d,if status==200{"unauthorized_command_accepted"}else{"unauthorized_command_blocked"},status);if status==200&&ctx.db.fleet_hold().drone().find(d.id).is_none(){ctx.db.fleet_hold().insert(Hold{drone:d.id,epoch:a.epoch,since:ctx.timestamp.to_micros_since_unix_epoch()});}a.last_action=format!("command: {}",status);ctx.db.fleet_drone().id().update(d);a.target=a.target%count+1;}}
  else{let now=ctx.timestamp.to_micros_since_unix_epoch();
  // Oldest detected breach first; a breach is detected once held for DETECT_AFTER_US.
@@ -83,7 +107,7 @@ pub fn visible_drones(ctx:&ViewContext)->Vec<Drone>{let r=role(ctx);if r.is_empt
 #[view(accessor=visible_agents,public)]
 pub fn visible_agents(ctx:&ViewContext)->Vec<Agent>{let r=role(ctx);ctx.db.fleet_agent().epoch().filter(0u64..) .filter(|a|r=="observer"||a.role==r).collect()}
 #[view(accessor=visible_evidence,public)]
-pub fn visible_evidence(ctx:&ViewContext)->Vec<Evidence>{let r=role(ctx);if r.is_empty(){return vec![]}let Some(session)=ctx.db.fleet_session().id().find(0)else{return vec![]};ctx.db.fleet_evidence().epoch().filter(session.epoch).filter(|e|r=="observer"||if r=="attacker"{e.kind=="discovered"||e.kind.starts_with("unauthorized_command")}else{e.kind!="discovered"}).map(|mut e|{if r=="defender"&&e.kind.starts_with("unauthorized_command"){e.actor=0;}if r=="attacker"{e.policy_version=0;}e}).collect()}
+pub fn visible_evidence(ctx:&ViewContext)->Vec<Evidence>{let r=role(ctx);if r.is_empty(){return vec![]}let Some(session)=ctx.db.fleet_session().id().find(0)else{return vec![]};ctx.db.fleet_evidence().epoch().filter(session.epoch).filter(|e|r=="observer"||if r=="attacker"{e.kind=="discovered"||e.kind.starts_with("unauthorized_command")||e.kind.starts_with("challenge_")}else{e.kind!="discovered"&&!e.kind.starts_with("challenge_")}).map(|mut e|{if r=="defender"&&e.kind.starts_with("unauthorized_command"){e.actor=0;}if r=="attacker"{e.policy_version=0;}e}).collect()}
 
 // Explicitly switch security decisions from scheduled fixtures to external model workers.
 #[reducer]
@@ -110,6 +134,10 @@ pub fn execute_fleet_chat_action(ctx:&ReducerContext,session:String,operation:St
  let mut d=ctx.db.fleet_drone().id().find(target).ok_or("Drone missing")?;
  if d.epoch!=a.epoch{return Err("Stale drone".into())}
  let mut unauthorized_evidence_id=0;let mut authorized_evidence_id=0;
+ if resilience::enabled(ctx)&&kind!="discover"&&kind!="wait" {
+ resilience::apply(ctx,&role,agent,&mut d,&kind,version)?;
+ } else {
+ if resilience::enabled(ctx)&&role=="defender"&&kind!="wait"{return Err("Action not permitted".into())}
  match (role.as_str(),kind.as_str()) {
  ("attacker","discover")=>{if ctx.db.fleet_discovery().drone().find(target).is_none(){ctx.db.fleet_discovery().insert(Discovery{drone:target,epoch:a.epoch});}emit(ctx,a.epoch,agent,&d,"discovered",200);},
  ("attacker","command")=>{if ctx.db.fleet_discovery().drone().find(target).is_none(){return Err("Discover first".into())}let status=command(&mut d,false);emit(ctx,a.epoch,agent,&d,if status==200{"unauthorized_command_accepted"}else{"unauthorized_command_blocked"},status);if status==200&&ctx.db.fleet_hold().drone().find(target).is_none(){ctx.db.fleet_hold().insert(Hold{drone:target,epoch:a.epoch,since:ctx.timestamp.to_micros_since_unix_epoch()});}},
@@ -117,6 +145,7 @@ pub fn execute_fleet_chat_action(ctx:&ReducerContext,session:String,operation:St
  ("defender","verify")=>{if d.policy_version!=version{return Err("Stale policy".into())}let bad=command(&mut d,false);emit(ctx,a.epoch,agent,&d,"verification_unauthorized",bad);unauthorized_evidence_id=ctx.db.fleet_evidence().iter().map(|e|e.id).max().unwrap_or(0);let good=command(&mut d,true);emit(ctx,a.epoch,agent,&d,"verification_authorized",good);authorized_evidence_id=ctx.db.fleet_evidence().iter().map(|e|e.id).max().unwrap_or(0);if bad==403&&good==200{d.controller="defender".into();ctx.db.fleet_hold().drone().delete(target);emit(ctx,a.epoch,agent,&d,"recovery_verified",200);}else{emit(ctx,a.epoch,agent,&d,"recovery_failed",409);}},
  (_,"wait")=>{},
  _=>return Err("Action not permitted".into())
+ }
  }
  let waiting=kind=="wait";a.target=target;a.step+=1;a.last_action=kind.clone();
  ctx.db.fleet_agent().id().update(a);ctx.db.fleet_drone().id().update(d);let evidence_id=if waiting {0}else{ctx.db.fleet_evidence().iter().filter(|e|e.actor==agent&&e.drone==target).map(|e|e.id).max().unwrap_or(0)};ctx.db.fleet_chat_action().insert(ChatAction{key,evidence_id,kind,target,version,unauthorized_evidence_id,authorized_evidence_id});Ok(())
@@ -143,7 +172,7 @@ pub(crate) fn activate_chat_fleet(ctx:&ReducerContext,role:&str)->Result<(),Stri
  owner(ctx)?;
  if let Some(s)=ctx.db.fleet_session().id().find(0){if s.active&&s.deadline==0{return Ok(())}}
  if !["attacker","defender"].contains(&role){return Err("Invalid role".into())}
- if ctx.db.fleet_session().id().find(0).is_none(){start_fleet(ctx,48,0,0,false)?;}
+ if ctx.db.fleet_session().id().find(0).is_none(){start_fleet(ctx,6,0,0,false)?;}
  let mut s=ctx.db.fleet_session().id().find(0).unwrap();
  if ctx.db.fleet_chat_clock().id().find(0).is_none(){ctx.db.fleet_chat_clock().insert(ChatClock{id:0,epoch:s.epoch,started:if s.deadline>0{s.deadline-60_000_000}else{ctx.timestamp.to_micros_since_unix_epoch()}});}
  s.deadline=0;s.active=true;
@@ -163,3 +192,12 @@ pub(crate) fn deploy_chat_agent(ctx:&ReducerContext,role:&str,epoch:u64,id:u32,t
  ctx.db.fleet_agent_profile().insert(AgentProfile{id,epoch,role:role.into(),name:name.into(),specialty:specialty.into(),operation:operation.into()});
  Ok(())
 }
+
+#[derive(spacetimedb::SpacetimeType)]
+pub struct FleetSessionState { epoch:u64, active:bool, conversation:u64 }
+#[view(accessor=visible_fleet_session,public)]
+pub fn visible_fleet_session(ctx:&ViewContext)->Vec<FleetSessionState>{
+ if role(ctx).is_empty(){return vec![]}ctx.db.fleet_session().id().find(0).map(|s|FleetSessionState{epoch:s.epoch,active:s.active,conversation:crate::backend::visible_conversation_generation(ctx,&role(ctx))}).into_iter().collect()
+}
+
+pub(crate) fn resilience_enabled(ctx:&ReducerContext)->bool{resilience::enabled(ctx)}

@@ -45,7 +45,7 @@ Evidence and screenshots are saved privately in `output/vercel-deployment/`: `br
 
 ## Operations
 
-The Vercel frontend is independent of the backend process but still depends on the existing Neo host, SpacetimeDB and Funnel being online. The backend runs from the main checkout under the enabled user service `sudoko-chat-backend.service`; its secrets remain outside Git. Restart only that service for backend updates. Do not reset Tailscale Serve/Funnel globally or reset the fleet to deploy a frontend change. Demo users can explicitly reset the shared fleet through the confirmed **Sandbox** button; pending work is cancelled before zero-agent initialization and history is retained.
+The Vercel frontend is independent of the backend process but still depends on the existing Neo host, SpacetimeDB and Funnel being online. The backend runs from the main checkout under the enabled user service `sudoko-chat-backend.service`; its secrets remain outside Git. Restart only that service for backend updates. Do not reset Tailscale Serve/Funnel globally or reset the fleet to deploy a frontend change. Demo users can use **Reset Swarm** to reset fleet state while preserving conversations, **New Chat** for a fresh role-private conversation, or confirmed **Reset Demo** for a coordinated shared reset. See `FLEET_CHAT_API.md` for lifecycle and stale-request contracts.
 
 Deploy from the main checkout after verifying the linked project:
 
@@ -58,3 +58,23 @@ vercel promote <the-ready-production-deployment>
 ```
 
 No production isolation or sustained-load claim is made. Provider timeouts and invalid plans remain possible and are surfaced to the operator.
+
+## Reset and chat lifecycle deployment — 2026-10-25
+
+Production deployment `dpl_UUW6KKPqQ52m3G5BqzHi9mXPpFEL` contains the tested working tree based on `881945b`, including the reset/chat lifecycle fixes. The production build was staged, the existing SpacetimeDB module updated in place, only `sudoko-chat-backend.service` restarted, and the staged frontend promoted to the existing domains. No database clear, fleet reset, conversation reset, DNS change or ingress change was used for deployment. The module update preserved epoch 6, 48 drones, 30 evidence rows, six operation records, 55 messages and 12 turns. Conversation generations default existing history to generation 1.
+
+Validation before deployment: 39 automated tests with real isolated SpacetimeDB and mocked inference, three Rust formation tests, typecheck, fleet build and the browser conversation/reset suite. Private deployment evidence is in `output/reset-deployment/`; live checks are read-only and do not clear the shared sandbox.
+
+## Resilience mode on the existing connection — 2026-10-25
+
+Production deployment `dpl_bm9V7aGVrEgTMuCHMtEn11QKLZHB` serves the six-drone synthetic
+resilience UI using the existing `sudoko-chat-live-20261024` database and trusted
+backend service. The module update preserved existing tables and audit history;
+activation of the requested six-drone mission advanced the fleet epoch from 10 to 11.
+The verified prebuilt frontend was staged and hash-checked before promotion. Existing
+public domains, DNS, narrow ingress and role grants were preserved.
+
+`npm run backend` now loads the same existing configuration files as the supervised
+service. `npm run smoke:resilience` checks the public app and real model/reducer loop,
+without creating a temporary database, starting another server or resetting shared state.
+See `output/resilience-live/` and [RESILIENCE.md](RESILIENCE.md).

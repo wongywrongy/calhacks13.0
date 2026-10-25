@@ -24,14 +24,16 @@
     "test:fleet": "node scripts/check-fleet.ts",
     "demo:fleet": "npm run build:fleet && node scripts/check-fleet.ts --serve",
     "export:fleet": "npm run build:fleet && node scripts/export-fleet.ts",
-    "backend": "node --env-file-if-exists=.env sandbox/src/service.ts",
+    "backend": "node --env-file-if-exists=.env --env-file-if-exists=.demo.env --env-file-if-exists=output/deployment/backend.env sandbox/src/service.ts",
     "test:backend-fleet": "node scripts/check-backend-fleet.ts",
     "test:backend-load": "node scripts/check-backend-load.ts",
     "test:fleet-chat": "node scripts/check-fleet-chat.ts --mock",
     "smoke:fleet-chat": "node --env-file=.env scripts/check-fleet-chat.ts",
     "test:fleet-conversation": "node scripts/check-fleet-conversation.ts",
     "smoke:fleet-conversation": "node --env-file=.env scripts/check-fleet-conversation.ts --real",
-    "build:vercel": "node scripts/build-vercel.ts"
+    "build:vercel": "node scripts/build-vercel.ts",
+    "test:resilience": "npm run build:fleet && node scripts/check-resilience.ts",
+    "smoke:resilience": "node --env-file-if-exists=.env --env-file-if-exists=.demo.env --env-file-if-exists=output/deployment/backend.env scripts/check-resilience-live.ts"
   },
   "dependencies": {
     "spacetimedb": "2.13.0",

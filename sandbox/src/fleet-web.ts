@@ -190,7 +190,7 @@ export function fleetWeb(options: {
         url.pathname === "/fleet-config"
           ? (url.searchParams.get("role") ?? "attacker")
           : (req.headers["x-sudoko-role"] ?? "attacker");
-      if (role !== "attacker" && role !== "defender")
+      if (role !== "attacker" && role !== "defender" && role !== "observer")
         throw new StoreError(403, "Unknown demo role");
       const token = env[`SUDOKO_DEMO_${role.toUpperCase()}_VIEWER_TOKEN`];
       if (!token || (await authenticate(token)) !== role)
@@ -212,11 +212,13 @@ export function fleetWeb(options: {
           role: viewer.role,
           token: viewer.token,
           authenticated: true,
+          resilience: (await store.query("SELECT * FROM resilience_mission")).length > 0,
           demo,
-          switchableRoles: demo ? ["attacker", "defender"] : [viewer.role],
+          switchableRoles: demo ? ["attacker", "defender", "observer"].filter((r) => env[`SUDOKO_DEMO_${r.toUpperCase()}_VIEWER_TOKEN`]) : [viewer.role],
           chat: viewer.role !== "observer",
           epoch: fleetState?.epoch,
-          engine: fixtures ? "fixture" : "bitdeer",
+          conversation: viewer.role === "observer" ? undefined : await chat.generation(viewer.role),
+          engine: fixtures ? "fixture" : env.SUDOKO_TEST_INFERENCE === "mocked" ? "mocked" : "bitdeer",
           models: chatModels(env),
         },
       });
@@ -224,11 +226,18 @@ export function fleetWeb(options: {
     }
     if (url.pathname === "/api/chat/state" && req.method === "GET") {
       const reader = new RunStore({ ...fleet, token: viewer.token });
-      const [drones, agents, profiles, events] = await Promise.all(
-        ["visible_drones", "visible_agents", "visible_agent_profiles", "visible_evidence"].map((table) => reader.query(`SELECT * FROM ${table}`)),
+      const [fleetState] = await store.query("SELECT * FROM fleet_session WHERE id=0");
+      const [drones, agents, profiles, events, missions, resilience, budgets] = await Promise.all(
+        ["visible_drones", "visible_agents", "visible_agent_profiles", "visible_evidence", "visible_resilience_mission", "visible_resilience_drones", "visible_resilience_budget"].map((table) => reader.query(`SELECT * FROM ${table}`)),
       );
+      const [current] = await store.query("SELECT * FROM fleet_session WHERE id=0");
+      if (current?.epoch !== fleetState?.epoch) throw new StoreError(409, "Fleet session changed; retry snapshot");
       send(res, { status: 200, body: {
+        epoch: current?.epoch,
+        conversation: viewer.role === "observer" ? 1 : await chat.generation(viewer.role),
+        active: current?.active,
         drones,
+        ...(missions.length ? { mission: missions[0], resilience, budgets } : {}),
         agents: agents.map((agent: any) => ({ ...agent, ...profiles.find((profile: any) => profile.id === agent.id) })),
         events: events.sort((a: any, b: any) => a.id - b.id),
       } });
@@ -236,12 +245,21 @@ export function fleetWeb(options: {
     }
     if (viewer.role === "observer")
       throw new StoreError(403, "Observer sessions cannot deploy agents");
-    if (url.pathname === "/api/chat/reset" && req.method === "POST") {
+    if (["/api/chat/reset", "/api/chat/reset-demo"].includes(url.pathname) && req.method === "POST") {
       if (!demo) throw new StoreError(403, "Reset is available only in demo mode");
       const b: any = await body(req);
-      if (!b || Object.keys(b).length !== 1 || !Number.isSafeInteger(b.epoch) || b.epoch < 1)
+      const full = url.pathname.endsWith("reset-demo");
+      if (full && b?.confirm !== true) throw new StoreError(400, "Confirm the shared demo reset");
+      if (!b || Object.keys(b).some((k) => !["epoch", ...(full ? ["confirm"] : [])].includes(k)) || !Number.isSafeInteger(b.epoch) || b.epoch < 1)
         throw new StoreError(400, "Current fleet epoch required");
-      send(res, { status: 200, body: await chat.endFleet(b.epoch) });
+      send(res, { status: 200, body: await chat.endFleet(b.epoch, full) });
+      return true;
+    }
+    if (url.pathname === "/api/chat/new" && req.method === "POST") {
+      const b: any = await body(req);
+      if (!b || Object.keys(b).length !== 2 || !Number.isSafeInteger(b.epoch) || b.epoch < 1 || !Number.isSafeInteger(b.conversation) || b.conversation < 1)
+        throw new StoreError(400, "Current fleet epoch and conversation required");
+      send(res, { status: 200, body: await chat.newChat(viewer.role, b.epoch, b.conversation) });
       return true;
     }
     if (url.pathname === "/api/chat/conversation" && req.method === "GET") {
@@ -250,6 +268,7 @@ export function fleetWeb(options: {
         body: await chat.conversation(
           viewer.role,
           Number(url.searchParams.get("after") ?? 0),
+          Number(url.searchParams.get("conversation") ?? 1),
         ),
       });
       return true;
@@ -262,8 +281,10 @@ export function fleetWeb(options: {
       if (
         !b ||
         Object.keys(b).some(
-          (k) => !["message", "sandbox", "target"].includes(k),
+          (k) => !["message", "sandbox", "target", "epoch", "conversation"].includes(k),
         ) ||
+        !Number.isSafeInteger(b.epoch) || b.epoch < 1 ||
+        !Number.isSafeInteger(b.conversation) || b.conversation < 1 ||
         typeof b.message !== "string" ||
         b.sandbox !== viewer.sandbox
       )
@@ -273,8 +294,8 @@ export function fleetWeb(options: {
         );
       const key = String(req.headers["idempotency-key"] ?? "");
       const operation = await (url.pathname.endsWith("/messages")
-        ? chat.message(viewer.role, b.message, key, b.target)
-        : chat.start(viewer.role, b.message, key, b.target));
+        ? chat.message(viewer.role, b.message, key, b.target, b.epoch, b.conversation)
+        : chat.start(viewer.role, b.message, key, b.target, undefined, b.epoch, b.conversation));
       send(res, { status: 202, body: operation });
       return true;
     }

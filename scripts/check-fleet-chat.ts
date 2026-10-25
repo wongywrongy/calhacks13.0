@@ -100,6 +100,7 @@ const output = demo
     : "output/fleet-ui-smoke";
 await mkdir(output, { recursive: true });
 try {
+  await service.store.call("start_fleet", [48, 0, 0, false]);
   let fleet: any;
   assert.equal(
     (await service.store.query("SELECT * FROM fleet_session")).length,
@@ -286,15 +287,15 @@ try {
     await page.waitForFunction(
       (state: string) =>
         document.querySelector("#chat-sub")?.textContent === state,
-      op.state,
+      op.outcome.status,
     );
     assert.match(
       await page.locator("#transcript").textContent(),
-      /Validated assignments/,
+      /Deploying 2 agents/,
     );
     assert.match(
       await page.locator("#transcript").textContent(),
-      /Operation completed/,
+      /Completed|Partially completed|Failed/,
     );
     assert.ok(
       !(await page.locator("#transcript").textContent()).includes("evidence #"),
@@ -313,9 +314,9 @@ try {
       assert.equal(await card.getAttribute("data-state"), w.state);
       assert.equal(await card.locator(".name").textContent(), w.name);
       await card.click();
-      assert.equal(await page.locator("#modal-state").textContent(), w.state);
+      assert.equal(await page.locator("#modal-state").textContent(), w.state === "failed" ? "Failed" : w.state === "paused" ? "Stopped" : op.outcome.status === "Failed" ? "Failed" : "Completed");
       assert.ok(
-        (await page.locator("#modal-text").textContent()).includes(w.objective),
+        (await page.locator("#modal-details").textContent()).includes(w.objective),
       );
       assert.equal(
         await page
@@ -532,14 +533,14 @@ try {
       "cancelled",
     );
     await page.waitForFunction(
-      () => document.querySelector("#chat-sub")?.textContent === "cancelled",
+      () => document.querySelector("#chat-sub")?.textContent === "Stopped",
     );
     await delay(500);
     assert.equal((await service.store.query("SELECT * FROM fleet_chat_action")).length, before);
     providerMode = "rate-limit";
     await send("Inspect with provider failure");
     await page.waitForFunction(
-      () => document.querySelector("#chat-sub")?.textContent === "failed",
+      () => document.querySelector("#chat-sub")?.textContent === "Failed",
     );
     assert.match(
       await page.locator("#transcript").textContent(),

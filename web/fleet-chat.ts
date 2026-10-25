@@ -11,6 +11,10 @@ export type Worker = {
 };
 export type Operation = {
   id: string;
+  messageId?: number;
+  turnId?: string;
+  deployment?: { summary: string; assignments: { agentId: number; name: string; target: number; summary: string }[] };
+  outcome?: { status: string; summary: string; succeeded: number; total: number; evidenceIds: number[] };
   role: string;
   state: string;
   message: string;
@@ -21,6 +25,9 @@ export type Operation = {
   workers: Worker[];
   results: {
     agentId: number;
+    intent?: string;
+    observation?: { anomaly?: boolean }[];
+    verifiedEffectEvidenceId?: number;
     target?: number;
     step?: number;
     kind?: string;
@@ -43,6 +50,9 @@ export type Operation = {
 };
 export type ChatMessage = {
   id: number;
+  kind?: string;
+  replyTo?: number;
+  turnId?: string;
   operation: string;
   speaker: string;
   text: string;
@@ -51,7 +61,7 @@ export type ChatMessage = {
 };
 export const activeOperation = (op?: Operation) =>
   !!op && ["planning", "running"].includes(op.state);
-export type ConversationTurn = { id: string; state: string; createdAt: number; updatedAt: number; intent?: string; error?: string; metric?: { status: string; stage: string; epoch?: number } };
+export type ConversationTurn = { id: string; messageId?: number; operationId?: string; state: string; createdAt: number; updatedAt: number; intent?: string; error?: string; metric?: { status: string; stage: string; epoch?: number } };
 export class OperationChat {
   messages: ChatMessage[] = [];
   operations: Operation[] = [];
@@ -60,11 +70,15 @@ export class OperationChat {
   sending = false;
   lastUpdated = 0;
   fleet: { active: boolean; epoch: number } | null = null;
+  conversation = 1;
   private closed = false;
   private timer?: ReturnType<typeof setTimeout>;
-  private pending?: { key: string; message: string; target?: number };
+  private pending?: { key: string; message: string; target?: number; epoch: number; conversation: number };
+  private abort = new AbortController();
   private storageKey: string;
   private cursor = 0;
+  private requestSequence = 0;
+  private lastApplied = 0;
   private sandbox: string;
   private role: string;
   private changed: () => void;
@@ -78,7 +92,11 @@ export class OperationChat {
     role: string,
     changed: () => void,
     failed: (message: string) => void,
+    epoch: number,
+    conversation = 1,
   ) {
+    this.fleet = { active: true, epoch };
+    this.conversation = conversation;
     this.sandbox = sandbox;
     this.role = role;
     this.changed = changed;
@@ -86,22 +104,24 @@ export class OperationChat {
     this.storageKey = `sudoko.message:${sandbox}:${role}`;
     try {
       const p = JSON.parse(localStorage.getItem(this.storageKey) || "null");
-      if (p && typeof p.key === "string" && typeof p.message === "string")
-        this.pending = p;
+      if (p && typeof p.key === "string" && typeof p.message === "string" && p.epoch === epoch && (p.conversation ?? 1) === conversation)
+        this.pending = { ...p, conversation };
+      else localStorage.removeItem(this.storageKey);
     } catch {}
   }
   async resume() {
-    if (this.pending) {
+    await this.poll();
+    if (!this.closed && this.pending) {
       try {
         await this.submit(this.pending.message, this.pending.target);
       } catch (e) {
-        this.failed(e instanceof Error ? e.message : "Message unavailable");
+        if (!this.closed) this.failed(e instanceof Error ? e.message : "Message unavailable");
       }
     }
-    await this.poll();
   }
   async submit(message: string, target?: number) {
-    if (this.sending) return;
+    if (this.closed || this.sending) return;
+    const epoch = this.fleet!.epoch, conversation = this.conversation;
     if (/^(?:stop|cancel|pause)[.!]?$/i.test(message.trim())) this.clearPending();
     if (
       this.pending &&
@@ -110,63 +130,107 @@ export class OperationChat {
       throw Error("Retry the pending message before submitting another.");
     this.sending = true;
     try {
-      this.pending ??= { key: crypto.randomUUID(), message, target };
+      this.pending ??= { key: crypto.randomUUID(), message, target, epoch, conversation };
       localStorage.setItem(this.storageKey, JSON.stringify(this.pending));
+      const request = ++this.requestSequence;
       const r = await fetch("/api/chat/messages", {
         method: "POST",
-        signal: AbortSignal.timeout(12000),
+        signal: AbortSignal.any([this.abort.signal, AbortSignal.timeout(12000)]),
         credentials: "same-origin",
         headers: {
           "content-type": "application/json",
           "x-sudoko-role": this.role,
           "idempotency-key": this.pending.key,
         },
-        body: JSON.stringify({ message, sandbox: this.sandbox, target }),
+        body: JSON.stringify({ message, sandbox: this.sandbox, target, epoch, conversation }),
       });
       const body = await r.json();
+      if (this.closed || this.fleet?.epoch !== epoch || this.conversation !== conversation) return;
       if (!r.ok) {
         if (r.status < 500) this.clearPending();
         throw Error(body.error || `Message failed (${r.status})`);
       }
       this.clearPending();
-      this.update(body);
+      this.update(body, request);
+    } catch (error) {
+      if (!this.closed && this.fleet?.epoch === epoch && this.conversation === conversation) throw error;
     } finally {
-      this.sending = false;
+      if (this.fleet?.epoch === epoch && this.conversation === conversation) this.sending = false;
     }
   }
   private clearPending() {
     this.pending = undefined;
     localStorage.removeItem(this.storageKey);
   }
-  private update(body: { messages: ChatMessage[]; operations: Operation[]; turns?: ConversationTurn[]; fleet?: { active: boolean; epoch: number } | null }) {
-    if (this.closed) return;
-    const ids = new Set(this.messages.map((m) => m.id));
-    this.messages.push(...body.messages.filter((m) => !ids.has(m.id)));
-    this.messages.sort((a, b) => a.id - b.id);
+  advanceEpoch(epoch: number) {
+    if (epoch <= (this.fleet?.epoch ?? 0)) return;
+    this.operations = [];
+    this.turns = [];
+    this.cursor = 0;
+    this.sending = false;
+    this.lastUpdated = 0;
+    this.clearPending();
+    this.fleet = { active: true, epoch };
+  }
+  advanceConversation(generation: number) {
+    if (generation <= this.conversation) return;
+    this.conversation = generation;
+    this.messages = [];
+    this.operations = [];
+    this.turns = [];
+    this.cursor = 0;
+    this.sending = false;
+    this.clearPending();
+  }
+  async newChat() {
+    const request = ++this.requestSequence;
+    const response = await fetch("/api/chat/new", {
+      method: "POST", credentials: "same-origin",
+      signal: AbortSignal.any([this.abort.signal, AbortSignal.timeout(12000)]),
+      headers: { "content-type": "application/json", "x-sudoko-role": this.role },
+      body: JSON.stringify({ epoch: this.fleet!.epoch, conversation: this.conversation }),
+    });
+    const body = await response.json();
+    if (!response.ok) throw Error(body.error || "New Chat failed");
+    this.update(body, request);
+  }
+  private update(body: { conversation?: number; messages: ChatMessage[]; operations: Operation[]; turns?: ConversationTurn[]; fleet?: { active: boolean; epoch: number } | null }, request: number) {
+    if (this.closed || !body.fleet || body.fleet.epoch < this.fleet!.epoch) return false;
+    if ((body.conversation ?? 1) < this.conversation) return false;
+    if (body.fleet.epoch === this.fleet!.epoch && (body.conversation ?? 1) === this.conversation && request < this.lastApplied) return false;
+    this.lastApplied = request;
+    this.advanceEpoch(body.fleet.epoch);
+    this.advanceConversation(body.conversation ?? 1);
+    const messages = new Map(this.messages.map((m) => [m.id, m]));
+    for (const m of body.messages) messages.set(m.id, m);
+    this.messages = [...messages.values()].sort((a, b) => a.id - b.id);
     this.operations = body.operations;
     this.turns = body.turns ?? [];
     this.lastUpdated = Date.now();
     if (body.fleet !== undefined) this.fleet = body.fleet;
     this.changed();
+    return true;
   }
   private async poll() {
+    const epoch = this.fleet!.epoch;
     try {
       let more = true;
       while (more && !this.closed) {
-        const r = await fetch(`/api/chat/conversation?after=${this.cursor}`, {
+        const request = ++this.requestSequence;
+        const r = await fetch(`/api/chat/conversation?after=${this.cursor}&conversation=${this.conversation}`, {
           credentials: "same-origin",
-          signal: AbortSignal.timeout(12000),
+          signal: AbortSignal.any([this.abort.signal, AbortSignal.timeout(12000)]),
           headers: { "x-sudoko-role": this.role },
         });
         const body = await r.json();
         if (!r.ok)
           throw Error(body.error || `Conversation unavailable (${r.status})`);
-        this.update(body);
+        if (!this.update(body, request)) break;
         this.cursor = body.after;
         more = body.more;
       }
     } catch (e) {
-      if (!this.closed)
+      if (!this.closed && this.fleet?.epoch === epoch)
         this.failed(
           e instanceof Error ? e.message : "Conversation unavailable",
         );
@@ -175,6 +239,7 @@ export class OperationChat {
   }
   close() {
     this.closed = true;
+    this.abort.abort();
     clearTimeout(this.timer);
   }
 }

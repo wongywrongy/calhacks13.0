@@ -120,6 +120,7 @@ export async function fleetInference(options: {
       throw new DecisionError("provider_refused");
     if (!validate(value))
       throw new DecisionError("provider_malformed_output");
+    signal.throwIfAborted();
     metric.status = "completed";
     return value;
   } catch (error) {

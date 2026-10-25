@@ -203,3 +203,27 @@ Use granted viewer identities at `/signin`; browser role selection never grants 
 See [FLEET_CHAT_API.md](docs/FLEET_CHAT_API.md) for setup, budgets and the start/read/stop
 contract, and [FLEET_CHAT_VALIDATION.md](docs/FLEET_CHAT_VALIDATION.md) for verification.
 The fleet reducer simulation remains separate from the HTTP practice suite.
+
+## Synthetic drone resilience arena
+
+New chat fleets now start the six-drone **synthetic resilience simulation**. Challenge
+specialists choose five bounded disruptions; defense specialists investigate and restore
+survey participation. Existing strategic chat, Three.js viewport, and SpacetimeDB remain
+in use. The historical HTTP suite and explicit larger fixture fleets stay separate.
+See [RESILIENCE.md](docs/RESILIENCE.md) for the mission, action costs, privacy and evidence.
+
+```sh
+npm run spacetime:build
+npm run build:fleet
+npm run backend
+# Full local browser check with explicitly mocked decisions and real reducers:
+SPACETIME_BINARY=/path/to/spacetimedb-standalone npm run test:resilience
+# Public app, existing live database and actual provider (billable; no test database):
+npm run smoke:resilience
+```
+
+The deployed app uses the existing persistent `sudoko-chat-live-20261024` database at
+[https://sudo-ko.us](https://sudo-ko.us). `npm run backend` reads the existing `.env`,
+`.demo.env`, and `output/deployment/backend.env` configuration in that order; it does
+not provision a database. `npm run smoke:resilience` verifies that deployed connection
+with real models, without spawning SpacetimeDB or clearing the shared session.

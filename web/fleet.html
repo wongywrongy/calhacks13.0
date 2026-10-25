@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>SudoKO · Swarm security workspace</title>
+    <title>Sudo-KO · Synthetic resilience simulation</title>
     <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
@@ -311,6 +311,7 @@
         border: 1px solid #7ee8b0;
         color: #7ee8b0;
         background: var(--green-bg);
+        flex-shrink: 0;
       }
       .pill.stale {
         border-color: var(--amber);
@@ -336,7 +337,7 @@
       #clock span {
         color: #6f7b8a;
       }
-      #reset-sandbox {
+      #reset-sandbox, #reset-swarm, #new-chat {
         font: 14px var(--mono);
         padding: 6px 12px;
         border: 1px solid var(--line2);
@@ -344,7 +345,7 @@
         background: transparent;
         color: var(--fg);
       }
-      #reset-sandbox:hover { background: var(--line2); }
+      #reset-sandbox:hover, #reset-swarm:hover, #new-chat:hover { background: var(--line2); }
       .progress {
         background: var(--line2);
         border-radius: 2px;
@@ -356,11 +357,11 @@
         width: 0;
         background: var(--team);
       }
-      #error:empty {
+      #feedback { grid-row: 2; }
+      #error:empty, #reset-status:empty {
         display: none;
       }
-      #error {
-        grid-row: 2;
+      #error, #reset-status {
         margin: 0;
         padding: 6px 24px;
         border-bottom: 1px solid var(--line);
@@ -384,6 +385,16 @@
         min-height: 0;
         background: var(--panel);
         border-right: 1px solid var(--line);
+      }
+      body[data-resilience="true"] .rail {
+        grid-template-rows: 40px auto auto 40px minmax(0, 1fr);
+      }
+      .resilience-metrics {
+        grid-column: 1 / -1;
+        grid-template-rows: none;
+        gap: 5px;
+        padding-block: 14px;
+        font-variant-numeric: tabular-nums;
       }
       #rail-right {
         border-right: 0;
@@ -662,7 +673,7 @@
       }
       .row {
         display: grid;
-        grid-template-columns: 44px minmax(0, 1fr);
+        grid-template-columns: 84px minmax(0, 1fr);
         align-items: center;
         gap: 10px;
         height: 34px;
@@ -720,7 +731,9 @@
         font-size: 12px;
         color: var(--team-text);
         white-space: nowrap;
+        flex-shrink: 0;
       }
+      #chat > .bar > div { min-width: 0; flex: 1; }
       #transcript {
         overflow: auto;
         padding: 12px 12px 4px;
@@ -764,6 +777,20 @@
         text-align: center;
         font-size: 12px;
       }
+      .interaction { display: flex; flex-direction: column; gap: 8px; }
+      .interaction > div { min-width: 0; }
+      .interaction > .bubble.you { align-self: flex-end; }
+      .interaction-progress { color: var(--team-text); font-size: 12px; padding: 2px 10px; }
+      .interaction .bubble { max-width: 100%; }
+      .interaction p { margin: 0; }
+      .interaction p + p, .interaction ul { margin-top: 6px; }
+      .interaction ul { margin-bottom: 0; padding-left: 16px; }
+      .interaction li + li { margin-top: 5px; }
+      .outcome b { display: block; margin-bottom: 4px; }
+      .evidence { display: block; font-size: 11px; color: var(--muted); margin-top: 6px; }
+      details { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+      summary { cursor: pointer; padding: 5px 0; }
+      details pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.5 var(--mono); color: #c2cad4; }
       #context-slot {
         display: flex;
         align-items: center;
@@ -824,17 +851,26 @@
         border-radius: 8px;
         background: var(--panel);
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
+        overscroll-behavior: contain;
+        overflow-wrap: anywhere;
       }
       .dialog .head {
         display: flex;
         align-items: center;
         gap: 10px;
-        height: 48px;
+        min-height: 48px;
         padding: 0 16px;
         border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        background: var(--panel);
+        z-index: 1;
       }
       .dialog .head .name {
         font: 600 14px var(--mono);
+        min-width: 0;
       }
       .dialog .head button {
         margin-left: auto;
@@ -842,6 +878,7 @@
         height: 28px;
         font-size: 18px;
         color: var(--muted);
+        flex-shrink: 0;
       }
       .dialog p {
         margin: 0;
@@ -876,12 +913,23 @@
         letter-spacing: 0;
       }
       .dialog .rows {
-        height: 170px;
-        overflow: auto;
+        height: auto;
+        overflow: visible;
       }
+      #modal-specialty { padding-bottom: 4px; color: var(--team-text); }
+      #modal-target, #modal-details { padding: 8px 16px; }
+      #modal-current { color: var(--muted); font-size: 12px; }
+      .dialog h3 { font-size: 12px; margin: 12px 16px 4px; }
+      .row .t { white-space: nowrap; font-variant-numeric: tabular-nums; }
+      .dialog .row { grid-template-columns: 84px minmax(0, 1fr); }
       .dialog .row {
         cursor: default;
+        height: auto;
+        min-height: 34px;
+        padding-block: 8px;
+        align-items: start;
       }
+      .dialog .row .s { white-space: normal; overflow-wrap: anywhere; }
 
       @media (min-width: 901px) and (max-width: 1350px) {
         main { grid-template-columns: 240px minmax(0, 1fr) 300px; }
@@ -903,9 +951,8 @@
           padding: 8px 16px;
           gap: 8px 16px;
         }
-        .h-right {
-          grid-column: 1 / -1;
-        }
+        .h-left { grid-column: 1 / -1; flex-wrap: wrap; }
+        .h-right { grid-column: 1 / -1; flex-wrap: wrap; }
         main {
           display: block;
         }
@@ -915,9 +962,8 @@
           border-right: 0;
           border-top: 1px solid var(--line);
         }
-        .rail {
-          grid-template-rows: 40px 96px 112px 40px 280px;
-        }
+        .rail { grid-template-rows: 40px 96px 112px 40px 280px; }
+        body[data-resilience="true"] .rail { grid-template-rows: 40px auto auto 40px 280px; }
         .map {
           grid-template-rows: 40px 360px 300px;
         }
@@ -944,10 +990,10 @@
         <b>SUDOKO</b>
         <nav class="seg" aria-label="Role view">
           <button data-role="attacker" aria-pressed="false">
-            <span class="dot" style="background: #f02d38"></span>Attacker
+            <span class="dot" style="background: #f02d38"></span>Challenge
           </button>
           <button data-role="defender" aria-pressed="true">
-            <span class="dot" style="background: #277dfd"></span>Defender
+            <span class="dot" style="background: #277dfd"></span>Defense
           </button>
           <button data-role="observer" aria-pressed="false">
             <span class="dot" style="background: #c2cad4"></span>Observer
@@ -971,14 +1017,18 @@
           <input id="timeline" type="range" min="0" max="1" value="0" aria-label="Scrub recording" />
         </div>
         <span class="pill replay" id="live" role="status" title="Loading…">Connecting</span>
-        <button id="reset-sandbox" type="button" aria-label="Reset sandbox" title="Reset the shared demo fleet for both sides" hidden>Sandbox</button>
+        <button id="reset-swarm" type="button" title="Restore the shared fleet and stop agents; keep conversations" hidden>Reset Swarm</button>
+        <button id="reset-sandbox" type="button" title="Reset the shared fleet and both conversations" hidden>Reset Demo</button>
         <div class="clock">
           <div id="clock">0:00<span>&nbsp;/ 1:00</span></div>
           <div class="progress"><i id="progress"></i></div>
         </div>
       </div>
     </header>
-    <p id="error" role="status"></p>
+    <div id="feedback">
+      <p id="error" role="status"></p>
+      <p id="reset-status" role="status" aria-live="polite"></p>
+    </div>
     <main>
       <aside id="rail-left" class="rail" aria-label="Agents"></aside>
       <section class="map" aria-label="Drone swarm map">
@@ -1021,6 +1071,7 @@
         <div class="bar">
           <div><h2 id="chat-name">Sentinel</h2><div id="provider"></div></div>
           <span id="chat-sub"></span>
+          <button id="new-chat" type="button" title="Start a fresh conversation for this role; keep the fleet" hidden>New Chat</button>
         </div>
         <div id="transcript" role="log" aria-live="polite"></div>
         <div id="context-slot"></div>
@@ -1040,11 +1091,16 @@
           <span class="dot" id="modal-dot"></span>
           <span class="name" id="modal-name"></span>
           <span class="tag" id="modal-state"></span>
-          <button id="modal-close" aria-label="Close">×</button>
+          <button id="modal-close" aria-label="Close agent inspector">×</button>
         </div>
+        <p id="modal-specialty"></p>
+        <div id="modal-target"></div>
         <p id="modal-text"></p>
-        <div class="stats" id="modal-stats"></div>
+        <p id="modal-result"></p>
+        <p id="modal-current"></p>
+        <h3>Activity</h3>
         <ul class="rows" id="modal-log"></ul>
+        <div id="modal-details"></div>
       </div>
     </div>
     <script type="module" src="/fleet.js"></script>
