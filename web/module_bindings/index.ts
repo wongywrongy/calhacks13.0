@@ -38,6 +38,7 @@ import AcquireBackendReducer from "./acquire_backend_reducer";
 import ActivateChatFleetReducer from "./activate_chat_fleet_reducer";
 import CreateChatOperationReducer from "./create_chat_operation_reducer";
 import CreateChatTurnReducer from "./create_chat_turn_reducer";
+import CreateVisitorSessionReducer from "./create_visitor_session_reducer";
 import EnableFleetChatReducer from "./enable_fleet_chat_reducer";
 import EnqueueBackendRunReducer from "./enqueue_backend_run_reducer";
 import ExecuteFleetChatActionReducer from "./execute_fleet_chat_action_reducer";
@@ -45,6 +46,7 @@ import GrantBackendViewerReducer from "./grant_backend_viewer_reducer";
 import GrantFleetViewReducer from "./grant_fleet_view_reducer";
 import GrowFleetReducer from "./grow_fleet_reducer";
 import HeartbeatBackendReducer from "./heartbeat_backend_reducer";
+import HeartbeatVisitorSessionReducer from "./heartbeat_visitor_session_reducer";
 import MigrateHostedWorkflowReducer from "./migrate_hosted_workflow_reducer";
 import NewChatReducer from "./new_chat_reducer";
 import NewMaincloudChatReducer from "./new_maincloud_chat_reducer";
@@ -251,6 +253,7 @@ const reducersSchema = __reducers(
   __reducerSchema("activate_chat_fleet", ActivateChatFleetReducer),
   __reducerSchema("create_chat_operation", CreateChatOperationReducer),
   __reducerSchema("create_chat_turn", CreateChatTurnReducer),
+  __reducerSchema("create_visitor_session", CreateVisitorSessionReducer),
   __reducerSchema("enable_fleet_chat", EnableFleetChatReducer),
   __reducerSchema("enqueue_backend_run", EnqueueBackendRunReducer),
   __reducerSchema("execute_fleet_chat_action", ExecuteFleetChatActionReducer),
@@ -258,6 +261,7 @@ const reducersSchema = __reducers(
   __reducerSchema("grant_fleet_view", GrantFleetViewReducer),
   __reducerSchema("grow_fleet", GrowFleetReducer),
   __reducerSchema("heartbeat_backend", HeartbeatBackendReducer),
+  __reducerSchema("heartbeat_visitor_session", HeartbeatVisitorSessionReducer),
   __reducerSchema("migrate_hosted_workflow", MigrateHostedWorkflowReducer),
   __reducerSchema("new_chat", NewChatReducer),
   __reducerSchema("new_maincloud_chat", NewMaincloudChatReducer),
@@ -520,3 +524,4 @@ export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
     return new SubscriptionBuilder(this);
   };
 }
+

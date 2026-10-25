@@ -14,10 +14,10 @@ fn normalized(state:&str,operation:&str)->&'static str{
  if ["cancelled","interrupted"].contains(&operation){return "cancelled"}
  match state{"observing" if operation=="running"=>"observing","deciding" if operation=="running"=>"deciding","executing" if operation=="running"=>"executing","waiting" if operation=="running"=>"waiting","queued" if operation=="running"=>"queued","working"|"running" if operation=="running"=>"running","done"|"completed"=>"completed","blocked"=>"blocked","exhausted"=>"exhausted","cancelled"|"paused"=>"cancelled",_=>"failed"}
 }
-fn tasks(ctx:&ViewContext,team:&str)->Vec<TaskActivity>{
- let epoch=ctx.db.fleet_session().id().find(0).map(|s|s.epoch).unwrap_or(0);
+fn tasks(ctx:&SessionView,team:&str)->Vec<TaskActivity>{
+ let epoch=ctx.db.fleet_session().id().find(entity_key(ctx.session_id, 0)).filter(|row|row.session_id==ctx.session_id).map(ScopedRow::local).map(|s|s.epoch).unwrap_or(0);
  let mut out=vec![];
- for op in ctx.db.backend_chat().scope().filter((team,epoch,visible_conversation_generation(ctx,team))).map(|op|view_operation(ctx,op)){
+ for op in ctx.db.backend_chat().session_scope().filter((ctx.session_id,team,epoch,visible_conversation_generation(ctx,team))).map(ScopedRow::local).map(|op|view_operation(ctx,op)){
   let config:Value=serde_json::from_str(&op.config).unwrap_or_default();let records:Vec<Value>=serde_json::from_str(&op.result).unwrap_or_default();
   for task in config["tasks"].as_array().into_iter().flatten(){
    let agent=task["agentId"].as_u64().unwrap_or(0) as u32;
@@ -35,30 +35,32 @@ fn tasks(ctx:&ViewContext,team:&str)->Vec<TaskActivity>{
    let reason=lifecycle.and_then(|r|r["reason"].as_str().or_else(||r["error"].as_str())).unwrap_or("");
    let summary=if state=="cancelled"{"Operation cancelled; pending effects cannot apply.".into()}else if !ongoing&&!reason.is_empty(){reason.to_string()}else if !phase["report"]["summary"].is_null(){format!("{} {}",reason,phase["report"]["summary"].as_str().unwrap_or(""))}else{reason.into()};
    let at=lifecycle.and_then(|r|r["at"].as_i64()).or_else(||config["createdAt"].as_i64()).unwrap_or(0);
-   let at=if ongoing{at}else{at.max(ctx.db.backend_chat_transition().operation().filter(op.id.as_str()).map(|t|t.at).max().unwrap_or(0))};
+   let at=if ongoing{at}else{at.max(ctx.db.backend_chat_transition().session_operation().filter((ctx.session_id,op.id.as_str())).map(ScopedRow::local).map(|t|t.at).max().unwrap_or(0))};
    out.push(TaskActivity{agent,epoch,role:team.into(),operation:op.id.clone(),name:task["name"].as_str().unwrap_or("Specialist").into(),specialty:task["specialty"].as_str().unwrap_or("").into(),target:task["target"].as_u64().unwrap_or(0) as u32,goal:task_goal(task,team).into(),state:state.into(),stage:stage.into(),summary,updated_at:at,finished_at:if ongoing{0}else{at}});
   }
  }
  out
 }
 #[view(accessor=visible_agent_tasks,public)]
-pub fn visible_agent_tasks(ctx:&ViewContext)->Vec<TaskActivity>{
+pub fn visible_agent_tasks(raw:&spacetimedb::ViewContext) ->Vec<TaskActivity> { let ctx=SessionView::for_sender(raw);visible_agent_tasks_scoped(&ctx) }
+pub(crate) fn visible_agent_tasks_scoped(ctx:&SessionView)->Vec<TaskActivity>{
  let role=crate::fleet::view_role(ctx);let mut out=vec![];for team in ["attacker","defender"]{if role==team||role=="observer"{out.extend(tasks(ctx,team));}}out
 }
 fn label(stage:&str)->&'static str{match stage{"attempt"=>"Attempt in progress","evaluating"=>"Evaluating the result","reassessing"=>"Deciding the next action","assessing"=>"Deciding the next action","queued"=>"Waiting for a decision slot","request"=>"Request queued","waiting"=>"Waiting for fresh observations","blocked"=>"Blocked","execution_failure"=>"Request failed; no simulated result was established",_=>"Waiting for user instructions"}}
 #[view(accessor=visible_team_activity,public)]
-pub fn visible_team_activity(ctx:&ViewContext)->Vec<TeamActivity>{
- let role=crate::fleet::view_role(ctx);let epoch=ctx.db.fleet_session().id().find(0).map(|s|s.epoch).unwrap_or(0);let mut out=vec![];
+pub fn visible_team_activity(raw:&spacetimedb::ViewContext) ->Vec<TeamActivity> { let ctx=SessionView::for_sender(raw);visible_team_activity_scoped(&ctx) }
+pub(crate) fn visible_team_activity_scoped(ctx:&SessionView)->Vec<TeamActivity>{
+ let role=crate::fleet::view_role(ctx);let epoch=ctx.db.fleet_session().id().find(entity_key(ctx.session_id, 0)).filter(|row|row.session_id==ctx.session_id).map(ScopedRow::local).map(|s|s.epoch).unwrap_or(0);let mut out=vec![];
  for team in ["attacker","defender"]{if role!=team&&role!="observer"{continue}
   let workers=tasks(ctx,team);let active:Vec<_>=workers.iter().filter(|t|["queued","running","observing","deciding","executing","waiting"].contains(&t.state.as_str())).collect();
-  let op=ctx.db.backend_chat().scope().filter((team,epoch,visible_conversation_generation(ctx,team))).filter(|o|["planning","running"].contains(&o.state.as_str())).map(|op|view_operation(ctx,op)).max_by_key(|o|serde_json::from_str::<Value>(&o.config).ok().and_then(|v|v["createdAt"].as_i64()).unwrap_or(0));
-  let pending=ctx.db.backend_chat_turn().scope().filter((team,epoch,visible_conversation_generation(ctx,team))).find(|t|["queued","running"].contains(&t.state.as_str()));
+  let op=ctx.db.backend_chat().session_scope().filter((ctx.session_id,team,epoch,visible_conversation_generation(ctx,team))).map(ScopedRow::local).filter(|o|["planning","running"].contains(&o.state.as_str())).map(|op|view_operation(ctx,op)).max_by_key(|o|serde_json::from_str::<Value>(&o.config).ok().and_then(|v|v["createdAt"].as_i64()).unwrap_or(0));
+  let pending=ctx.db.backend_chat_turn().session_scope().filter((ctx.session_id,team,epoch,visible_conversation_generation(ctx,team))).map(ScopedRow::local).find(|t|["queued","running"].contains(&t.state.as_str()));
   let deciding=pending.as_ref().map(|t|hosted::view_job(ctx,&t.id)["state"]=="running").unwrap_or(false)||op.as_ref().map(|o|(1..=2).any(|n|hosted::view_job(ctx,&format!("{}:replan:{}",o.id,n))["state"]=="running")).unwrap_or(false);
   let priority=|s:&str|match s{"attempt"=>0,"evaluating"=>1,"reassessing"=>2,"assessing"=>3,_=>4};
   let primary=active.iter().min_by_key(|t|(priority(&t.stage),t.target));
-  let latest=ctx.db.backend_chat().scope().filter((team,epoch,visible_conversation_generation(ctx,team))).map(|op|view_operation(ctx,op)).max_by_key(|o|serde_json::from_str::<Value>(&o.config).ok().and_then(|v|v["createdAt"].as_i64()).unwrap_or(0));
+  let latest=ctx.db.backend_chat().session_scope().filter((ctx.session_id,team,epoch,visible_conversation_generation(ctx,team))).map(ScopedRow::local).map(|op|view_operation(ctx,op)).max_by_key(|o|serde_json::from_str::<Value>(&o.config).ok().and_then(|v|v["createdAt"].as_i64()).unwrap_or(0));
   let blocked=workers.iter().filter(|t|["failed","blocked","exhausted"].contains(&t.state.as_str())&&latest.as_ref().map(|o|o.id==t.operation).unwrap_or(false)).max_by_key(|t|t.finished_at);
-  let request_failed=ctx.db.backend_chat_turn().scope().filter((team,epoch,visible_conversation_generation(ctx,team))).max_by_key(|t|t.created).map(|t|t.state=="failed"&&latest.as_ref().map(|o|serde_json::from_str::<Value>(&o.config).ok().and_then(|v|v["createdAt"].as_i64()).unwrap_or(0)<=t.created).unwrap_or(true)).unwrap_or(false);
+  let request_failed=ctx.db.backend_chat_turn().session_scope().filter((ctx.session_id,team,epoch,visible_conversation_generation(ctx,team))).map(ScopedRow::local).max_by_key(|t|t.created).map(|t|t.state=="failed"&&latest.as_ref().map(|o|serde_json::from_str::<Value>(&o.config).ok().and_then(|v|v["createdAt"].as_i64()).unwrap_or(0)<=t.created).unwrap_or(true)).unwrap_or(false);
   let stage=if let Some(t)=primary{t.stage.as_str()}else if deciding{"assessing"}else if op.is_some(){"queued"}else if pending.is_some(){"request"}else if request_failed{"execution_failure"}else if blocked.map(|t|t.summary.contains("No ")||t.summary.contains("route")||t.summary.contains("budget")).unwrap_or(false){"blocked"}else{"idle"};
   let mut targets:Vec<_>=active.iter().map(|t|t.target).collect();targets.sort_unstable();targets.dedup();
   let config:Value=op.as_ref().and_then(|o|serde_json::from_str(&o.config).ok()).unwrap_or(Value::Null);

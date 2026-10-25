@@ -15,4 +15,5 @@ export default __t.row({
   epoch: __t.u64(),
   remaining: __t.u32(),
   spent: __t.u32(),
+  sessionId: __t.u32().name("session_id"),
 });

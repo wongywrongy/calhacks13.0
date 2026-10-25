@@ -17,13 +17,13 @@ try{
  for(const role of ["attacker","defender","observer"]){
   const button=page.locator(`nav [data-role="${role}"]`);assert.ok(await button.isEnabled(),`${role} workspace must be available`);await button.click();
   await page.waitForFunction(r=>document.body.dataset.role===r&&document.querySelector("#live")?.textContent==="Live",role);
-  if(role!=="observer")assert.ok(await page.locator("#say").isEditable());else{assert.equal(await page.locator("#compose").isVisible(),false);assert.match(await page.locator("#assessment").innerText(),/untested; security unknown/);}
+  if(role!=="observer")assert.ok(await page.locator("#say").isEditable());else{assert.equal(await page.locator("#compose").isVisible(),false);assert.match(await page.locator("#overview").innerText(),/Not tested does not mean safe/);}
  }
  report.checks.push("Current Attack/Defend controls open editable chat; Observer opens a read-only evidence assessment");
  await page.reload();await page.waitForFunction(()=>document.body.dataset.role==="observer"&&document.querySelector("#live")?.textContent==="Live");
  await page.screenshot({path:`${out}/assessment.png`});
  for(const width of [1280,1366,390]){await page.setViewportSize({width,height:width===390?844:768});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
- await page.locator("#assessment").scrollIntoViewIfNeeded();await page.screenshot({path:`${out}/narrow.png`});
+ await page.locator("#overview").scrollIntoViewIfNeeded();await page.screenshot({path:`${out}/narrow.png`});
  assert.deepEqual(report.errors,[]);assert.ok(!report.requests.some((path:string)=>path.startsWith("/api/")),"No legacy API proxy requests");
  report.checks.push("Refresh preserves Observer, laptop/narrow views fit, no page errors or legacy API calls");report.passed=true;
 }catch(error){report.error=error instanceof Error?error.message:String(error);process.exitCode=1;}

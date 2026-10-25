@@ -19,4 +19,5 @@ export default __t.row({
   kind: __t.string(),
   status: __t.u32(),
   policyVersion: __t.u32().name("policy_version"),
+  sessionId: __t.u32().name("session_id"),
 });

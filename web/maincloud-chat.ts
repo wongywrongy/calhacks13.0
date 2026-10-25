@@ -1,31 +1,68 @@
 import { DbConnection } from "./module_bindings/index.ts";
 import { fleetOutcome } from "../sandbox/src/fleet-outcome.ts";
 import type { ChatTransport } from "./fleet-chat.ts";
+import { VisitorSessionExpired } from "./visitor-session.ts";
 
 const row = (value: any): any => Object.fromEntries(Object.entries(value).map(([key, v]) => [key.replace(/[A-Z]/g, c => "_" + c.toLowerCase()), typeof v === "bigint" ? Number(v) : v]));
 export class MaincloudChat implements ChatTransport {
+  onChange?: () => void;
+  onInvalid?: () => void;
   private conn!: DbConnection;
   private connected = false;
   private closed = false;
   private reconnect?: ReturnType<typeof setTimeout>;
-  private config: { uri: string; database: string; token: string };
-  private constructor(config: { uri: string; database: string; token: string }) { this.config = config; }
-  static async connect(config: { uri: string; database: string; token: string }) {
+  private heartbeat?: ReturnType<typeof setInterval>;
+  private revision = 0;
+  private config: { uri: string; database: string; token: string; sessionId?: number };
+  private constructor(config: { uri: string; database: string; token: string; sessionId?: number }) { this.config = config; }
+  static async connect(config: { uri: string; database: string; token: string; sessionId?: number }) {
+    if (!config.token) throw new VisitorSessionExpired("Your session credentials are missing.");
     const client = new MaincloudChat(config);
     try { await client.start(); } catch (error) { client.close(); throw error; }
     return client;
   }
   private start() {
+    const revision = ++this.revision;
+    this.connected = false;
+    this.conn?.disconnect(); clearInterval(this.heartbeat);
     return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => { reject(Error("Maincloud connection timed out. Please retry.")); this.conn?.disconnect(); }, 10000);
+      const current = () => !this.closed && revision === this.revision;
+      const invalid = () => {
+        if (!current()) return;
+        clearTimeout(timeout); this.close(); this.onInvalid?.();
+        reject(new VisitorSessionExpired("Your session expired. Continue to start a new simulation."));
+      };
       this.conn = DbConnection.builder().withUri(this.config.uri).withDatabaseName(this.config.database).withToken(this.config.token)
         .onConnect(c => {
-          if (this.closed) { c.disconnect(); return; }
-          c.subscriptionBuilder().onApplied(() => { this.connected = true; resolve(); })
-            .onError(ctx => reject(ctx.event))
+          if (!current()) { c.disconnect(); return; }
+          for (const table of [c.db.visibleChatMessages,c.db.visibleChatTurns]) {
+            const change = () => { if (current()) this.onChange?.(); };
+            table.onInsert(change); table.onUpdate(change); table.onDelete(change);
+          }
+          c.db.visibleFleetSession.onDelete(() => {
+            queueMicrotask(() => {
+              if (current() && this.config.sessionId && ![...c.db.visibleFleetSession.iter()].some(s => s.sessionId === this.config.sessionId)) invalid();
+            });
+          });
+          c.subscriptionBuilder().onApplied(() => {
+            if (!current()) return;
+            clearTimeout(timeout);
+            const session = [...c.db.visibleFleetSession.iter()][0];
+            if (this.config.sessionId && session?.sessionId !== this.config.sessionId) { invalid(); return; }
+            this.connected = true; resolve(); this.onChange?.();
+            if (this.config.sessionId) {
+              const heartbeat = () => { void c.reducers.heartbeatVisitorSession({}).catch(error => {
+                if (current() && /session expired|session required/i.test(String(error))) invalid();
+              }); };
+              heartbeat(); this.heartbeat = setInterval(heartbeat, 60000);
+            }
+          })
+            .onError(ctx => { clearTimeout(timeout); if (current()) reject(ctx.event); })
             .subscribe(["SELECT * FROM visible_fleet_session", "SELECT * FROM visible_chat_messages", "SELECT * FROM visible_chat_operations", "SELECT * FROM visible_chat_turns"]);
         })
-        .onConnectError((_ctx, error) => { reject(error); this.retry(); })
-        .onDisconnect(() => { this.connected = false; this.retry(); })
+        .onConnectError((_ctx, error) => { clearTimeout(timeout); if (current()) { reject(error); this.retry(); } })
+        .onDisconnect(() => { clearTimeout(timeout); if (current()) { this.connected = false; clearInterval(this.heartbeat); this.retry(); } })
         .build();
     });
   }
@@ -36,7 +73,7 @@ export class MaincloudChat implements ChatTransport {
   async snapshot() {
     if (!this.connected) throw Error("Maincloud disconnected. Reconnecting…");
     const session = [...this.conn.db.visibleFleetSession.iter()].map(row)[0];
-    if (!session) throw Error("No granted Maincloud fleet session");
+    if (!session || this.config.sessionId && session.session_id !== this.config.sessionId) throw new VisitorSessionExpired("Your session expired. Continue to start a new simulation.");
     const messages = [...this.conn.db.visibleChatMessages.iter()].map(row).sort((a,b) => a.id-b.id);
     const turns = [...this.conn.db.visibleChatTurns.iter()].map(row).sort((a,b) => a.created-b.created).map(t => ({ id:t.id, state:t.state, createdAt:t.created, updatedAt:t.updated, ...JSON.parse(t.result), config:JSON.parse(t.config), requestKey:t.request_key }));
     const operations = [...this.conn.db.visibleChatOperations.iter()].map(row).map(r => {
@@ -73,5 +110,5 @@ export class MaincloudChat implements ChatTransport {
   async reset(epoch:number,demo:boolean) {
     await this.conn.reducers.resetMaincloudFleet({epoch:BigInt(epoch),demo});
   }
-  close() { this.closed=true; clearTimeout(this.reconnect); this.conn.disconnect(); }
+  close() { this.closed=true; ++this.revision; this.connected=false; clearTimeout(this.reconnect); clearInterval(this.heartbeat); this.conn?.disconnect(); }
 }

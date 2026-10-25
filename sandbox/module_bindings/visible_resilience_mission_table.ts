@@ -24,4 +24,5 @@ export default __t.row({
   recoveryUs: __t.u64().name("recovery_us"),
   recoveries: __t.u32(),
   state: __t.string(),
+  sessionId: __t.u32().name("session_id"),
 });

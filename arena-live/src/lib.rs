@@ -51,3 +51,5 @@ mod backend;
 pub(crate) fn hosted_scheduler(ctx: &spacetimedb::ReducerContext) -> bool {
     ctx.sender() == ctx.database_identity() && ctx.connection_id().is_none()
 }
+
+mod sessions;

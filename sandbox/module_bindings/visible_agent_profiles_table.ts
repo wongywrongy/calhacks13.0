@@ -17,4 +17,5 @@ export default __t.row({
   name: __t.string(),
   specialty: __t.string(),
   operation: __t.string(),
+  sessionId: __t.u32().name("session_id"),
 });

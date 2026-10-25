@@ -23,6 +23,7 @@ export function fleetAssessment(state: {
   for (const e of state.events) if (known.has(e.drone) && ["unauthorized_command_accepted", "limited_access", "unauthorized_command_blocked", "policy_applied", "recovery_verified", "mission_restored"].includes(e.kind) && (findings.get(e.drone)?.id ?? -1) < e.id) findings.set(e.drone, e);
   return {
     total: known.size, tested: tested.size, untested: known.size-tested.size,
+    testedIds: [...tested], recoveredIds: [...new Set(paired.filter(e => known.has(e.drone)).map(e => e.drone))],
     exposed: exposed.length, isolated: state.drones.filter(d => d.isolated).length,
     available: state.battle.filter(h => known.has(h.drone) && h.operational).length,
     paired: new Set(currentPaired.map(e => e.drone)).size,

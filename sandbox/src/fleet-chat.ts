@@ -664,7 +664,7 @@ export class FleetChat {
         let suffix = 1;
         while (names.has(task.name.toLowerCase())) task.name = `${base} ${++suffix}`;
         names.add(task.name.toLowerCase());
-        do { task.agentId = randomInt(1, 0x100000000); } while (ids.has(task.agentId));
+        do { task.agentId = randomInt(1, 4096); } while (ids.has(task.agentId));
         ids.add(task.agentId);
       }
       await this.store.call("plan_chat_operation", [

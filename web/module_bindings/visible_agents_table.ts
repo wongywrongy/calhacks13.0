@@ -17,4 +17,5 @@ export default __t.row({
   step: __t.u32(),
   target: __t.u32(),
   lastAction: __t.string().name("last_action"),
+  sessionId: __t.u32().name("session_id"),
 });

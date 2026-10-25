@@ -18,4 +18,5 @@ export default __t.row({
   actions: __t.array(__t.string()),
   reachable: __t.array(__t.u32()),
   blocker: __t.string(),
+  sessionId: __t.u32().name("session_id"),
 });

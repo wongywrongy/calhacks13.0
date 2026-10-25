@@ -23,4 +23,5 @@ export default __t.row({
   policyVersion: __t.u32().name("policy_version"),
   commands: __t.u32(),
   rejected: __t.u32(),
+  sessionId: __t.u32().name("session_id"),
 });

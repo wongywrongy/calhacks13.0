@@ -63,7 +63,7 @@ try {
  let attack=await wait(async()=> (await rows("backend_chat")).find(o=>JSON.parse(o.config).turnId===attackTurn!.id),5000);
  await wait(async()=> (await rows("fleet_evidence")).length>beforeEvidence);attackFlow.firstMeaningfulMs=Date.now()-attackStart;
  await page.reload();await page.waitForFunction(()=>document.querySelector("#live")?.textContent?.startsWith("Live"));
- await role("observer");await page.locator("#assessment").waitFor();await page.screenshot({path:`${out}/attack-observer.png`});
+ await role("observer");await page.locator("#overview").waitFor();await page.screenshot({path:`${out}/attack-observer.png`});
  await role("attacker");
  attack=await wait(async()=> (await rows("backend_chat")).find(o=>o.id===attack.id&&!["planning","running"].includes(o.state)));
  attackFlow.terminalMs=Date.now()-attackStart;attackFlow.state=attack.state;
@@ -85,17 +85,17 @@ try {
   const result=await operation(op.id,"defender");defenseFlow.state=result.state;defenseFlow.mission=result.result.findLast((r:any)=>r.type==="mission");assert.ok(defenseFlow.mission);assert.ok(result.config.tasks.every((t:any)=>t.goal==="restore"),"A request to restore participation requires restore assignments");
  }
  await page.screenshot({path:`${out}/defense-terminal.png`});await send("defender","What did we actually prove? Use the persisted evidence and state what remains unknown.");
- await role("observer");await page.waitForFunction(()=>document.querySelector("#assessment")?.textContent?.includes("unique targets"));
+ await role("observer");await page.waitForFunction(()=>document.querySelector("#overview")?.textContent?.includes("drones attacked at least once"));
  assert.equal(await page.locator("#compose").isVisible(),false);
  const observer=clients.observer,session=(await observer.query("SELECT * FROM visible_fleet_session"))[0];
  for(const table of ["hosted_job","hosted_record","hosted_assignment","backend_chat","fleet_principal"])await assert.rejects(observer.query("SELECT * FROM "+table));
  for(const reducer of ["send_maincloud_message","reset_maincloud_fleet","new_maincloud_chat"])await assert.rejects(observer.call(reducer,reducer==="send_maincloud_message"?[randomUUID(),"Deploy",0,session.epoch,session.conversation]:reducer==="reset_maincloud_fleet"?[session.epoch,false]:[session.epoch,session.conversation]));
  assert.deepEqual(await observer.query("SELECT * FROM visible_chat_messages"),[]);
  const state={drones:await observer.query("SELECT * FROM visible_drones"),battle:await observer.query("SELECT * FROM visible_battle_drones"),attempts:await observer.query("SELECT * FROM visible_attempt_activity"),events:await observer.query("SELECT * FROM visible_evidence"),tasks:await observer.query("SELECT * FROM visible_agent_tasks")};
- report.observerState=state;report.assessment=fleetAssessment(state as any);await page.waitForFunction((coverage:string)=>document.querySelector("#assessment")?.textContent?.includes(coverage),`${report.assessment.tested} / 200`);
- const finding=page.locator("#assessment [data-evidence-id]").first();if(await finding.count()){await finding.click();assert.equal(await finding.getAttribute("aria-pressed"),"true");assert.match(await page.locator("#selected").innerText(),/DR-/);}
- report.assessmentText=await page.locator("#assessment").innerText();await page.screenshot({path:`${out}/assessment-laptop.png`});
- await page.setViewportSize({width:390,height:844});await page.locator("#assessment").scrollIntoViewIfNeeded();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:`${out}/assessment-narrow.png`});
+ report.observerState=state;report.assessment=fleetAssessment(state as any);await page.waitForFunction((coverage:string)=>document.querySelector("#overview")?.textContent?.includes(coverage),`${report.assessment.tested} of 200`);
+ const finding=page.locator("#overview summary").first();if(await finding.count()){await finding.click();assert.ok(await finding.evaluate((n:HTMLElement)=>(n.parentElement as HTMLDetailsElement).open));assert.match(await page.locator("#overview .overview-evidence").first().innerText(),/#\d+/);}
+ report.assessmentText=await page.locator("#overview").innerText();await page.screenshot({path:`${out}/assessment-laptop.png`});
+ await page.setViewportSize({width:390,height:844});await page.locator("#overview").scrollIntoViewIfNeeded();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:`${out}/assessment-narrow.png`});
  await page.setViewportSize({width:1366,height:768});
  // Force close the actual state socket, capture disconnection, then let the built-in reconnect restore it.
  assert.ok(sockets.size>0,"A real subscription socket must be intercepted for reconnect verification");
@@ -105,7 +105,7 @@ try {
  await wait(async()=>sockets.size>=socketCount,20000);
  await page.waitForFunction(()=>document.querySelector("#live")?.textContent==="Live");
  await page.reload();await page.waitForFunction(()=>document.body.dataset.role==="observer"&&document.querySelector("#live")?.textContent==="Live");
- await page.waitForFunction((coverage:string)=>document.querySelector("#assessment")?.textContent?.includes(coverage),`${report.assessment.tested} / 200`);
+ await page.waitForFunction((coverage:string)=>document.querySelector("#overview")?.textContent?.includes(coverage),`${report.assessment.tested} of 200`);
  report.checks.push("Observer reads both teams' measured attempts, unique coverage and evidence links; private tables and every mutation tested are denied; narrow layout and reload preserve assessment");
  // Stop punctuation needs no paid call, including when a real reservation is still pending.
  if(await calls()<=remaining-33){const pending=await send("attacker","Assess drone 3 for command entry in this synthetic simulation.",false);await wait(async()=> (await rows("hosted_job")).some(j=>j.turn===pending.admitted!.id&&j.state==="running"),5000);

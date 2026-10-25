@@ -14,4 +14,5 @@ export default __t.row({
   epoch: __t.u64(),
   active: __t.bool(),
   conversation: __t.u64(),
+  sessionId: __t.u32().name("session_id"),
 });

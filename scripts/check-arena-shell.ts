@@ -24,6 +24,16 @@ try {
       await page.waitForFunction(() => document.querySelectorAll("#legend li").length > 0);
       await page.waitForTimeout(1500);
       await page.screenshot({ path: `${output}/fleet-${role}-${width}.png` });
+      if (role === "observer") {
+        assert.equal(await page.locator("#overview").isVisible(),true);
+        assert.equal(await page.locator("#compose").isVisible(),false);
+        assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+        if(width===1440){
+          assert.equal(await page.locator(".overview-results").evaluate(n=>n.getBoundingClientRect().width),272);
+          assert.equal(await page.locator(".overview-fleet").evaluate(n=>n.getBoundingClientRect().width),352);
+        }
+        assert.deepEqual(errors,[]);await page.close();continue;
+      }
       const m = await page.evaluate(() => {
         const r = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
         const right = document.body.dataset.role === "observer" ? "#rail-right" : "#chat";

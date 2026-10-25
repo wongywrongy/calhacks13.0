@@ -221,7 +221,7 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
       assert.equal((await viewer.query("SELECT * FROM visible_team_activity"))[0].stage,"execution_failure");
 
     });
-    await t.test("existing Maincloud UI shows durable acknowledgment, verified summary and removes terminal cards",async()=>{
+    await t.test("existing Maincloud UI shows durable acknowledgment, verified summary and removes terminal cards",{skip:"Maincloud browser mode now admits only visitor sessions; see visitor-sessions.test.ts"},async()=>{
       await reset();await call("start_fleet",[200,0,0,false]);await call("enable_fleet_chat",[]);
       const defender:any=await fetch(db.env.SPACETIME_URI+"/v1/identity",{method:"POST"}).then(r=>r.json());await call("grant_fleet_view",[defender.identity,"defender"]);
       const observer:any=await fetch(db.env.SPACETIME_URI+"/v1/identity",{method:"POST"}).then(r=>r.json());await call("grant_fleet_view",[observer.identity,"observer"]);
@@ -299,16 +299,23 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
         await mkdir("output/audit-20261025",{recursive:true});await writeFile("output/audit-20261025/local-browser.json",JSON.stringify({scope:"Actual Chromium, actual local SpacetimeDB, fixture decisions, 200 drones",resets:3,activeSockets:sockets.size,pad:viewportBefore.pad,heapBefore,heapAfter,timings:{simulation:timings,persistedToVisibleMs,method:"Fixture decisions, real database: action queue receipt to observed resolution; recon persistence receipt to visible terminal summary. Includes HTTP/polling overhead; not GPU render time."}},null,2));
         await page.locator('nav [data-role="observer"]').click();
         await page.waitForFunction(()=>document.body.dataset.role==="observer"&&document.querySelector("#live")?.textContent?.startsWith("Live"));
-        await page.waitForFunction(()=>document.querySelector("#assessment")?.textContent?.includes("0 / 200"));
+        await page.waitForFunction(()=>document.querySelector("#overview")?.textContent?.includes("0 of 200"));
         assert.equal(await page.locator("#compose").isVisible(),false);assert.equal(await page.locator("#reset-swarm").isVisible(),false);
-        assert.match(await page.locator("#assessment").innerText(),/200 untested; security unknown/);
+        assert.match(await page.locator("#overview").innerText(),/Not tested does not mean safe/);
+        await page.locator("#analyze").click();
+        const analysisTurn=await wait(async()=>(await rows("backend_chat_turn")).find(t=>t.role==="observer"&&t.state==="queued"));
+        await reserve(analysisTurn.id);await reply(analysisTurn.id,{intent:"answer",answer:"Fixture analysis: no completed attacks; untested drones remain unknown.",evidenceIds:[],tasks:[]});
+        await page.waitForFunction(()=>document.querySelector("#analysis-text")?.textContent?.includes("Fixture analysis"));
+        assert.match(await page.locator("#analysis-status").innerText(),/Fixture decisions/);
         await page.screenshot({path:"output/mission-loop/observer.png"});
+        await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+        await page.screenshot({path:"output/mission-loop/observer-mobile.png",fullPage:true});await page.setViewportSize({width:1366,height:768});
         await page.route("**/fleet-config*",async route=>{await delay(1800);await route.continue();});
         await page.evaluate(()=> (globalThis as any).auditDisconnect());
         await page.waitForFunction(()=>document.querySelector("#live")?.textContent!=="Live");
         await page.waitForTimeout(2000);
         assert.equal((await page.evaluate(()=> (globalThis as any).auditViewport())).count,200,"Reconnect must retain the last fleet snapshot while configuration is delayed");
-        assert.match(await page.locator("#assessment").innerText(),/Disconnected · last known records/);
+        assert.match(await page.locator("#overview").innerText(),/Disconnected · showing last known records/);
         await page.waitForFunction(()=>document.querySelector("#live")?.textContent==="Live");
         assert.equal((await page.evaluate(()=> (globalThis as any).auditViewport())).count,200,"Live requires the hydrated subscription snapshot");
         await page.unroute("**/fleet-config*");
@@ -360,6 +367,33 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
       assert.equal((await rows("fleet_drone")).length,200);assert.equal((await rows("drone_schedule")).length,200);assert.equal((await rows("battle_drone")).length,200);assert.equal((await rows("battle_options")).length,400);
       const after=await rows("battle_drone");for(const row of health)assert.deepEqual(after.find(h=>h.drone===row.drone),row);
       assert.equal((await operation(op.id)).state,"completed");await delay(700);assert.ok((await rows("fleet_drone")).filter(d=>d.id>120).every(d=>d.tick>0));
+    });
+    await t.test("observer analysis is bounded, evidence-linked and cannot deploy or cross a reset",async()=>{
+      await reset();
+      const identity:any=await fetch(db.env.SPACETIME_URI+"/v1/identity",{method:"POST"}).then(r=>r.json());
+      await call("grant_fleet_view",[identity.identity,"observer"]);
+      const observer=new RunStore({uri:db.env.SPACETIME_URI,database:db.env.SPACETIME_DATABASE,token:identity.token});
+      const session=(await observer.query("SELECT * FROM visible_fleet_session"))[0],key=randomUUID();
+      await assert.rejects(observer.call("send_maincloud_message",[key,"Deploy agents",0,session.epoch,session.conversation]));
+      await assert.rejects(observer.call("send_maincloud_message",[key,"Analyze the current session evidence.",1,session.epoch,session.conversation]));
+      await assert.rejects(observer.call("new_maincloud_chat",[session.epoch,session.conversation]));
+      await assert.rejects(observer.call("reset_maincloud_fleet",[session.epoch,true]));
+      const analyze=async(key:string)=>observer.call("send_maincloud_message",[key,"Analyze the current session evidence.",0,session.epoch,session.conversation]);
+      await analyze(key);await analyze(key);
+      const turns=await observer.query("SELECT * FROM visible_chat_turns");assert.equal(turns.length,1);
+      await reserve(turns[0].id);const input=context(await job(turns[0].id));
+      assert.equal(input.observations.length,32,"Observer can assess undiscovered drones without attacker discovery");
+      assert.equal(input.eligibleOptions,undefined,"Analysis receives no action catalog");
+      assert.ok(input.evidence.length<=64);assert.equal(JSON.parse((await job(turns[0].id)).request).model,"zai-org/GLM-5.3-Flash");
+      const answer={intent:"answer",answer:"Fixture analysis: untested drones remain unknown.",evidenceIds:[],tasks:[]};
+      await assert.rejects(reply(turns[0].id,{...answer,intent:"deploy",tasks:[{target:1}]}));
+      await assert.rejects(reply(turns[0].id,{...answer,evidenceIds:[999999]}));
+      await reply(turns[0].id,answer);
+      assert.equal((await observer.query("SELECT * FROM visible_chat_turns"))[0].state,"completed");
+      assert.deepEqual(await rows("fleet_agent"),[]);assert.deepEqual(await rows("battle_attempt"),[]);
+      await analyze(randomUUID());const pending=(await observer.query("SELECT * FROM visible_chat_turns")).find((t:any)=>t.state==="queued");await reserve(pending.id);
+      await reset();await assert.rejects(reply(pending.id,answer));await reply(pending.id,{},"provider_timeout");
+      assert.deepEqual(await observer.query("SELECT * FROM visible_chat_turns"),[],"Reset hides old analysis");
     });
     await t.test("history admits 200 turns per role and keeps retries idempotent at the cap",async()=>{
       await reset();const session=(await viewer.query("SELECT * FROM visible_fleet_session"))[0];

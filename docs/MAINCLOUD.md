@@ -201,11 +201,21 @@ Update the existing frontend configuration with that observer workspace and
 `switchableRoles: ["attacker", "defender", "observer"]`. The static build now rejects
 configuration missing any of these workspaces. Provisioning and deployment are rollout
 steps; local verification does not make Observer available in the currently deployed app.
-The existing observer panel shows unique resolved attack coverage, current impact and
-availability, historical paired recovery checks versus checks under current policy, scoped
-assignment failures, evidence selection, and measured next steps. Untested targets stay
-unknown. Release changes policy, so a previous recovery check remains historical evidence
-rather than certification of the released policy.
+Overview follows `docs/design/sudoko-observer-assessment.html`: session results, an
+expandable incident timeline, and a selectable fleet grid with Now/Session views. Spread
+results share an incident; recovery requires paired unauthorized denial and legitimate
+acceptance. Untested targets stay unknown. The session epoch fences earlier results.
+
+**Analyze session** requests one server-side GLM-5.3-Flash call through the existing
+inference scheduler. The observer may submit only this fixed request, without a target;
+server validation rejects deployment, replacement, tasks and unknown evidence references.
+Analysis uses all current drone observations and the latest 64 evidence records, and is
+labelled model commentary with its source, model, request time, latency and errors. It
+cannot change fleet state or certify outcomes. Refusals/timeouts remain visible failures,
+with no fixture fallback. Existing concurrency, timeout and lifetime admission limits
+apply (at most 200 observer analyses per database). Reset hides old analysis and rejects
+late results. This requires deploying the updated module and frontend together; no table
+schema or generated binding changes are needed.
 
 The browser subscribes directly to identity-scoped fleet/chat views and invokes scoped
 reducers through SpacetimeDB. Maincloud reconnect uses Maincloud again, without an API

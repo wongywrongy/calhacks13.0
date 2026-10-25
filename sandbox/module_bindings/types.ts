@@ -10,6 +10,13 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const Admission = __t.object("Admission", {
+  id: __t.u32(),
+  minute: __t.i64(),
+  count: __t.u32(),
+});
+export type Admission = __Infer<typeof Admission>;
+
 export const Agent = __t.object("Agent", {
   id: __t.u32(),
   epoch: __t.u64(),
@@ -17,6 +24,7 @@ export const Agent = __t.object("Agent", {
   step: __t.u32(),
   target: __t.u32(),
   lastAction: __t.string(),
+  sessionId: __t.u32(),
 });
 export type Agent = __Infer<typeof Agent>;
 
@@ -27,6 +35,7 @@ export const AgentProfile = __t.object("AgentProfile", {
   name: __t.string(),
   specialty: __t.string(),
   operation: __t.string(),
+  sessionId: __t.u32(),
 });
 export type AgentProfile = __Infer<typeof AgentProfile>;
 
@@ -34,6 +43,7 @@ export const AgentSchedule = __t.object("AgentSchedule", {
   id: __t.u64(),
   scheduledAt: __t.scheduleAt(),
   epoch: __t.u64(),
+  sessionId: __t.u32(),
 });
 export type AgentSchedule = __Infer<typeof AgentSchedule>;
 
@@ -42,6 +52,7 @@ export const Alarm = __t.object("Alarm", {
   scheduledAt: __t.scheduleAt(),
   job: __t.string(),
   watchdog: __t.bool(),
+  sessionId: __t.u32(),
 });
 export type Alarm = __Infer<typeof Alarm>;
 
@@ -71,6 +82,7 @@ export const Assignment = __t.object("Assignment", {
   reason: __t.string(),
   error: __t.string(),
   updated: __t.i64(),
+  sessionId: __t.u32(),
 });
 export type Assignment = __Infer<typeof Assignment>;
 
@@ -87,6 +99,7 @@ export const Attempt = __t.object("Attempt", {
   sources: __t.string(),
   targets: __t.string(),
   report: __t.string(),
+  sessionId: __t.u32(),
 });
 export type Attempt = __Infer<typeof Attempt>;
 
@@ -109,6 +122,7 @@ export const Battle = __t.object("Battle", {
   epoch: __t.u64(),
   seed: __t.u64(),
   tick: __t.u64(),
+  sessionId: __t.u32(),
 });
 export type Battle = __Infer<typeof Battle>;
 
@@ -116,6 +130,7 @@ export const BattleSchedule = __t.object("BattleSchedule", {
   id: __t.u64(),
   epoch: __t.u64(),
   scheduledAt: __t.scheduleAt(),
+  sessionId: __t.u32(),
 });
 export type BattleSchedule = __Infer<typeof BattleSchedule>;
 
@@ -124,6 +139,7 @@ export const Budget = __t.object("Budget", {
   epoch: __t.u64(),
   remaining: __t.u32(),
   spent: __t.u32(),
+  sessionId: __t.u32(),
 });
 export type Budget = __Infer<typeof Budget>;
 
@@ -135,6 +151,7 @@ export const ChatAction = __t.object("ChatAction", {
   version: __t.u32(),
   unauthorizedEvidenceId: __t.u64(),
   authorizedEvidenceId: __t.u64(),
+  sessionId: __t.u32(),
 });
 export type ChatAction = __Infer<typeof ChatAction>;
 
@@ -142,6 +159,7 @@ export const ChatClock = __t.object("ChatClock", {
   id: __t.u32(),
   epoch: __t.u64(),
   started: __t.i64(),
+  sessionId: __t.u32(),
 });
 export type ChatClock = __Infer<typeof ChatClock>;
 
@@ -156,6 +174,7 @@ export const ChatMessage = __t.object("ChatMessage", {
   at: __t.i64(),
   epoch: __t.u64(),
   generation: __t.u64(),
+  sessionId: __t.u32(),
 });
 export type ChatMessage = __Infer<typeof ChatMessage>;
 
@@ -168,12 +187,14 @@ export const ChatOperation = __t.object("ChatOperation", {
   config: __t.string(),
   result: __t.string(),
   generation: __t.u64(),
+  sessionId: __t.u32(),
 });
 export type ChatOperation = __Infer<typeof ChatOperation>;
 
 export const ChatSession = __t.object("ChatSession", {
   role: __t.string(),
   generation: __t.u64(),
+  sessionId: __t.u32(),
 });
 export type ChatSession = __Infer<typeof ChatSession>;
 
@@ -182,6 +203,7 @@ export const ChatTransition = __t.object("ChatTransition", {
   operation: __t.string(),
   state: __t.string(),
   at: __t.i64(),
+  sessionId: __t.u32(),
 });
 export type ChatTransition = __Infer<typeof ChatTransition>;
 
@@ -196,12 +218,14 @@ export const ChatTurn = __t.object("ChatTurn", {
   updated: __t.i64(),
   epoch: __t.u64(),
   generation: __t.u64(),
+  sessionId: __t.u32(),
 });
 export type ChatTurn = __Infer<typeof ChatTurn>;
 
 export const Discovery = __t.object("Discovery", {
   drone: __t.u32(),
   epoch: __t.u64(),
+  sessionId: __t.u32(),
 });
 export type Discovery = __Infer<typeof Discovery>;
 
@@ -217,6 +241,7 @@ export const Disruption = __t.object("Disruption", {
   cooldownUntil: __t.i64(),
   detected: __t.i64(),
   resolved: __t.bool(),
+  sessionId: __t.u32(),
 });
 export type Disruption = __Infer<typeof Disruption>;
 
@@ -233,6 +258,7 @@ export const Drone = __t.object("Drone", {
   policyVersion: __t.u32(),
   commands: __t.u32(),
   rejected: __t.u32(),
+  sessionId: __t.u32(),
 });
 export type Drone = __Infer<typeof Drone>;
 
@@ -240,6 +266,7 @@ export const DroneSchedule = __t.object("DroneSchedule", {
   id: __t.u64(),
   scheduledAt: __t.scheduleAt(),
   epoch: __t.u64(),
+  sessionId: __t.u32(),
 });
 export type DroneSchedule = __Infer<typeof DroneSchedule>;
 
@@ -264,6 +291,7 @@ export const Evidence = __t.object("Evidence", {
   kind: __t.string(),
   status: __t.u32(),
   policyVersion: __t.u32(),
+  sessionId: __t.u32(),
 });
 export type Evidence = __Infer<typeof Evidence>;
 
@@ -277,6 +305,7 @@ export const FleetSessionState = __t.object("FleetSessionState", {
   epoch: __t.u64(),
   active: __t.bool(),
   conversation: __t.u64(),
+  sessionId: __t.u32(),
 });
 export type FleetSessionState = __Infer<typeof FleetSessionState>;
 
@@ -288,6 +317,7 @@ export const Health = __t.object("Health", {
   attackPrepared: __t.bool(),
   defensePrepared: __t.bool(),
   countermeasure: __t.u64(),
+  sessionId: __t.u32(),
 });
 export type Health = __Infer<typeof Health>;
 
@@ -295,12 +325,14 @@ export const Hold = __t.object("Hold", {
   drone: __t.u32(),
   epoch: __t.u64(),
   since: __t.i64(),
+  sessionId: __t.u32(),
 });
 export type Hold = __Infer<typeof Hold>;
 
 export const HostedBudget = __t.object("HostedBudget", {
   operation: __t.string(),
   calls: __t.u32(),
+  sessionId: __t.u32(),
 });
 export type HostedBudget = __Infer<typeof HostedBudget>;
 
@@ -322,6 +354,7 @@ export const Job = __t.object("Job", {
   result: __t.string(),
   started: __t.i64(),
   finished: __t.i64(),
+  sessionId: __t.u32(),
 });
 export type Job = __Infer<typeof Job>;
 
@@ -360,6 +393,7 @@ export const Mission = __t.object("Mission", {
   recoveryUs: __t.u64(),
   recoveries: __t.u32(),
   state: __t.string(),
+  sessionId: __t.u32(),
 });
 export type Mission = __Infer<typeof Mission>;
 
@@ -375,6 +409,7 @@ export const MissionDrone = __t.object("MissionDrone", {
   corroboratedX: __t.f32(),
   packetsLost: __t.u32(),
   untrustedProposal: __t.string(),
+  sessionId: __t.u32(),
 });
 export type MissionDrone = __Infer<typeof MissionDrone>;
 
@@ -411,12 +446,14 @@ export const Options = __t.object("Options", {
   actions: __t.array(__t.string()),
   reachable: __t.array(__t.u32()),
   blocker: __t.string(),
+  sessionId: __t.u32(),
 });
 export type Options = __Infer<typeof Options>;
 
 export const Principal = __t.object("Principal", {
   identity: __t.identity(),
   role: __t.string(),
+  sessionId: __t.u32(),
 });
 export type Principal = __Infer<typeof Principal>;
 
@@ -431,11 +468,13 @@ export const Record = __t.object("Record", {
   operation: __t.string(),
   sequence: __t.u32(),
   body: __t.string(),
+  sessionId: __t.u32(),
 });
 export type Record = __Infer<typeof Record>;
 
 export const Retry = __t.object("Retry", {
   key: __t.string(),
+  sessionId: __t.u32(),
 });
 export type Retry = __Infer<typeof Retry>;
 
@@ -464,8 +503,15 @@ export const Session = __t.object("Session", {
   hardened: __t.bool(),
   drones: __t.u32(),
   deadline: __t.i64(),
+  sessionId: __t.u32(),
 });
 export type Session = __Infer<typeof Session>;
+
+export const Sweep = __t.object("Sweep", {
+  id: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type Sweep = __Infer<typeof Sweep>;
 
 export const TaskActivity = __t.object("TaskActivity", {
   agent: __t.u32(),
@@ -530,11 +576,25 @@ export const VisibleHealth = __t.object("VisibleHealth", {
 });
 export type VisibleHealth = __Infer<typeof VisibleHealth>;
 
+export const Visitor = __t.object("Visitor", {
+  id: __t.u32(),
+  owner: __t.identity(),
+  defender: __t.identity(),
+  observer: __t.identity(),
+  created: __t.i64(),
+  seen: __t.i64(),
+  closed: __t.bool(),
+  cleanupAt: __t.i64(),
+});
+export type Visitor = __Infer<typeof Visitor>;
+
 export const Workflow = __t.object("Workflow", {
   id: __t.string(),
   created: __t.i64(),
   deadline: __t.i64(),
   replans: __t.u32(),
   contractReady: __t.bool(),
+  sessionId: __t.u32(),
 });
 export type Workflow = __Infer<typeof Workflow>;
+

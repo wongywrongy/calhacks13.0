@@ -1,4 +1,5 @@
-import { fleetAssessment } from "./fleet-assessment.ts";
+import { startVisitor, savedVisitor, forgetVisitor, visitorWorkspace, VisitorSessionExpired, type VisitorSession, type FleetMetadata } from "./visitor-session.ts";
+import { FleetOverview } from "./fleet-overview.ts";
 import { attemptOutcome, attemptReport, groupActivity, stateSuggestions, taskActive, type BattleHealth, type BattleOption, type AttemptActivity, type AgentTask, type TeamActivity } from "./fleet-activity.ts";
 import { MaincloudChat } from "./maincloud-chat.ts";
 import { explainFleetError, fleetOutcome } from "../sandbox/src/fleet-outcome.ts";
@@ -88,6 +89,39 @@ let role: Role = "defender",
   filter: "all" | "problems" | "you" = "all",
   filterDrone = 0,
   modalAgent = 0;
+const overview = new FleetOverview($("overview"));
+let overviewClient: MaincloudChat | undefined;
+let analysisPending = false;
+let analysisState: any;
+async function refreshAnalysis() {
+  if (!overviewClient || role !== "observer") return;
+  const client = overviewClient, state = await client.snapshot();
+  if (client !== overviewClient) return;
+  analysisState = state;
+  const turn = state.turns.at(-1);
+  analysisPending = !!turn && ["queued","running"].includes(turn.state);
+  const button = $("analyze") as HTMLButtonElement;
+  button.disabled = analysisPending || statusKind !== "live";
+  button.textContent = analysisPending ? "Analyzing…" : "Analyze session";
+  const answer = turn && state.messages.find((m: any) => m.turnId === turn.id && m.key.endsWith(":reply"));
+  $("analysis-status").textContent = turn ? `${turn.metric?.source || "Bitdeer"} · ${turn.metric?.reportedModel || turn.metric?.model || coordinatorModel || "GLM-5.3-Flash"} · ${turn.state}${turn.metric?.durationMs !== undefined ? ` · ${turn.metric.durationMs} ms` : ""} · requested ${eventTime(turn.createdAt * 1000)}` : "GLM-5.3-Flash · analysis runs only when requested.";
+  $("analysis-text").textContent = answer?.text || (analysisPending ? "Reading a bounded snapshot of session evidence…" : turn?.error ? `Analysis failed: ${turn.error}. No fixture fallback was used.` : "Model commentary is separate from measured results. Each analysis cites a bounded snapshot; newer events may change the assessment.");
+}
+$("analyze").onclick = async () => {
+  if (!overviewClient || analysisPending || statusKind !== "live") return;
+  const client = overviewClient;
+  analysisPending = true; ($("analyze") as HTMLButtonElement).disabled = true;
+  try {
+    const state = await client.snapshot();
+    await client.submit(crypto.randomUUID(), "Analyze the current session evidence.", 0, state.fleet.epoch, state.conversation);
+    await refreshAnalysis();
+  } catch (error) {
+    if (client !== overviewClient) return;
+    analysisPending = false;
+    $("analysis-status").textContent = error instanceof Error ? error.message : "Analysis request failed";
+    ($("analyze") as HTMLButtonElement).disabled = statusKind !== "live";
+  }
+};
 let operationChat: OperationChat | undefined;
 let maincloudReset: ((epoch: number, demo: boolean) => Promise<void>) | undefined;
 let maincloudMode = false;
@@ -330,14 +364,14 @@ function agentLine(a: Agent, d: Derived): [string, string] {
 function header(d: Derived) {
   const total = frame.drones.length;
   $("match").textContent =
-    role === "attacker" ? "Red team" : role === "defender" ? "Blue team" : "Observer";
+    role === "attacker" ? "Red team" : role === "defender" ? "Blue team" : "Overview";
   // Attackers never learn the fleet size; observers see both teams.
   $("context").textContent =
     role === "attacker"
       ? "Fleet size unknown, red credential"
       : role === "defender"
         ? `${total} drones, blue credential`
-        : `${total} drones, both teams`;
+        : `${total} drones · read only · ${inferenceLabel}`;
   $("clock").firstChild!.textContent = modelDriven
     ? "Sandbox"
     : clock(d.elapsed);
@@ -350,7 +384,7 @@ function header(d: Derived) {
     : "visible";
   $("progress").style.width = `${Math.min(100, (d.elapsed / 60) * 100)}%`;
   if (resilienceMode) {
-    $("match").textContent = role === "attacker" ? "Challenge team" : role === "defender" ? "Defense team" : "Observer";
+    $("match").textContent = role === "attacker" ? "Challenge team" : role === "defender" ? "Defense team" : "Overview";
     $("context").textContent = "Synthetic resilience simulation · 6 drones";
     $("reset-swarm").textContent = "Reset arena";
     $("reset-swarm").title = "Stop both teams and clear chats, policies, budgets and mission state";
@@ -443,31 +477,9 @@ function rails(d: Derived) {
   } else body.push(el("p", "muted", "Click a drone, an activity row or a chip to select it."));
   patchList($("selected"), body);
   if (role === "observer") {
-    assessment();
     const rows = entries(d).filter((e) => sel && e.drone === sel.id).slice(-60).reverse();
     patchList($("evidence"), rows.length ? rows.map((e) => rowEl(e, d)) : [el("li", "note", sel ? "No evidence rows for this drone." : "Select a drone to see its evidence.")]);
   }
-}
-
-function assessment() {
-  const a = fleetAssessment({drones:frame.drones, battle:frame.battle ?? [], attempts:frame.attempts ?? [], events:frame.events, tasks:frame.tasks ?? []});
-  const item = (title:string, text:string) => { const li=el("li","mission");li.append(el("b","",title),el("span","",text));return li; };
-  const nodes = [
-    item("Synthetic simulation · read only", `${inferenceLabel || "Decision source unavailable"} · ${statusKind === "live" ? "Live records" : `Disconnected · last known records${lastReceived ? " · " + eventTime(lastReceived * 1000) : ""}`}`),
-    item("Coverage", `${a.tested} / ${a.total} unique targets tested by resolved attack attempts. ${a.untested} untested; security unknown.`),
-    item("Current impact", `${a.exposed} affected · ${a.isolated} isolated · ${a.available} available for mission. Policy application alone does not prove recovery.`),
-    item("Recovery verification", `${a.verifiedRecoveries} targets have paired unauthorized rejection and legitimate acceptance in history; ${a.paired} under their current policy. Release changes policy and preserves earlier checks as history.`),
-    item("Work", `${a.active} active · ${a.unresolved} blocked, failed or exhausted · ${a.cancelled} cancelled assignments in the current conversations.`),
-    ...((frame.teams ?? []).filter(t => t.stage === "execution_failure").map(t => item(t.role === "attacker" ? "Attack request failed" : "Defense request failed", t.summary))),
-    item("Next", statusKind === "live" ? a.next : "Reconnect to refresh this assessment; current progress is unknown."),
-  ];
-  for (const e of a.findings.slice(0,12)) {
-    const li=el("li","note"), button=el("button","chip",`${tag(e.drone)} · ${e.kind.replaceAll("_"," ")} · #${e.id}`);
-    button.dataset.evidenceId=String(e.id);button.setAttribute("aria-pressed",String(selectedEvent===e.id));
-    button.onclick=()=>{selectedEvent=e.id;pull(e.drone);};li.append(button);nodes.push(li);
-  }
-  if (!a.findings.length) nodes.push(item("Findings", "No outcome evidence yet. Choose Attack to investigate; choose Defend to protect observed targets."));
-  patchList($("assessment"),nodes);
 }
 
 /* ---------- agent detail modal ---------- */
@@ -965,7 +977,7 @@ function chat(d: Derived) {
     const currentIds = new Set(messages.filter((m) => m.speaker === "operator").map((m) => String(m.id)));
     for (const group of Array.from(t.querySelectorAll<HTMLElement>("[data-origin-id]"))) if (!currentIds.has(group.dataset.originId!)) group.remove();
     if (!messages.length) {
-      if (!t.querySelector(".hint")) t.replaceChildren(el("div", "bubble hint", "Test a synthetic fleet with AI attack and defense specialists. Ask about the fleet, send an objective, then open Observer to review measured evidence."));
+      if (!t.querySelector(".hint")) t.replaceChildren(el("div", "bubble hint", "Test a synthetic fleet with AI attack and defense specialists. Ask about the fleet, send an objective, then open Overview to review measured evidence."));
     } else t.querySelector(".hint")?.remove();
     for (const user of messages.filter((m) => m.speaker === "operator")) {
       let group = t.querySelector<HTMLElement>(`[data-origin-id="${user.id}"]`);
@@ -1920,6 +1932,8 @@ function render(next: Frame) {
   frame = next;
   resilienceMode = !!next.mission;
   document.body.dataset.role = role;
+  $("overview").hidden = $("overview-analysis").hidden = role !== "observer";
+  if (role === "observer") overview.update({ ...next, battle: next.battle ?? [], attempts: next.attempts ?? [], tasks: next.tasks ?? [] }, statusKind === "live", lastReceived, statusKind === "replay");
   document.body.dataset.resilience = String(resilienceMode);
   document
     .querySelectorAll<HTMLButtonElement>("nav button")
@@ -1928,10 +1942,12 @@ function render(next: Frame) {
     );
   const d = derive(frame);
   header(d);
-  rails(d);
-  mapScene(d);
-  chat(d);
-  log(d);
+  if (role !== "observer") {
+    rails(d);
+    mapScene(d);
+    chat(d);
+    log(d);
+  }
   if (modalAgent) fillModal(d);
   setStatus(statusTitle, statusKind);
   redraw();
@@ -1948,10 +1964,35 @@ function setStatus(text: string, kind: "live" | "stale" | "replay") {
   p.title = text;
   $("status-dot").className = "dot " + (kind === "live" ? "" : kind);
   if(modelDriven)teamStatus();
-  if(role === "observer") assessment();
+  if(role === "observer") {
+    overview.update({ ...frame, battle: frame.battle ?? [], attempts: frame.attempts ?? [], tasks: frame.tasks ?? [] }, kind === "live", lastReceived, kind === "replay");
+    ($("analyze") as HTMLButtonElement).disabled = !overviewClient || analysisPending || kind !== "live";
+    if (analysisState?.turns.at(-1)) {
+      const label = $("analysis-status");
+      label.textContent = (label.textContent ?? "").replace(/ · newer evidence available$/, "") + (frame.events.some(e => e.at > analysisState.turns.at(-1).createdAt * 1000) ? " · newer evidence available" : "");
+    }
+  }
 }
+let fleetMetadata: FleetMetadata | undefined;
+let visitor: VisitorSession | undefined;
+let entering = false;
+function entry(error = "") {
+  ++version; close(); operationChat?.close(); operationChat = undefined;
+  overviewClient?.close(); overviewClient = undefined;
+  maincloudReset = undefined; stateConnected = false; visitor = undefined;
+  fleetEpoch = 0; lastReceived = 0; suggestionKey = activityKey = ""; analysisState = undefined;
+  recentTasks.clear(); clearTimeout(rosterTimer); render(EMPTY);
+  document.body.setAttribute("data-entry", ""); $("entry").hidden = false;
+  $("entry-error").textContent = error;
+  const button = $("continue") as HTMLButtonElement;
+  button.disabled = false; button.textContent = error ? "Retry" : "Continue";
+}
+function visitorExpired() {
+  forgetVisitor(); entry("Your session expired. Continue to start a new simulation.");
+}
+function dashboard() { $("entry").hidden = true; document.body.removeAttribute("data-entry"); }
 async function workspace(next: Role, reconnect = false) {
-  if (resetting) return;
+  if (resetting || fleetMetadata?.maincloud && !visitor) return;
   if (next === role && operationChat && !reconnect) return;
   const v = ++version;
   clearTimeout(rosterTimer);recentTasks.clear();suggestionKey="";activityKey="";
@@ -1963,6 +2004,10 @@ async function workspace(next: Role, reconnect = false) {
   if (!reconnect) lastReceived = 0;
   operationChat?.close();
   operationChat = undefined;
+  overviewClient?.close(); overviewClient = undefined; analysisState = undefined; analysisPending = false;
+  $("analysis-status").textContent = "Connect to Maincloud to request analysis.";
+  $("analysis-text").textContent = "Model commentary is separate from measured results.";
+  ($("analyze") as HTMLButtonElement).disabled = true;
   role = next;
   suggestionDraft=undefined;
   chatError = submissionError = "";
@@ -1983,34 +2028,30 @@ async function workspace(next: Role, reconnect = false) {
     setStatus("Recorded · fixture", "replay");
     return;
   }
-  const response = await fetch(`/fleet-config?role=${role}`, { signal: AbortSignal.timeout(8000) });
-  if (v !== version) return;
-  if (!response.ok) {
-    setStatus("Disconnected · configuration unavailable", "stale");
-    if (response.status !== 401 && response.status !== 403)
-      throw Error(`Live configuration unavailable (${response.status}). Reload to retry.`);
-    const link = el(
-      "a",
-      "",
-      "Sign in with a granted SpacetimeDB viewer identity",
-    );
-    link.setAttribute("href", "/signin");
-    $("error").replaceChildren(link);
-    return;
+  let config: any = fleetMetadata;
+  if (!config) {
+    const response = await fetch(`/fleet-config?role=${role}`, { signal: AbortSignal.timeout(8000) });
+    if (v !== version) return;
+    if (!response.ok) throw Error(`Live configuration unavailable (${response.status}). Please retry.`);
+    config = await response.json();
   }
-  let config = await response.json();
   if (config.maincloud) {
-    if (!config.workspaces[role]) role = "defender";
-    config = { ...config, ...config.workspaces[role], role };
+    if (!visitor) throw new VisitorSessionExpired("Continue to start your own simulation.");
+    config = visitorWorkspace(config, visitor, role);
   }
   maincloudMode = !!config.maincloud;
   let hosted: MaincloudChat | undefined;
   if (config.maincloud) {
     hosted = await MaincloudChat.connect(config);
+    hosted.onInvalid = () => { if (v === version) visitorExpired(); };
     if (v !== version) { hosted.close(); return; }
     const state = await hosted.snapshot();
     config.epoch = state.fleet.epoch; config.conversation = state.conversation;
-    if (role === "observer") { hosted.close(); hosted = undefined; }
+    if (role === "observer") {
+      overviewClient = hosted;
+      hosted.onChange = () => { void refreshAnalysis().catch(() => {}); };
+      await refreshAnalysis();
+    }
   }
   if (v !== version) return;
   if (config.recorded) {
@@ -2136,7 +2177,7 @@ async function workspace(next: Role, reconnect = false) {
             queued = false;
             if (v !== version || current !== attempt) return;
             const session = [...c.db.visibleFleetSession.iter()][0];
-            if (!session) return;
+            if (!session || config.visitorSessions && session.sessionId !== config.sessionId) { if (config.visitorSessions) visitorExpired(); return; }
             stateConnected = true;
             lastReceived = Date.now();
             setStatus(
@@ -2620,8 +2661,42 @@ host.onclick = (event) => {
   if (id) pull(id);
 };
 const savedRole = sessionStorage.getItem("sudoko.role");
-void workspace(
-  savedRole === "defender" || savedRole === "observer" ? savedRole : "attacker",
-).catch((e) => {
-  $("error").textContent = `${e.message} Reload to retry.`;
+const initialRole = savedRole === "defender" || savedRole === "observer" ? savedRole : "attacker";
+$("continue").onclick = async () => {
+  if (entering) return;
+  entering = true;
+  const button = $("continue") as HTMLButtonElement;
+  button.disabled = true; button.textContent = "Starting…"; $("entry-error").textContent = "";
+  try {
+    if (!fleetMetadata) await loadFleetMetadata();
+    visitor = await startVisitor(fleetMetadata!);
+    await workspace(initialRole);
+    dashboard();
+  } catch (error) {
+    if (error instanceof VisitorSessionExpired) forgetVisitor();
+    entry(error instanceof Error ? error.message : "Could not start your simulation. Please retry.");
+  } finally { entering = false; }
+};
+async function loadFleetMetadata() {
+  const response = await fetch("/fleet-config", { signal: AbortSignal.timeout(8000) });
+  if (!response.ok) throw Error("Connection configuration is unavailable. Please retry.");
+  const config = await response.json();
+  // Credentials from legacy static configuration are never used for Maincloud admission.
+  if (config.maincloud) {
+    const { uri, database, sandbox, models, engine } = config;
+    fleetMetadata = { maincloud: true, uri, database, sandbox, models, engine, authenticated: true, demo: true, chat: true };
+  } else fleetMetadata = config;
+}
+async function enterFleet() {
+  await loadFleetMetadata();
+  if (fleetMetadata!.maincloud) {
+    const stored = savedVisitor(fleetMetadata!);
+    if (!stored?.ready) { entry(); return; }
+    visitor = stored;
+  }
+  await workspace(initialRole); dashboard();
+}
+void enterFleet().catch(error => {
+  if (error instanceof VisitorSessionExpired) forgetVisitor();
+  entry(error instanceof Error ? error.message : "Could not resume your simulation. Please retry.");
 });

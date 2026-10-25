@@ -33,7 +33,10 @@ deadline and policy version. Provider errors/refusals stay failures; there is no
 fallback or alternate provider retry.
 
 The hackathon uses **one shared arena, two operator workspaces and a read-only observer workspace**, not personal
-accounts or tenant isolation. Anyone offered the defender demo credential can reset the
+accounts or tenant isolation. Overview's observer can request bounded GLM commentary on
+current observations and the latest 64 evidence records. That fixed analysis request uses
+the existing scheduler and grants no simulation mutations; server validation requires an
+answer with no tasks and only supplied evidence IDs. Anyone offered the defender demo credential can reset the
 shared arena. Publisher authority can deploy code and grant roles; protect that identity.
 The legacy Node owner credential must not be operated concurrently as another scheduler.
 No multitenancy, extra queue or microservice is introduced here.
@@ -111,7 +114,8 @@ observations; no browser timer manufactures outcomes.
 Hosted admission has a lifetime cap of **200 turns per role per database**, across resets
 and new chats. Deduplication rows remain for that entire lifetime. This bounds production
 mission history to at most 400 operations, 1,600 assignments, 14,000 jobs and 12,800 action
-attempts; many turns only answer questions. Each mission has at most 512 history records.
+attempts; many turns only answer questions. Each mission has at most 512 history records. Up to 200 additional observer analyses can
+retain one turn/job each, without operations, assignments or action attempts.
 Provider HTTP response envelopes are never stored. Metrics retain configured and reported
 model, finish reason, latency and available numeric token counts; missing usage stays unknown.
 Terminal jobs clear request bodies,
