@@ -16,6 +16,7 @@ web/*
 !web/fleet.ts
 !web/fleet-chat.ts
 !web/fleet-activity.ts
+!web/fleet-assessment.ts
 !web/maincloud-chat.ts
 !web/flock.ts
 !web/fleet-render.ts
