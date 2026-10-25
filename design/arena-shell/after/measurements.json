@@ -1,0 +1,271 @@
+{
+  "attacker-1440": {
+    "width": 1440,
+    "scrollWidth": 1440,
+    "topHeaderBottoms": [
+      152,
+      152,
+      152
+    ],
+    "viewportBottom": 592,
+    "bodyBottoms": [
+      592,
+      900,
+      592
+    ],
+    "lowerHeaderTops": [
+      592,
+      592,
+      592
+    ],
+    "leftBorderX": 272,
+    "rightBorderX": 1088,
+    "headerLeftBorderX": 272,
+    "headerRightBorderX": 1088,
+    "possessionLeftBorderX": 272,
+    "possessionRightBorderX": 1088,
+    "railBottom": 900,
+    "rightBottom": 900,
+    "stepBand": false,
+    "overlays": 0,
+    "statusIndicators": 1,
+    "resetsOutsideMenu": 0,
+    "possession": {
+      "red": "3",
+      "right": "13",
+      "label": "Discovered"
+    },
+    "legend": [
+      "Seized3",
+      "Home0",
+      "Lost10",
+      "Blocked3"
+    ],
+    "errors": []
+  },
+  "attacker-390": {
+    "width": 390,
+    "scrollWidth": 390,
+    "topHeaderBottoms": [
+      258,
+      693.84375,
+      1461.84375
+    ],
+    "viewportBottom": 1053.84375,
+    "bodyBottoms": [
+      558,
+      1417.84375,
+      1761.84375
+    ],
+    "lowerHeaderTops": [
+      558,
+      1053.84375,
+      1761.84375
+    ],
+    "leftBorderX": 390,
+    "rightBorderX": 0,
+    "headerLeftBorderX": 390,
+    "headerRightBorderX": 250.15625,
+    "possessionLeftBorderX": 106.265625,
+    "possessionRightBorderX": 275.59375,
+    "railBottom": 649.84375,
+    "rightBottom": 2053.84375,
+    "stepBand": false,
+    "overlays": 0,
+    "statusIndicators": 1,
+    "resetsOutsideMenu": 0,
+    "possession": {
+      "red": "3",
+      "right": "16",
+      "label": "Discovered"
+    },
+    "legend": [
+      "Seized3",
+      "Home0",
+      "Lost13",
+      "Blocked0"
+    ],
+    "errors": []
+  },
+  "defender-1440": {
+    "width": 1440,
+    "scrollWidth": 1440,
+    "topHeaderBottoms": [
+      152,
+      152,
+      152
+    ],
+    "viewportBottom": 592,
+    "bodyBottoms": [
+      592,
+      900,
+      592
+    ],
+    "lowerHeaderTops": [
+      592,
+      592,
+      592
+    ],
+    "leftBorderX": 272,
+    "rightBorderX": 1088,
+    "headerLeftBorderX": 272,
+    "headerRightBorderX": 1088,
+    "possessionLeftBorderX": 272,
+    "possessionRightBorderX": 1088,
+    "railBottom": 900,
+    "rightBottom": 900,
+    "stepBand": false,
+    "overlays": 0,
+    "statusIndicators": 1,
+    "resetsOutsideMenu": 0,
+    "possession": {
+      "red": "5",
+      "right": "43",
+      "label": "Blue holds"
+    },
+    "legend": [
+      "Home27",
+      "Compromised5",
+      "Recovered16",
+      "Blocked0",
+      "Isolated16"
+    ],
+    "errors": []
+  },
+  "defender-390": {
+    "width": 390,
+    "scrollWidth": 390,
+    "topHeaderBottoms": [
+      258,
+      693.84375,
+      1461.84375
+    ],
+    "viewportBottom": 1053.84375,
+    "bodyBottoms": [
+      558,
+      1417.84375,
+      1761.84375
+    ],
+    "lowerHeaderTops": [
+      558,
+      1053.84375,
+      1761.84375
+    ],
+    "leftBorderX": 390,
+    "rightBorderX": 0,
+    "headerLeftBorderX": 390,
+    "headerRightBorderX": 250.15625,
+    "possessionLeftBorderX": 106.265625,
+    "possessionRightBorderX": 275.59375,
+    "railBottom": 649.84375,
+    "rightBottom": 2053.84375,
+    "stepBand": false,
+    "overlays": 0,
+    "statusIndicators": 1,
+    "resetsOutsideMenu": 0,
+    "possession": {
+      "red": "5",
+      "right": "43",
+      "label": "Blue holds"
+    },
+    "legend": [
+      "Home22",
+      "Compromised5",
+      "Recovered21",
+      "Blocked0",
+      "Isolated21"
+    ],
+    "errors": []
+  },
+  "observer-1440": {
+    "width": 1440,
+    "scrollWidth": 1440,
+    "topHeaderBottoms": [
+      152,
+      152,
+      152
+    ],
+    "viewportBottom": 592,
+    "bodyBottoms": [
+      592,
+      900,
+      592
+    ],
+    "lowerHeaderTops": [
+      592,
+      592,
+      592
+    ],
+    "leftBorderX": 272,
+    "rightBorderX": 1088,
+    "headerLeftBorderX": 272,
+    "headerRightBorderX": 1088,
+    "possessionLeftBorderX": 272,
+    "possessionRightBorderX": 1088,
+    "railBottom": 900,
+    "rightBottom": 900,
+    "stepBand": false,
+    "overlays": 0,
+    "statusIndicators": 1,
+    "resetsOutsideMenu": 0,
+    "possession": {
+      "red": "6",
+      "right": "42",
+      "label": "Blue holds"
+    },
+    "legend": [
+      "Home16",
+      "Unauthorized6",
+      "Recovered26",
+      "Blocked1",
+      "Isolated26"
+    ],
+    "errors": []
+  },
+  "observer-390": {
+    "width": 390,
+    "scrollWidth": 390,
+    "topHeaderBottoms": [
+      258,
+      693.84375,
+      1461.84375
+    ],
+    "viewportBottom": 1053.84375,
+    "bodyBottoms": [
+      558,
+      1417.84375,
+      1761.84375
+    ],
+    "lowerHeaderTops": [
+      558,
+      1053.84375,
+      1761.84375
+    ],
+    "leftBorderX": 390,
+    "rightBorderX": 0,
+    "headerLeftBorderX": 390,
+    "headerRightBorderX": 250.15625,
+    "possessionLeftBorderX": 106.265625,
+    "possessionRightBorderX": 275.59375,
+    "railBottom": 649.84375,
+    "rightBottom": 1853.6875,
+    "stepBand": false,
+    "overlays": 0,
+    "statusIndicators": 1,
+    "resetsOutsideMenu": 0,
+    "possession": {
+      "red": "5",
+      "right": "43",
+      "label": "Blue holds"
+    },
+    "legend": [
+      "Home11",
+      "Unauthorized5",
+      "Recovered32",
+      "Blocked5",
+      "Isolated32"
+    ],
+    "errors": []
+  },
+  "mismatches": []
+}
