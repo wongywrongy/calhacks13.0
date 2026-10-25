@@ -377,10 +377,10 @@ try {
       }
     });
     await new Promise<void>((resolve) =>
-      server.listen(4174, "127.0.0.1", resolve),
+      server.listen(Number(process.env.FLEET_PORT ?? 4174), "127.0.0.1", resolve),
     );
     console.log(
-      "Fleet demo: http://127.0.0.1:4174. Enter restarts a 60-second baseline; Ctrl+C stops. Loopback operator access permits all three workspaces.",
+      `Fleet demo: http://127.0.0.1:${process.env.FLEET_PORT ?? 4174}. Enter restarts a 60-second baseline; Ctrl+C stops. Loopback operator access permits all three workspaces.`,
     );
     process.stdin.on("data", () => void call("start_fleet", [48, 8, 8, false]));
     process.stdin.resume();
