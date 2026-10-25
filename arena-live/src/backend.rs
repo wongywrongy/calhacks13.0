@@ -49,6 +49,7 @@ fn now(ctx: &ReducerContext) -> i64 {
     ctx.timestamp.to_micros_since_unix_epoch() / 1000
 }
 fn owner(ctx: &ReducerContext) -> Result<(), String> {
+    if crate::hosted_scheduler(ctx) { return Ok(()) }
     if ctx.db.publisher().id().find(0).map(|p| p.identity) != Some(ctx.sender()) {
         return Err("Owner required".into());
     }
@@ -56,6 +57,7 @@ fn owner(ctx: &ReducerContext) -> Result<(), String> {
 }
 fn lease(ctx: &ReducerContext, session: &str) -> Result<Lease, String> {
     owner(ctx)?;
+    if crate::hosted_scheduler(ctx) && session == "maincloud" { return Ok(Lease { id:0,session:session.into(),expires:now(ctx)+75000,max_active:2,max_total:4 }); }
     let l = ctx
         .db
         .backend_lease()
@@ -311,7 +313,7 @@ pub fn visible_backend_events(ctx: &ViewContext) -> Vec<Event> {
 pub struct ChatOperation {
     #[primary_key] pub id: String,
     #[unique] pub request_key: String,
-    pub role: String,
+    #[index(btree)] pub role: String,
     pub epoch: u64,
     pub state: String,
     pub config: String,
@@ -556,3 +558,6 @@ pub fn update_chat_turn(ctx:&ReducerContext,session:String,id:String,state:Strin
     }
     t.state=state;t.result=result;t.updated=now(ctx);ctx.db.backend_chat_turn().id().update(t);Ok(())
 }
+
+#[path="maincloud.rs"]
+mod hosted;

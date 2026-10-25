@@ -68,14 +68,15 @@ test("conversation reconnect reuses a lost submission key and target; messages a
           message: message.text,
           target: 2,
           sandbox: "owned",
-          epoch: 1,
-          conversation: 1,
+          epoch: generation === undefined ? 1 : 2,
+          conversation: generation ?? 1,
         });
         if (keys.length === 1) throw Error("Response lost after admission");
       }
       return Response.json({
-        fleet: { epoch: 1, active: true },
-        messages: role === "attacker" ? [message] : [],
+        conversation: generation ?? 1,
+        fleet: { epoch: generation === undefined ? 1 : 2, active: true },
+        messages: role === "attacker" && generation !== 4 ? [message] : [],
         operations: [],
         after: 1,
         more: false,
@@ -118,7 +119,7 @@ test("conversation reconnect reuses a lost submission key and target; messages a
   assert.equal(keys.length, 2);
   role = "attacker";
   generation = 3;
-  const modern = new OperationChat("owned", role, () => {}, () => {});
+  const modern = new OperationChat("owned", role, () => {}, () => {}, 2, 3);
   modern.conversation = generation;
   modern.fleet = { active: true, epoch: 2 };
   await modern.submit(message.text, 2);

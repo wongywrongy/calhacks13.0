@@ -47,3 +47,7 @@ pub fn publish_snapshot(ctx: &ReducerContext, match_id: String, sequence: u64, p
 mod fleet;
 mod formation;
 mod backend;
+
+pub(crate) fn hosted_scheduler(ctx: &spacetimedb::ReducerContext) -> bool {
+    ctx.sender() == ctx.database_identity() && ctx.connection_id().is_none()
+}

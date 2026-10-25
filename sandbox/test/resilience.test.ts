@@ -46,6 +46,7 @@ test("authoritative resilience: five scenarios, budgets, mission costs, private 
     } };
   };
   try {
+    await store.call("start_fleet", [6, 0, 0, false]);
     assert.equal((await rows("fleet_drone")).length, 6);
     assert.equal((await mission()).state, "ready");
     await delay(300);

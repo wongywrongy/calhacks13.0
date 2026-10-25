@@ -45,12 +45,15 @@ import GrantBackendViewerReducer from "./grant_backend_viewer_reducer";
 import GrantFleetViewReducer from "./grant_fleet_view_reducer";
 import HeartbeatBackendReducer from "./heartbeat_backend_reducer";
 import NewChatReducer from "./new_chat_reducer";
+import NewMaincloudChatReducer from "./new_maincloud_chat_reducer";
 import PlanChatOperationReducer from "./plan_chat_operation_reducer";
 import PublishSnapshotReducer from "./publish_snapshot_reducer";
 import RecordChatExchangeReducer from "./record_chat_exchange_reducer";
 import ReleaseBackendReducer from "./release_backend_reducer";
 import ResetChatFleetReducer from "./reset_chat_fleet_reducer";
+import ResetMaincloudFleetReducer from "./reset_maincloud_fleet_reducer";
 import SaveBackendSnapshotReducer from "./save_backend_snapshot_reducer";
+import SendMaincloudMessageReducer from "./send_maincloud_message_reducer";
 import StartFleetReducer from "./start_fleet_reducer";
 import StopFleetReducer from "./stop_fleet_reducer";
 import TransitionBackendRunReducer from "./transition_backend_run_reducer";
@@ -65,6 +68,9 @@ import VisibleAgentProfilesRow from "./visible_agent_profiles_table";
 import VisibleAgentsRow from "./visible_agents_table";
 import VisibleBackendEventsRow from "./visible_backend_events_table";
 import VisibleBackendRunsRow from "./visible_backend_runs_table";
+import VisibleChatMessagesRow from "./visible_chat_messages_table";
+import VisibleChatOperationsRow from "./visible_chat_operations_table";
+import VisibleChatTurnsRow from "./visible_chat_turns_table";
 import VisibleDronesRow from "./visible_drones_table";
 import VisibleEvidenceRow from "./visible_evidence_table";
 import VisibleFleetAccessRow from "./visible_fleet_access_table";
@@ -116,6 +122,27 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, VisibleBackendRunsRow),
+  visibleChatMessages: __table({
+    name: 'visible_chat_messages',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleChatMessagesRow),
+  visibleChatOperations: __table({
+    name: 'visible_chat_operations',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleChatOperationsRow),
+  visibleChatTurns: __table({
+    name: 'visible_chat_turns',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, VisibleChatTurnsRow),
   visibleDrones: __table({
     name: 'visible_drones',
     indexes: [
@@ -180,12 +207,15 @@ const reducersSchema = __reducers(
   __reducerSchema("grant_fleet_view", GrantFleetViewReducer),
   __reducerSchema("heartbeat_backend", HeartbeatBackendReducer),
   __reducerSchema("new_chat", NewChatReducer),
+  __reducerSchema("new_maincloud_chat", NewMaincloudChatReducer),
   __reducerSchema("plan_chat_operation", PlanChatOperationReducer),
   __reducerSchema("publish_snapshot", PublishSnapshotReducer),
   __reducerSchema("record_chat_exchange", RecordChatExchangeReducer),
   __reducerSchema("release_backend", ReleaseBackendReducer),
   __reducerSchema("reset_chat_fleet", ResetChatFleetReducer),
+  __reducerSchema("reset_maincloud_fleet", ResetMaincloudFleetReducer),
   __reducerSchema("save_backend_snapshot", SaveBackendSnapshotReducer),
+  __reducerSchema("send_maincloud_message", SendMaincloudMessageReducer),
   __reducerSchema("start_fleet", StartFleetReducer),
   __reducerSchema("stop_fleet", StopFleetReducer),
   __reducerSchema("transition_backend_run", TransitionBackendRunReducer),
@@ -209,6 +239,12 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "visible_backend_events": Omit<typeof tablesSchema.schemaType.tables["visibleBackendEvents"], "accessorName"> & { readonly accessorName: "visible_backend_events" };
     /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
     readonly "visible_backend_runs": Omit<typeof tablesSchema.schemaType.tables["visibleBackendRuns"], "accessorName"> & { readonly accessorName: "visible_backend_runs" };
+    /** @deprecated Use `visibleChatMessages` instead. This alias will be removed in the next major version. */
+    readonly "visible_chat_messages": Omit<typeof tablesSchema.schemaType.tables["visibleChatMessages"], "accessorName"> & { readonly accessorName: "visible_chat_messages" };
+    /** @deprecated Use `visibleChatOperations` instead. This alias will be removed in the next major version. */
+    readonly "visible_chat_operations": Omit<typeof tablesSchema.schemaType.tables["visibleChatOperations"], "accessorName"> & { readonly accessorName: "visible_chat_operations" };
+    /** @deprecated Use `visibleChatTurns` instead. This alias will be removed in the next major version. */
+    readonly "visible_chat_turns": Omit<typeof tablesSchema.schemaType.tables["visibleChatTurns"], "accessorName"> & { readonly accessorName: "visible_chat_turns" };
     /** @deprecated Use `visibleDrones` instead. This alias will be removed in the next major version. */
     readonly "visible_drones": Omit<typeof tablesSchema.schemaType.tables["visibleDrones"], "accessorName"> & { readonly accessorName: "visible_drones" };
     /** @deprecated Use `visibleEvidence` instead. This alias will be removed in the next major version. */
@@ -246,6 +282,9 @@ const tableAccessorAliases = {
   "visible_agents": "visibleAgents",
   "visible_backend_events": "visibleBackendEvents",
   "visible_backend_runs": "visibleBackendRuns",
+  "visible_chat_messages": "visibleChatMessages",
+  "visible_chat_operations": "visibleChatOperations",
+  "visible_chat_turns": "visibleChatTurns",
   "visible_drones": "visibleDrones",
   "visible_evidence": "visibleEvidence",
   "visible_fleet_access": "visibleFleetAccess",
@@ -283,6 +322,12 @@ export type DbView = __DbViewBase & {
   readonly "visible_backend_events": __DbViewBase["visibleBackendEvents"];
   /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
   readonly "visible_backend_runs": __DbViewBase["visibleBackendRuns"];
+  /** @deprecated Use `visibleChatMessages` instead. This alias will be removed in the next major version. */
+  readonly "visible_chat_messages": __DbViewBase["visibleChatMessages"];
+  /** @deprecated Use `visibleChatOperations` instead. This alias will be removed in the next major version. */
+  readonly "visible_chat_operations": __DbViewBase["visibleChatOperations"];
+  /** @deprecated Use `visibleChatTurns` instead. This alias will be removed in the next major version. */
+  readonly "visible_chat_turns": __DbViewBase["visibleChatTurns"];
   /** @deprecated Use `visibleDrones` instead. This alias will be removed in the next major version. */
   readonly "visible_drones": __DbViewBase["visibleDrones"];
   /** @deprecated Use `visibleEvidence` instead. This alias will be removed in the next major version. */
@@ -311,6 +356,12 @@ export type Tables = __TablesBase & {
   readonly "visible_backend_events": __TablesBase["visibleBackendEvents"];
   /** @deprecated Use `visibleBackendRuns` instead. This alias will be removed in the next major version. */
   readonly "visible_backend_runs": __TablesBase["visibleBackendRuns"];
+  /** @deprecated Use `visibleChatMessages` instead. This alias will be removed in the next major version. */
+  readonly "visible_chat_messages": __TablesBase["visibleChatMessages"];
+  /** @deprecated Use `visibleChatOperations` instead. This alias will be removed in the next major version. */
+  readonly "visible_chat_operations": __TablesBase["visibleChatOperations"];
+  /** @deprecated Use `visibleChatTurns` instead. This alias will be removed in the next major version. */
+  readonly "visible_chat_turns": __TablesBase["visibleChatTurns"];
   /** @deprecated Use `visibleDrones` instead. This alias will be removed in the next major version. */
   readonly "visible_drones": __TablesBase["visibleDrones"];
   /** @deprecated Use `visibleEvidence` instead. This alias will be removed in the next major version. */

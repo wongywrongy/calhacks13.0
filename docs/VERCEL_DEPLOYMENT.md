@@ -1,3 +1,7 @@
+# Maincloud frontend release
+
+The current release uses direct role-scoped Maincloud subscriptions and hosted operations. See [MAINCLOUD.md](MAINCLOUD.md). The Neo proxy deployments below are historical rollback records.
+
 # SudoKO production deployment
 
 Project: `calhacks13.0-mjcc` (`prj_CZVafdKgSFtinyZaYRaEO6jZnwus`) in `wongywrongys-projects`, authenticated as `wongywrongy`. All three existing project domains are verified: https://sudo-ko.us, https://www.sudo-ko.us and https://calhacks130-mjcc.vercel.app. No DNS or domain ownership changes were needed. The application is consolidated onto `main`; Vercel is linked to this existing project, not a new project.

@@ -1,3 +1,9 @@
+export type ChatTransport = {
+  snapshot(): Promise<any>;
+  submit(key: string, message: string, target: number, epoch: number, generation: number): Promise<any>;
+  newChat(epoch: number, generation: number): Promise<any>;
+  close(): void;
+};
 export type Worker = {
   agentId: number;
   name?: string;
@@ -67,7 +73,6 @@ export class OperationChat {
   operations: Operation[] = [];
   turns: ConversationTurn[] = [];
   get pendingTurn() { return this.turns.find((t) => ["queued", "running"].includes(t.state) && Date.now() - t.createdAt < 31000); }
-  conversation?: number;
   sending = false;
   lastUpdated = 0;
   fleet: { active: boolean; epoch: number } | null = null;
@@ -80,6 +85,7 @@ export class OperationChat {
   private cursor = 0;
   private requestSequence = 0;
   private lastApplied = 0;
+  private transport?: ChatTransport;
   private sandbox: string;
   private role: string;
   private changed: () => void;
@@ -95,8 +101,10 @@ export class OperationChat {
     failed: (message: string) => void,
     epoch: number,
     conversation = 1,
+    transport?: ChatTransport,
   ) {
     this.fleet = { active: true, epoch };
+    this.transport = transport;
     this.conversation = conversation;
     this.sandbox = sandbox;
     this.role = role;
@@ -134,7 +142,7 @@ export class OperationChat {
       this.pending ??= { key: crypto.randomUUID(), message, target, epoch, conversation };
       localStorage.setItem(this.storageKey, JSON.stringify(this.pending));
       const request = ++this.requestSequence;
-      const r = await fetch("/api/chat/messages", {
+      const r = this.transport ? Response.json(await this.transport.submit(this.pending.key, message, target ?? 0, epoch, conversation)) : await fetch("/api/chat/messages", {
         method: "POST",
         signal: AbortSignal.any([this.abort.signal, AbortSignal.timeout(12000)]),
         credentials: "same-origin",
@@ -185,7 +193,7 @@ export class OperationChat {
   }
   async newChat() {
     const request = ++this.requestSequence;
-    const response = await fetch("/api/chat/new", {
+    const response = this.transport ? Response.json(await this.transport.newChat(this.fleet!.epoch, this.conversation)) : await fetch("/api/chat/new", {
       method: "POST", credentials: "same-origin",
       signal: AbortSignal.any([this.abort.signal, AbortSignal.timeout(12000)]),
       headers: { "content-type": "application/json", "x-sudoko-role": this.role },
@@ -218,7 +226,7 @@ export class OperationChat {
       let more = true;
       while (more && !this.closed) {
         const request = ++this.requestSequence;
-        const r = await fetch(`/api/chat/conversation?after=${this.cursor}&conversation=${this.conversation}`, {
+        const r = this.transport ? Response.json(await this.transport.snapshot()) : await fetch(`/api/chat/conversation?after=${this.cursor}&conversation=${this.conversation}`, {
           credentials: "same-origin",
           signal: AbortSignal.any([this.abort.signal, AbortSignal.timeout(12000)]),
           headers: { "x-sudoko-role": this.role },
@@ -241,6 +249,7 @@ export class OperationChat {
   close() {
     this.closed = true;
     this.abort.abort();
+    this.transport?.close();
     clearTimeout(this.timer);
   }
 }

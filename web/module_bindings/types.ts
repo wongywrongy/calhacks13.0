@@ -37,6 +37,14 @@ export const AgentSchedule = __t.object("AgentSchedule", {
 });
 export type AgentSchedule = __Infer<typeof AgentSchedule>;
 
+export const Alarm = __t.object("Alarm", {
+  id: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+  job: __t.string(),
+  watchdog: __t.bool(),
+});
+export type Alarm = __Infer<typeof Alarm>;
+
 export const ArenaSnapshot = __t.object("ArenaSnapshot", {
   slot: __t.u32(),
   matchId: __t.string(),
@@ -208,6 +216,33 @@ export const Hold = __t.object("Hold", {
   since: __t.i64(),
 });
 export type Hold = __Infer<typeof Hold>;
+
+export const HostedBudget = __t.object("HostedBudget", {
+  operation: __t.string(),
+  calls: __t.u32(),
+});
+export type HostedBudget = __Infer<typeof HostedBudget>;
+
+export const Job = __t.object("Job", {
+  id: __t.string(),
+  operation: __t.string(),
+  turn: __t.string(),
+  identity: __t.identity(),
+  role: __t.string(),
+  epoch: __t.u64(),
+  generation: __t.u64(),
+  agent: __t.u32(),
+  target: __t.u32(),
+  step: __t.u32(),
+  deadline: __t.i64(),
+  state: __t.string(),
+  policy: __t.u32(),
+  request: __t.string(),
+  result: __t.string(),
+  started: __t.i64(),
+  finished: __t.i64(),
+});
+export type Job = __Infer<typeof Job>;
 
 export const Lease = __t.object("Lease", {
   id: __t.u32(),

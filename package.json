@@ -33,7 +33,9 @@
     "smoke:fleet-conversation": "node --env-file=.env scripts/check-fleet-conversation.ts --real",
     "build:vercel": "node scripts/build-vercel.ts",
     "test:resilience": "npm run build:fleet && node scripts/check-resilience.ts",
-    "smoke:resilience": "node --env-file-if-exists=.env --env-file-if-exists=.demo.env --env-file-if-exists=output/deployment/backend.env scripts/check-resilience-live.ts"
+    "smoke:resilience": "node --env-file-if-exists=.env --env-file-if-exists=.demo.env --env-file-if-exists=output/deployment/backend.env scripts/check-resilience-live.ts",
+    "maincloud:prepare": "node scripts/prepare-maincloud.ts",
+    "test:maincloud": "esbuild scripts/check-maincloud.ts --bundle --format=esm --platform=node --packages=external --outfile=output/maincloud/check.mjs && node output/maincloud/check.mjs"
   },
   "dependencies": {
     "spacetimedb": "2.13.0",

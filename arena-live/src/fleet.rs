@@ -35,6 +35,7 @@ pub struct DroneSchedule { #[primary_key] id:u64, scheduled_at:ScheduleAt, epoch
 #[table(accessor=agent_schedule,scheduled(agent_tick))]
 pub struct AgentSchedule { #[primary_key] id:u64, scheduled_at:ScheduleAt, epoch:u64 }
 fn owner(ctx:&ReducerContext)->Result<(),String>{
+ if crate::hosted_scheduler(ctx){return Ok(())}
  if ctx.db.publisher().id().find(0).map(|p|p.identity)!=Some(ctx.sender()){return Err("Owner required".into())} Ok(())
 }
 use crate::{publisher,publisher__view};
@@ -50,7 +51,10 @@ fn emit(ctx:&ReducerContext,epoch:u64,actor:u32,d:&Drone,kind:&str,status:u32){c
 pub fn grant_fleet_view(ctx:&ReducerContext,identity:String,role:String)->Result<(),String>{owner(ctx)?;let identity=Identity::from_hex(identity).map_err(|_|"Invalid identity")?;if !["attacker","defender","observer"].contains(&role.as_str()){return Err("Invalid role".into())} if ctx.db.fleet_principal().identity().find(identity).is_some(){ctx.db.fleet_principal().identity().update(Principal{identity,role});}else{ctx.db.fleet_principal().insert(Principal{identity,role});} Ok(())}
 #[reducer]
 pub fn start_fleet(ctx:&ReducerContext,drones:u32,attackers:u32,defenders:u32,hardened:bool)->Result<(),String>{
- owner(ctx)?;if !(1..=256).contains(&drones)||!(0..=32).contains(&attackers)||!(0..=32).contains(&defenders){return Err("Fleet/agent limits exceeded".into())}
+ owner(ctx)?;start_fleet_impl(ctx,drones,attackers,defenders,hardened)
+}
+fn start_fleet_impl(ctx:&ReducerContext,drones:u32,attackers:u32,defenders:u32,hardened:bool)->Result<(),String>{
+ if !(1..=256).contains(&drones)||!(0..=32).contains(&attackers)||!(0..=32).contains(&defenders){return Err("Fleet/agent limits exceeded".into())}
  crate::backend::cancel_chat_session(ctx);
  for p in ctx.db.fleet_agent_profile().iter(){ctx.db.fleet_agent_profile().id().delete(p.id);}
  resilience::clear(ctx);
@@ -65,11 +69,14 @@ pub fn start_fleet(ctx:&ReducerContext,drones:u32,attackers:u32,defenders:u32,ha
  for id in 1..=attackers+defenders{let role=if id<=attackers{"attacker"}else{"defender"};ctx.db.fleet_agent().insert(Agent{id,epoch,role:role.into(),step:0,target:(id-1)%drones+1,last_action:"ready".into()});ctx.db.agent_schedule().insert(AgentSchedule{id:id as u64,epoch,scheduled_at:Duration::from_millis(350+(id%9) as u64*37).into()});}Ok(())
 }
 pub(crate) fn reset_chat_fleet(ctx:&ReducerContext,demo:bool)->Result<(),String>{
+ owner(ctx)?;reset_chat_fleet_impl(ctx,demo)
+}
+fn reset_chat_fleet_impl(ctx:&ReducerContext,demo:bool)->Result<(),String>{
  let s=ctx.db.fleet_session().id().find(0).ok_or("Fleet missing")?;
  let demo=demo||resilience::enabled(ctx);
  // Swarm reset preserves already-known targets alongside the conversation, never grants new visibility.
  let known:Vec<u32>=if demo{vec![]}else{ctx.db.fleet_discovery().iter().map(|d|d.drone).collect()};
- start_fleet(ctx,s.drones,0,0,s.hardened)?;
+ start_fleet_impl(ctx,s.drones,0,0,s.hardened)?;
  let epoch=ctx.db.fleet_session().id().find(0).unwrap().epoch;
  for drone in known{ctx.db.fleet_discovery().insert(Discovery{drone,epoch});}
  for e in ctx.db.fleet_evidence().iter(){ctx.db.fleet_evidence().id().delete(e.id);}
@@ -172,7 +179,7 @@ pub(crate) fn activate_chat_fleet(ctx:&ReducerContext,role:&str)->Result<(),Stri
  owner(ctx)?;
  if let Some(s)=ctx.db.fleet_session().id().find(0){if s.active&&s.deadline==0{return Ok(())}}
  if !["attacker","defender"].contains(&role){return Err("Invalid role".into())}
- if ctx.db.fleet_session().id().find(0).is_none(){start_fleet(ctx,6,0,0,false)?;}
+ if ctx.db.fleet_session().id().find(0).is_none(){start_fleet(ctx,120,0,0,false)?;}
  let mut s=ctx.db.fleet_session().id().find(0).unwrap();
  if ctx.db.fleet_chat_clock().id().find(0).is_none(){ctx.db.fleet_chat_clock().insert(ChatClock{id:0,epoch:s.epoch,started:if s.deadline>0{s.deadline-60_000_000}else{ctx.timestamp.to_micros_since_unix_epoch()}});}
  s.deadline=0;s.active=true;
@@ -201,3 +208,33 @@ pub fn visible_fleet_session(ctx:&ViewContext)->Vec<FleetSessionState>{
 }
 
 pub(crate) fn resilience_enabled(ctx:&ReducerContext)->bool{resilience::enabled(ctx)}
+
+// Role-scoped input for hosted inference; catalog addresses do not reveal undiscovered telemetry.
+pub(crate) fn hosted_role(ctx:&ReducerContext)->String {
+ ctx.db.fleet_principal().identity().find(ctx.sender()).map(|p|p.role).unwrap_or_default()
+}
+pub(crate) fn hosted_permission(ctx:&ReducerContext,identity:Identity,role:&str)->bool {
+ ctx.db.fleet_principal().identity().find(identity).map(|p|p.role==role).unwrap_or(false)
+}
+pub(crate) fn hosted_context(ctx:&ReducerContext,role:&str,target:u32)->serde_json::Value {
+ let Some(s)=ctx.db.fleet_session().id().find(0)else{return serde_json::Value::Null};
+ let drones:Vec<_>=ctx.db.fleet_drone().epoch().filter(s.epoch).filter(|d|(target==0||d.id==target)&&(role=="defender"||ctx.db.fleet_discovery().drone().find(d.id).map(|k|k.epoch)==Some(s.epoch))).map(|d|if role=="attacker"{serde_json::json!({"id":d.id,"controller":d.controller})}else{serde_json::json!({"id":d.id,"controller":d.controller,"isolated":d.isolated,"policyVersion":d.policy_version})}).collect();
+ let mut evidence:Vec<_>=ctx.db.fleet_evidence().epoch().filter(s.epoch).filter(|e|(target==0||e.drone==target)&&if role=="attacker"{e.kind=="discovered"||e.kind.starts_with("unauthorized_command")}else{e.kind!="discovered"&&!e.kind.starts_with("challenge_")}).collect();
+ evidence.sort_by_key(|e|e.id);let evidence:Vec<_>=evidence.iter().rev().take(16).map(|e|serde_json::json!({"id":e.id,"target":e.drone,"kind":e.kind,"status":e.status})).collect();
+ serde_json::json!({"session":{"active":s.active,"epoch":s.epoch},"catalog":{"targetIds":(1..=s.drones).collect::<Vec<_>>(),"discoveryAvailableBeforeObservation":role=="attacker"},"observations":drones,"evidence":evidence})
+}
+pub(crate) fn hosted_receipt(ctx:&ReducerContext,key:&str)->serde_json::Value {
+ let Some(r)=ctx.db.fleet_chat_action().key().find(key.to_string())else{return serde_json::Value::Null};
+ let e=ctx.db.fleet_evidence().id().find(r.evidence_id);
+ serde_json::json!({"evidenceId":r.evidence_id,"outcome":e.as_ref().map(|e|e.kind.as_str()).unwrap_or("wait"),"responseStatus":e.as_ref().map(|e|e.status),"policyVersion":e.as_ref().map(|e|e.policy_version),"verificationEvidenceIds":([r.unauthorized_evidence_id,r.authorized_evidence_id].into_iter().filter(|n|*n>0).collect::<Vec<_>>())})
+}
+pub(crate) fn hosted_reset(ctx:&ReducerContext,epoch:u64,demo:bool)->Result<(),String>{
+ if hosted_role(ctx)!="defender" {return Err("Defender required".into())}
+ validate_chat_fleet(ctx,epoch)?;
+ // The internal reset entry point is only reached after a role grant and current-epoch check.
+ reset_chat_fleet_impl(ctx,demo)
+}
+
+pub(crate) fn view_role(ctx:&ViewContext)->String{role(ctx)}
+pub(crate) fn hosted_policy(ctx:&ReducerContext,target:u32)->Result<u32,String>{ctx.db.fleet_drone().id().find(target).map(|d|d.policy_version).ok_or("Drone missing".into())}
+pub(crate) fn hosted_next_agent(ctx:&ReducerContext)->Result<u32,String>{ctx.db.fleet_agent().iter().map(|a|a.id).chain(ctx.db.fleet_agent_profile().iter().map(|a|a.id)).max().unwrap_or(0).checked_add(1).ok_or("Agent identity exhausted".into())}

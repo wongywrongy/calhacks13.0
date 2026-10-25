@@ -1,3 +1,4 @@
+import { MaincloudChat } from "./maincloud-chat.ts";
 import { explainFleetError, fleetOutcome } from "../sandbox/src/fleet-outcome.ts";
 import { OperationChat, activeOperation, type Worker, type ChatMessage } from "./fleet-chat.ts";
 import * as THREE from "three";
@@ -85,6 +86,8 @@ let role: Role = "defender",
   onlySel = false,
   modalAgent = 0;
 let operationChat: OperationChat | undefined;
+let maincloudReset: ((epoch: number, demo: boolean) => Promise<void>) | undefined;
+let maincloudMode = false;
 let renderedMessages: ChatMessage[] | undefined;
 let resilienceMode = false;
 let modelDriven = false,
@@ -350,7 +353,7 @@ function header(d: Derived) {
     : clock(d.elapsed);
   $("clock").querySelector("span")!.textContent = modelDriven ? "" : " / 1:00";
   $("clock").parentElement!.hidden = demoMode;
-  $("reset-sandbox").hidden = $("reset-swarm").hidden = !demoMode || role === "observer";
+  $("reset-sandbox").hidden = $("reset-swarm").hidden = !demoMode || role === "observer" || maincloudMode && role !== "defender";
   $("new-chat").hidden = !operationChat;
   $("progress").parentElement!.style.visibility = modelDriven
     ? "hidden"
@@ -1935,9 +1938,9 @@ function setStatus(text: string, kind: "live" | "stale" | "replay") {
   p.title = text;
   renderJudgeGuide();
 }
-async function workspace(next: Role) {
+async function workspace(next: Role, reconnect = false) {
   if (resetting) return;
-  if (next === role && operationChat) return;
+  if (next === role && operationChat && !reconnect) return;
   const v = ++version;
   fitted = "";
   userMoved = false;
@@ -1982,7 +1985,19 @@ async function workspace(next: Role) {
     $("error").replaceChildren(link);
     return;
   }
-  const config = await response.json();
+  let config = await response.json();
+  if (config.maincloud) {
+    if (!config.workspaces[role]) role = "defender";
+    config = { ...config, ...config.workspaces[role], role };
+  }
+  maincloudMode = !!config.maincloud;
+  let hosted: MaincloudChat | undefined;
+  if (config.maincloud) {
+    hosted = await MaincloudChat.connect(config);
+    if (v !== version) { hosted.close(); return; }
+    const state = await hosted.snapshot();
+    config.epoch = state.fleet.epoch; config.conversation = state.conversation;
+  }
   if (v !== version) return;
   if (config.recorded) {
     recording = await fetch("/fleet-recording.json").then((r) => r.json());
@@ -2014,9 +2029,9 @@ async function workspace(next: Role) {
           !!config.authenticated &&
           !(config.switchableRoles ?? [role]).includes(b.dataset.role)),
     );
+  maincloudReset = hosted ? (epoch, demo) => hosted!.reset(epoch, demo) : undefined;
   if (config.chat) {
     $("transcript").replaceChildren(typing);
-    let conversation = config.conversation;
     operationChat = new OperationChat(
       config.sandbox,
       role,
@@ -2033,6 +2048,7 @@ async function workspace(next: Role) {
       },
       config.epoch,
       config.conversation,
+      hosted,
     );
     operationChat.conversation = config.conversation;
     operationChat.fleet = { epoch: config.epoch, active: true };
@@ -2040,6 +2056,12 @@ async function workspace(next: Role) {
   }
   let attempt = 0;
   const pollState = () => {
+    if (config.maincloud) {
+      close();
+      const timer = setTimeout(() => { if (v === version) void workspace(role, true).catch(e => { $("error").textContent = String(e); }); }, 1500);
+      close = () => clearTimeout(timer);
+      return;
+    }
     ++attempt;
     close();
     let stopped = false;
@@ -2330,11 +2352,10 @@ async function resetFleet(demo: boolean) {
   for (const id of ["reset-swarm", "reset-sandbox", "new-chat", "say", "send"]) ($(id) as HTMLButtonElement).disabled = true;
   ++version;
   close();
-  operationChat?.close();
-  operationChat = undefined;
+  if (!maincloudReset) operationChat?.close();
   let feedback: string;
   try {
-    const response = await fetch(demo ? "/api/chat/reset-demo" : "/api/chat/reset", {
+    const response = maincloudReset ? (await maincloudReset(fleetEpoch, demo), Response.json({ok:true})) : await fetch(demo ? "/api/chat/reset-demo" : "/api/chat/reset", {
       method: "POST", signal: AbortSignal.timeout(30000),
       headers: { "content-type": "application/json", "x-sudoko-role": role },
       body: JSON.stringify({ epoch: fleetEpoch, ...(demo ? { confirm: true } : {}) }),
@@ -2347,7 +2368,7 @@ async function resetFleet(demo: boolean) {
   } finally {
     resetting = false;
     for (const id of ["reset-swarm", "reset-sandbox", "new-chat", "say", "send"]) ($(id) as HTMLButtonElement).disabled = false;
-    try { await workspace(role); }
+    try { await workspace(role, true); }
     catch (error) { feedback = `${feedback!} Could not reconnect: ${error instanceof Error ? error.message : "connection failed"}`; }
     status.textContent = feedback!;
   }

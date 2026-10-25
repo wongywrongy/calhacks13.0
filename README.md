@@ -1,3 +1,7 @@
+# Production runtime
+
+[https://sudo-ko.us](https://sudo-ko.us) uses SpacetimeDB Maincloud for simulation and scheduled Bitdeer agent decisions, with the existing Vercel frontend. See [Maincloud deployment and verification](docs/MAINCLOUD.md). Older Neo deployment notes below describe the retained rollback environment.
+
 # SudoKO
 
 Live fleet: **https://sudo-ko.us**. Production uses the existing Bitdeer-backed chat and
