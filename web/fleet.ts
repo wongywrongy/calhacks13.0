@@ -1310,6 +1310,9 @@ function clearDrones() {
   ghosts.clear();
   links = [];
   linkKey = "";
+  prevState.clear();
+  changedAt.clear();
+  camGoal.active = false;
   for (const pair of batches.values()) pair.body.count = pair.shadow.count = 0;
 }
 const reduced = matchMedia("(prefers-reduced-motion: reduce)");
@@ -1510,7 +1513,8 @@ function glide(dt: number, now: number) {
   return moving;
 }
 function effects(t: number) {
-  const moving = glide(Math.min(0.25, (t - lastT) / 1000 || 0), t / 1000);
+  const dt = Math.min(0.25, (t - lastT) / 1000 || 0);
+  const moving = glide(dt, t / 1000) || easeCamera(dt);
   lastT = t;
   if (reduced.matches) return moving;
   const k = 1 + 0.08 * Math.sin(t / 260);
@@ -1739,6 +1743,7 @@ function mapScene(d: Derived) {
       for (const other of neighbours(id, ids)) links.push([drones.get(id)!, drones.get(other)!]);
   }
   fit();
+  follow(d);
   redraw();
   // Legend with live counts, limited to the states this role can see. Counts come from the
   // same per-drone state, ripple and isolation flags that drive the scene.
@@ -2117,7 +2122,7 @@ function fit(force = false) {
     h = host.clientHeight;
   if (!w || !h) return;
   const key = `${role}:${fleetEpoch}:${n}:${overhead}:${w}x${h}`;
-  if (!force && userMoved) return;
+  if (!force && (userMoved || camGoal.active)) return;
   if (!force && key === fitted) {
     // Follow an escaping swarm only before the user takes control of the camera.
     const outside = frame.drones.some((d) => {
@@ -2213,9 +2218,52 @@ function solve(list: Drone[]) {
 }
 function reframe() {
   userMoved = false;
+  camGoal.active = false;
   fit(true);
 }
-controls.addEventListener("start", () => (dragging = true));
+/* ---------- Follow: ease the camera onto drones whose state just changed ---------- */
+let followMode = false,
+  lastUserCam = -Infinity;
+const FOLLOW_PAUSE_MS = 5000, FOLLOW_WINDOW_MS = 6000;
+const camGoal = { active: false, position: new THREE.Vector3(), target: new THREE.Vector3() };
+const prevState = new Map<number, string>(), changedAt = new Map<number, number>();
+/** Called from mapScene after fit(): remember state flips, then aim at the recent ones. */
+function follow(d: Derived) {
+  const now = performance.now();
+  for (const x of frame.drones) {
+    const st = d.state(x), prev = prevState.get(x.id);
+    if (prev !== undefined && prev !== st) changedAt.set(x.id, now);
+    prevState.set(x.id, st);
+  }
+  for (const [id, t] of changedAt) if (now - t > FOLLOW_WINDOW_MS || !drones.get(id)?.visible) changedAt.delete(id);
+  if (!followMode || now - lastUserCam < FOLLOW_PAUSE_MS) return;
+  const list = frame.drones.filter((x) => changedAt.has(x.id));
+  if (!list.length) return;
+  // solve() moves the camera while searching; take its answer as the goal and put the camera back.
+  const position = camera.position.clone(), quaternion = camera.quaternion.clone(), target = controls.target.clone();
+  const goal = solve(list);
+  camGoal.position.copy(camera.position);
+  camGoal.target.copy(goal.target);
+  camGoal.active = true;
+  camera.position.copy(position);
+  camera.quaternion.copy(quaternion);
+  controls.target.copy(target);
+  camera.updateMatrixWorld();
+}
+function easeCamera(dt: number) {
+  if (!camGoal.active) return false;
+  const k = reduced.matches ? 1 : 1 - Math.exp(-dt / 0.5);
+  camera.position.lerp(camGoal.position, k);
+  controls.target.lerp(camGoal.target, k);
+  controls.update();
+  if (camera.position.distanceTo(camGoal.position) < 0.05) camGoal.active = false;
+  return true;
+}
+controls.addEventListener("start", () => {
+  dragging = true;
+  lastUserCam = performance.now();
+  camGoal.active = false;
+});
 controls.addEventListener("end", () => (dragging = false));
 controls.addEventListener("change", () => {
   if (dragging) userMoved = true;
@@ -2227,6 +2275,12 @@ $("camera").onclick = () => {
   reframe();
 };
 $("reframe").onclick = reframe;
+$("follow").onclick = () => {
+  followMode = !followMode;
+  $("follow").setAttribute("aria-pressed", String(followMode));
+  if (followMode) follow(derive(frame));
+  else camGoal.active = false;
+};
 async function resetFleet(demo: boolean) {
   if (!demoMode || resetting) return;
   if (demo && !confirm("Reset the shared demo for both roles? This stops all agents, restores the fleet, and clears both conversations.")) return;
