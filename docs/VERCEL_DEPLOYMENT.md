@@ -58,3 +58,35 @@ vercel promote <the-ready-production-deployment>
 ```
 
 No production isolation or sustained-load claim is made. Provider timeouts and invalid plans remain possible and are surfaced to the operator.
+
+## Guided judge entry and findings — 2026-10-25
+
+The judge flow merges `feat/judge-flow` (`e0c0ebd`) onto committed main (`881945b`).
+Prepare challenge and Prepare defense select the existing role workspace and fill an
+editable objective; only Send submits it to the existing Bitdeer backend. The findings
+drawer reads the role-scoped SpacetimeDB evidence already received by the client and
+selects the corresponding drone. It includes newer evidence kinds without treating them
+as accepted unauthorized commands. Agent susceptibility and causal spread remain
+unverified; multiple affected drones do not establish propagation.
+
+The client also carries the epoch and conversation generation required by the running
+backend, resets displayed history when the conversation generation changes, and retains
+compatibility with the committed backend. No backend/module deployment, framework change,
+new infrastructure, domain change or shared-state reset is needed for this frontend release.
+The existing connection fallback and reset confirmation remain in place. Guided buttons
+respect the configured role grants and disable while live state is unavailable.
+
+Validation: `npm run typecheck`, `npm test` with a real isolated SpacetimeDB instance,
+`npm run test:fleet-conversation` with explicitly mocked inference and real reducers, and
+`vercel build --prod`. The browser suite covers editable objectives, executed challenge and
+defense, evidence selection, 1280/1366/1440 by 768 laptop layouts, reset, scoped role history,
+and offline/reconnect behavior. These repeatable checks are not evidence of model autonomy.
+
+`node scripts/check-judge-live.ts --local-assets` checks the candidate frontend against
+production's existing backend without submitting a model request. After promotion,
+`node scripts/check-judge-live.ts --send` checks the deployed assets, database evidence,
+role controls, laptop layout and canceled reset, then submits exactly one read-only
+question through Send and requires a completed Bitdeer answer without new operations.
+Private reports and screenshots are written under `output/judge-preflight/` and
+`output/judge-production/`. Full reset execution is checked only in the isolated suite;
+the live check preserves shared state and existing history.

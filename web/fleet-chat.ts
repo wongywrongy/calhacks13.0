@@ -57,6 +57,7 @@ export class OperationChat {
   operations: Operation[] = [];
   turns: ConversationTurn[] = [];
   get pendingTurn() { return this.turns.find((t) => ["queued", "running"].includes(t.state) && Date.now() - t.createdAt < 31000); }
+  conversation?: number;
   sending = false;
   lastUpdated = 0;
   fleet: { active: boolean; epoch: number } | null = null;
@@ -121,7 +122,7 @@ export class OperationChat {
           "x-sudoko-role": this.role,
           "idempotency-key": this.pending.key,
         },
-        body: JSON.stringify({ message, sandbox: this.sandbox, target }),
+        body: JSON.stringify({ message, sandbox: this.sandbox, target, ...(this.conversation === undefined ? {} : { epoch: this.fleet?.epoch, conversation: this.conversation }) }),
       });
       const body = await r.json();
       if (!r.ok) {
@@ -138,8 +139,14 @@ export class OperationChat {
     this.pending = undefined;
     localStorage.removeItem(this.storageKey);
   }
-  private update(body: { messages: ChatMessage[]; operations: Operation[]; turns?: ConversationTurn[]; fleet?: { active: boolean; epoch: number } | null }) {
+  private update(body: { messages: ChatMessage[]; operations: Operation[]; turns?: ConversationTurn[]; conversation?: number; fleet?: { active: boolean; epoch: number } | null }) {
     if (this.closed) return;
+    if (body.conversation !== undefined && body.conversation !== this.conversation) {
+      this.messages = [];
+      this.cursor = 0;
+      this.clearPending();
+    }
+    this.conversation = body.conversation;
     const ids = new Set(this.messages.map((m) => m.id));
     this.messages.push(...body.messages.filter((m) => !ids.has(m.id)));
     this.messages.sort((a, b) => a.id - b.id);
@@ -153,7 +160,7 @@ export class OperationChat {
     try {
       let more = true;
       while (more && !this.closed) {
-        const r = await fetch(`/api/chat/conversation?after=${this.cursor}`, {
+        const r = await fetch(`/api/chat/conversation?after=${this.cursor}${this.conversation === undefined ? "" : `&conversation=${this.conversation}`}`, {
           credentials: "same-origin",
           signal: AbortSignal.timeout(12000),
           headers: { "x-sudoko-role": this.role },
