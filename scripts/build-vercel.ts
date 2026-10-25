@@ -8,7 +8,7 @@ const configText = process.env.FLEET_MAINCLOUD_CONFIG_JSON || (process.env.FLEET
   ? await readFile(process.env.FLEET_MAINCLOUD_CONFIG, "utf8") : undefined);
 if (!configText) throw Error("Set FLEET_MAINCLOUD_CONFIG_JSON or FLEET_MAINCLOUD_CONFIG; production requires Maincloud configuration");
 const config = JSON.parse(configText);
-if (config.uri !== "https://maincloud.spacetimedb.com" || !config.database || !["attacker", "defender", "observer"].every(role => config.workspaces?.[role]?.token && config.switchableRoles?.includes(role))) throw Error("Maincloud deployment requires granted attacker, defender and observer workspaces in switchableRoles");
+if (config.uri !== "https://maincloud.spacetimedb.com" || !config.database || !["attacker", "defender"].every(role => config.workspaces?.[role]?.token && config.switchableRoles?.includes(role)) || config.switchableRoles?.includes("observer") && !config.workspaces?.observer?.token) throw Error("Maincloud deployment requires credentials for its enabled workspaces");
 await writeFile(`${out}/fleet-config.json`, JSON.stringify(config));
 
 await Promise.all([
