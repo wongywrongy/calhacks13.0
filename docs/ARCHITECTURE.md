@@ -32,7 +32,7 @@ rechecks the original identity's grant, role, epoch, conversation, assignment, o
 deadline and policy version. Provider errors/refusals stay failures; there is no fixture
 fallback or alternate provider retry.
 
-The hackathon uses **one shared arena and two shared role workspaces**, not personal
+The hackathon uses **one shared arena, two operator workspaces and a read-only observer workspace**, not personal
 accounts or tenant isolation. Anyone offered the defender demo credential can reset the
 shared arena. Publisher authority can deploy code and grant roles; protect that identity.
 The legacy Node owner credential must not be operated concurrently as another scheduler.

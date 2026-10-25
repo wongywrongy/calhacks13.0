@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-25T10:17:21.887Z",
+  "node": {
+    "tests": 86,
+    "pass": 86,
+    "fail": 0,
+    "skipped": 0,
+    "command": "SPACETIME_BINARY=... PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=... MIGRATION_FROM_WASM=... npm test"
+  },
+  "rust": {
+    "tests": 14,
+    "pass": 14
+  },
+  "checks": [
+    "TypeScript typecheck",
+    "Release production WASM",
+    "Fleet bundle",
+    "Static Vercel build with explicitly fake test credentials",
+    "Missing observer deployment configuration rejected",
+    "Generated public bindings unchanged except trailing blank lines",
+    "Impeccable mechanical detector: no findings"
+  ],
+  "environment": "SpacetimeDB 2.13.0 standalone, disposable per-test databases, installed Chromium in SwiftShader mode; fixture decisions unless the provider reports explicitly say otherwise"
+}

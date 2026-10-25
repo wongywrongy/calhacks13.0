@@ -89,6 +89,10 @@
         overflow: auto;
         border-bottom: 1px solid var(--line);
       }
+      #rail-right > .body:first-child {
+        flex: 0 0 auto;
+        max-height: 168px;
+      }
       .body.rest {
         flex: 1 1 auto;
         border-bottom: 0;
@@ -981,6 +985,17 @@
           flex: none;
         }
       }
+      @media (max-width: 600px) {
+        section > .bar {
+          flex-wrap: wrap;
+          flex-basis: auto;
+          height: auto;
+          min-height: 44px;
+          gap: 8px;
+        }
+        #filter, #filter button { flex: none; }
+        #filter, #drone-filter { height: 44px; }
+      }
       @media (prefers-reduced-motion: reduce) {
         .dot.working, .dot.running, .dot.queued {
           animation: none;
@@ -1110,10 +1125,10 @@
       </div>
       <div class="body rest"><div id="team-status" role="status" aria-label="Live team operations"></div><ul class="rows" id="log"></ul></div>
     </section>
-    <aside id="rail-right" class="col r" aria-label="Blue agents and evidence" hidden>
+    <aside id="rail-right" class="col r" aria-label="Resilience assessment and evidence" hidden>
       <div class="body"><ul class="cards" id="blue-agents"></ul></div>
-      <div class="bar"><h2>Evidence</h2></div>
-      <div class="body rest"><ul class="rows" id="evidence"></ul></div>
+      <div class="bar"><h2>Resilience assessment</h2></div>
+      <div class="body rest"><ul class="cards" id="assessment"></ul><ul class="rows" id="evidence"></ul></div>
     </aside>
     <aside id="chat" class="col r" aria-label="Chat">
       <div id="transcript" role="log" aria-live="polite"></div>

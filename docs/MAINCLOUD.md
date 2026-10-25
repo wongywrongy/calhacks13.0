@@ -184,10 +184,28 @@ the simple publish command below alone does not backfill old rows.
    The existing Vercel project has the JSON variable for Preview and Production.
    Deploy the static output after verification. `/fleet-config` resolves to that static
    JSON; no production routes proxy to Neo, Tailscale, Node, or an inference API.
-6. `node scripts/check-maincloud-browser.ts` verifies the deployed browser, both guided
-   roles, laptop layout, refresh, forced WebSocket reconnect and absence of legacy requests.
-   `--send --reset` also runs the actual judge challenge/defense flow, follows evidence,
-   and resets to the configured session count with zero agents. Use `MAINCLOUD_FRONTEND_URL` for a candidate.
+6. `node scripts/check-maincloud-browser.ts` inspects the deployed browser read-only using
+   the current Attack, Defend and Observer controls, refresh and laptop/narrow layouts.
+   It never extracts role credentials for probing, sends missions or resets shared state.
+   Use `MAINCLOUD_FRONTEND_URL` for a candidate. `--send` and `--reset` are rejected.
+   For actual provider/browser missions, run `node scripts/check-judge.ts --real` with
+   `SPACETIME_BINARY`, `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` and an authorized server
+   `BITDEER_API_KEY`. It builds the current frontend and provisions a disposable local
+   database using the production WASM, then closes it after testing. It permits at most
+   100 calls; set `JUDGE_PRIOR_REQUESTS` to the actual earlier count for repeated checks.
+   No production database is used.
+
+Observer requires its own granted read-only identity. Re-run `maincloud:prepare` after
+reviewing the intended database; it adds a missing observer grant without resetting data.
+Update the existing frontend configuration with that observer workspace and
+`switchableRoles: ["attacker", "defender", "observer"]`. The static build now rejects
+configuration missing any of these workspaces. Provisioning and deployment are rollout
+steps; local verification does not make Observer available in the currently deployed app.
+The existing observer panel shows unique resolved attack coverage, current impact and
+availability, historical paired recovery checks versus checks under current policy, scoped
+assignment failures, evidence selection, and measured next steps. Untested targets stay
+unknown. Release changes policy, so a previous recovery check remains historical evidence
+rather than certification of the released policy.
 
 The browser subscribes directly to identity-scoped fleet/chat views and invokes scoped
 reducers through SpacetimeDB. Maincloud reconnect uses Maincloud again, without an API

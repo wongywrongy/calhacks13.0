@@ -45,7 +45,7 @@ fn tasks(ctx:&ViewContext,team:&str)->Vec<TaskActivity>{
 pub fn visible_agent_tasks(ctx:&ViewContext)->Vec<TaskActivity>{
  let role=crate::fleet::view_role(ctx);let mut out=vec![];for team in ["attacker","defender"]{if role==team||role=="observer"{out.extend(tasks(ctx,team));}}out
 }
-fn label(stage:&str)->&'static str{match stage{"attempt"=>"Attempt in progress","evaluating"=>"Evaluating the result","reassessing"=>"Deciding the next action","assessing"=>"Deciding the next action","queued"=>"Waiting for a decision slot","request"=>"Request queued","waiting"=>"Waiting for fresh observations","blocked"=>"Blocked",_=>"Waiting for user instructions"}}
+fn label(stage:&str)->&'static str{match stage{"attempt"=>"Attempt in progress","evaluating"=>"Evaluating the result","reassessing"=>"Deciding the next action","assessing"=>"Deciding the next action","queued"=>"Waiting for a decision slot","request"=>"Request queued","waiting"=>"Waiting for fresh observations","blocked"=>"Blocked","execution_failure"=>"Request failed; no simulated result was established",_=>"Waiting for user instructions"}}
 #[view(accessor=visible_team_activity,public)]
 pub fn visible_team_activity(ctx:&ViewContext)->Vec<TeamActivity>{
  let role=crate::fleet::view_role(ctx);let epoch=ctx.db.fleet_session().id().find(0).map(|s|s.epoch).unwrap_or(0);let mut out=vec![];
@@ -58,7 +58,8 @@ pub fn visible_team_activity(ctx:&ViewContext)->Vec<TeamActivity>{
   let primary=active.iter().min_by_key(|t|(priority(&t.stage),t.target));
   let latest=ctx.db.backend_chat().scope().filter((team,epoch,visible_conversation_generation(ctx,team))).map(|op|view_operation(ctx,op)).max_by_key(|o|serde_json::from_str::<Value>(&o.config).ok().and_then(|v|v["createdAt"].as_i64()).unwrap_or(0));
   let blocked=workers.iter().filter(|t|["failed","blocked","exhausted"].contains(&t.state.as_str())&&latest.as_ref().map(|o|o.id==t.operation).unwrap_or(false)).max_by_key(|t|t.finished_at);
-  let stage=if let Some(t)=primary{t.stage.as_str()}else if deciding{"assessing"}else if op.is_some(){"queued"}else if pending.is_some(){"request"}else if blocked.map(|t|t.summary.contains("No ")||t.summary.contains("route")||t.summary.contains("budget")).unwrap_or(false){"blocked"}else{"idle"};
+  let request_failed=ctx.db.backend_chat_turn().scope().filter((team,epoch,visible_conversation_generation(ctx,team))).max_by_key(|t|t.created).map(|t|t.state=="failed"&&latest.as_ref().map(|o|serde_json::from_str::<Value>(&o.config).ok().and_then(|v|v["createdAt"].as_i64()).unwrap_or(0)<=t.created).unwrap_or(true)).unwrap_or(false);
+  let stage=if let Some(t)=primary{t.stage.as_str()}else if deciding{"assessing"}else if op.is_some(){"queued"}else if pending.is_some(){"request"}else if request_failed{"execution_failure"}else if blocked.map(|t|t.summary.contains("No ")||t.summary.contains("route")||t.summary.contains("budget")).unwrap_or(false){"blocked"}else{"idle"};
   let mut targets:Vec<_>=active.iter().map(|t|t.target).collect();targets.sort_unstable();targets.dedup();
   let config:Value=op.as_ref().and_then(|o|serde_json::from_str(&o.config).ok()).unwrap_or(Value::Null);
   out.push(TeamActivity{role:team.into(),operation:op.as_ref().map(|o|o.id.clone()).unwrap_or_default(),objective:config["message"].as_str().unwrap_or("").into(),targets,stage:stage.into(),summary:if stage=="blocked"{blocked.map(|t|format!("{} — {}",label(stage),t.summary)).unwrap_or_default()}else{label(stage).into()},active_agents:active.len() as u32});

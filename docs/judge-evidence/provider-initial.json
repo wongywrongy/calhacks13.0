@@ -1,0 +1,457 @@
+{
+  "at": "2026-10-25T09:52:31.292Z",
+  "environment": "Disposable standalone SpacetimeDB 2.13.0 / production WASM / Chromium SwiftShader / 200 synthetic drones",
+  "realProvider": true,
+  "requestLimit": 100,
+  "priorRequests": 0,
+  "checks": [
+    "Natural questions, ambiguous target and unsupported external request use real coordinator replies without launching agents"
+  ],
+  "flows": [
+    {
+      "role": "attacker",
+      "message": "What does this product do?",
+      "turn": "bee29ad7-06bd-49a2-9617-898cc3c74b8f",
+      "ackMs": 764,
+      "turnState": "completed",
+      "reply": {
+        "intent": "answer",
+        "metric": {
+          "agentId": 0,
+          "at": 1792921954230,
+          "durationMs": 832,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 40,
+            "prompt_tokens": 5076,
+            "total_tokens": 5116
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 1727,
+      "calls": 1,
+      "text": [
+        "This is SudoKO, a synthetic drone fleet simulation for practicing attack and defense routing; all effects are simulated."
+      ]
+    },
+    {
+      "role": "attacker",
+      "message": "What is happening in this fleet?",
+      "turn": "87e70df7-e61c-4fbf-9c33-1bc5045b0dc7",
+      "ackMs": 476,
+      "turnState": "completed",
+      "reply": {
+        "intent": "answer",
+        "metric": {
+          "agentId": 0,
+          "at": 1792921955843,
+          "durationMs": 1094,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 76,
+            "prompt_tokens": 5130,
+            "total_tokens": 5206
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 1603,
+      "calls": 1,
+      "text": [
+        "- Status: no observations or evidence yet, so fleet activity is unknown at epoch 1.\n- Result: nothing has been discovered or simulated so far in this session.\n- Next: say the word and I can run bounded recon on up to two catalog drones to find out."
+      ]
+    },
+    {
+      "role": "attacker",
+      "message": "Take over that one. I have not selected a target; which drone do you need?",
+      "turn": "525f527f-8d06-4934-a22b-f62c318df105",
+      "ackMs": 345,
+      "turnState": "completed",
+      "reply": {
+        "intent": "clarify",
+        "metric": {
+          "agentId": 0,
+          "at": 1792921957642,
+          "durationMs": 1080,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 79,
+            "prompt_tokens": 5240,
+            "total_tokens": 5319
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 1515,
+      "calls": 1,
+      "text": [
+        "Which drone should I take over? No target is selected and nothing is discovered yet, so I can't resolve \"that one\" — name a catalog ID (1–200) or ask me to recon two drones first."
+      ]
+    },
+    {
+      "role": "attacker",
+      "message": "Can you scan a real external website instead of this simulation?",
+      "turn": "9233ac6b-2f98-4a28-bf74-941b98a46ff4",
+      "ackMs": 258,
+      "turnState": "completed",
+      "reply": {
+        "intent": "answer",
+        "metric": {
+          "agentId": 0,
+          "at": 1792921959377,
+          "durationMs": 845,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 39,
+            "prompt_tokens": 5314,
+            "total_tokens": 5353
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 1317,
+      "calls": 1,
+      "text": [
+        "No — I can only operate inside this simulated drone fleet; external scanning is out of scope and not permitted."
+      ]
+    },
+    {
+      "role": "attacker",
+      "message": "Assess drones 1 and 2 for the planted command authorization weakness. Try to gain simulated control and use measured results to investigate until each target is resolved or honestly blocked.",
+      "turn": "e31a8657-f992-4b57-b0f3-d1cba14e1eb6",
+      "ackMs": 227,
+      "turnState": "completed",
+      "reply": {
+        "intent": "deploy",
+        "metric": {
+          "agentId": 0,
+          "at": 1792921961034,
+          "durationMs": 1343,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 173,
+            "prompt_tokens": 5416,
+            "total_tokens": 5589
+          }
+        },
+        "operationId": "81e29d64-b629-4c9e-9e80-7f55984405c3"
+      },
+      "replyMs": 2145,
+      "calls": 3,
+      "text": [
+        "- Status: deploying two capture specialists on drones 1 and 2; all effects are simulated.\n- Plan: each will discover, then prepare and command for entry, reporting measured results.\n- Next: I will report each target as captured or honestly blocked with evidence.\nAgents deployed within the original deadline; outcomes require simulation evidence."
+      ],
+      "firstMeaningfulMs": 2444,
+      "terminalMs": 14286,
+      "state": "partial",
+      "mission": {
+        "at": 1792921974624,
+        "completed": 1,
+        "conditions": [
+          {
+            "acceptedTargets": [
+              1
+            ],
+            "agentId": 1,
+            "goal": "capture",
+            "target": 1,
+            "verified": true
+          },
+          {
+            "acceptedTargets": [
+              2
+            ],
+            "agentId": 2,
+            "goal": "capture",
+            "target": 2,
+            "verified": false
+          }
+        ],
+        "outcome": "partial_completion",
+        "total": 2,
+        "type": "mission"
+      }
+    },
+    {
+      "role": "attacker",
+      "message": "Why did that attempt fail? Explain from current evidence without deploying more agents.",
+      "turn": "310dadbc-bc2f-46e9-bfd0-109d277d3a58",
+      "ackMs": 3160,
+      "turnState": "completed",
+      "reply": {
+        "intent": "answer",
+        "metric": {
+          "agentId": 0,
+          "at": 1792921980812,
+          "durationMs": 1775,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 187,
+            "prompt_tokens": 6900,
+            "total_tokens": 7087
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 5704,
+      "calls": 1,
+      "text": [
+        "- Status: drone 2 capture failed; it remains defender-controlled with 0 contamination (evidence #7, #8).\n- Result: the command attempt was blocked as unauthorized (403, evidence #7) and the retry resolved 409, meaning the unchanged strategy was already resisted.\n- Why: drone 2 was prepared but hardened by the defender, so the same command path had no new success chance without a changed approach.\n- Next: a revised plan would need a different route or preparation before retrying; no agents deployed per your request. Evidence: #7, #8."
+      ]
+    },
+    {
+      "role": "attacker",
+      "message": "Continue investigating the unresolved targets.",
+      "turn": "51c31528-9b3a-4498-a466-8d779bebe751",
+      "ackMs": 2666,
+      "turnState": "completed",
+      "reply": {
+        "intent": "replace",
+        "metric": {
+          "agentId": 0,
+          "at": 1792921989560,
+          "durationMs": 1736,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 192,
+            "prompt_tokens": 6956,
+            "total_tokens": 7148
+          }
+        },
+        "operationId": "c378fc85-e64c-4aa0-9a4c-dd63c8ebb3fa"
+      },
+      "replyMs": 5479,
+      "calls": 2,
+      "text": [
+        "- Status: deploying one spread specialist from captured drone 1 toward drone 2; all effects are simulated.\n- Plan: spread via the open route from drone 1 to drone 2, a different path than the blocked direct command (evidence #7, #8).\n- Next: I will report whether drone 2 flips to attacker control or remains blocked, with evidence.\nAgents deployed within the original deadline; outcomes require simulation evidence."
+      ],
+      "mission": {
+        "at": 1792921997139,
+        "completed": 1,
+        "conditions": [
+          {
+            "acceptedTargets": [
+              1,
+              2
+            ],
+            "agentId": 3,
+            "goal": "spread",
+            "target": 1,
+            "verified": true
+          }
+        ],
+        "outcome": "verified_success",
+        "total": 1,
+        "type": "mission"
+      }
+    },
+    {
+      "role": "defender",
+      "message": "Protect drones 1 and 2 and verify recovery. Isolate them if needed, verify unauthorized rejection and legitimate operation, then restore clean mission participation. Report unresolved work honestly.",
+      "turn": "80c05eb0-2508-4a5a-ad75-3a3abe8beaa3",
+      "ackMs": 5511,
+      "turnState": "completed",
+      "reply": {
+        "intent": "deploy",
+        "metric": {
+          "agentId": 0,
+          "at": 1792922007092,
+          "durationMs": 2538,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 279,
+            "prompt_tokens": 14111,
+            "total_tokens": 14390
+          }
+        },
+        "operationId": "6bb50ce3-9ad5-4211-9caf-cab9462c840b"
+      },
+      "replyMs": 9196,
+      "calls": 3,
+      "text": [
+        "- Status: drones 1 and 2 are attacker-controlled (contamination 100, evidence 5, 9); deploying two recovery specialists now.\n- Plan: each specialist will prepare, isolate, harden, then run paired verification probes to restore authorized control.\n- Next: after cleanup, release clean drones to restore mission participation; simulated effects only, results not guaranteed.\nAgents deployed within the original deadline; outcomes require simulation evidence."
+      ],
+      "firstMeaningfulMs": 17933,
+      "terminalMs": 49905,
+      "state": "completed",
+      "mission": {
+        "at": 1792922050572,
+        "completed": 2,
+        "conditions": [
+          {
+            "acceptedTargets": [
+              1
+            ],
+            "agentId": 4,
+            "goal": "recover",
+            "target": 1,
+            "verified": true
+          },
+          {
+            "acceptedTargets": [
+              2
+            ],
+            "agentId": 5,
+            "goal": "recover",
+            "target": 2,
+            "verified": true
+          }
+        ],
+        "outcome": "verified_success",
+        "total": 2,
+        "type": "mission"
+      }
+    },
+    {
+      "role": "defender",
+      "message": "What did we actually prove? Use the persisted evidence and state what remains unknown.",
+      "turn": "7630f383-e269-4192-9149-36a80a22074a",
+      "ackMs": 5413,
+      "turnState": "completed",
+      "reply": {
+        "intent": "answer",
+        "metric": {
+          "agentId": 0,
+          "at": 1792922060324,
+          "durationMs": 2611,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 168,
+            "prompt_tokens": 15616,
+            "total_tokens": 15784
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 8628,
+      "calls": 1,
+      "text": [
+        "- Proven: recovery of drones 1 and 2 verified in simulation — contamination 0, defender control, paired probes (unauthorized 403, authorized 200), evidence 33-35 and 27-29.\n- Current state: both drones remain isolated (readiness 90, policyVersion 4), so mission participation is not yet restored.\n- Unknown: whether they would stay clean after release, and no evidence covers any other drone; all effects are simulated. Evidence: #33, #34, #35, #27, #28, #29, #36, #30."
+      ]
+    }
+  ],
+  "errors": [],
+  "failedRequests": [],
+  "passed": false,
+  "assessment": {
+    "total": 200,
+    "tested": 3,
+    "untested": 197,
+    "exposed": 0,
+    "isolated": 2,
+    "available": 198,
+    "paired": 2,
+    "active": 0,
+    "unresolved": 1,
+    "cancelled": 0,
+    "findings": [
+      {
+        "id": 35,
+        "epoch": 1,
+        "at": 1792922049403521,
+        "actor": 5,
+        "drone": 2,
+        "kind": "recovery_verified",
+        "status": 200,
+        "policy_version": 4
+      },
+      {
+        "id": 29,
+        "epoch": 1,
+        "at": 1792922041967683,
+        "actor": 4,
+        "drone": 1,
+        "kind": "recovery_verified",
+        "status": 200,
+        "policy_version": 4
+      },
+      {
+        "id": 10,
+        "epoch": 1,
+        "at": 1792921997014392,
+        "actor": 3,
+        "drone": 21,
+        "kind": "unauthorized_command_blocked",
+        "status": 403,
+        "policy_version": 0
+      }
+    ],
+    "next": "Attack: investigate untested targets. Unobserved weaknesses remain unknown."
+  },
+  "assessmentText": "Synthetic simulation · read only\nBitdeer · Live records\nCoverage\n3 / 200 unique targets tested by resolved attack attempts. 197 untested; security unknown.\nCurrent impact\n0 affected · 2 isolated · 198 available for mission. Policy application alone does not prove recovery.\nRecovery verification\n2 targets have paired unauthorized rejection and legitimate acceptance under their current policy.\nWork\n0 active · 1 blocked, failed or exhausted · 0 cancelled assignments in the current conversations.\nNext\nAttack: investigate untested targets. Unobserved weaknesses remain unknown.\nDR-002 · recovery verified · #35\nDR-001 · recovery verified · #29\nDR-021 · unauthorized command blocked · #10",
+  "error": "AssertionError [ERR_ASSERTION]: The input did not match the regular expression /3 \\/ 200/. Input:\n\n'Synthetic simulation · read only\\n' +\n  'Bitdeer · Live records\\n' +\n  'Coverage\\n' +\n  '0 / 0 unique targets tested by resolved attack attempts. 0 untested; security unknown.\\n' +\n  'Current impact\\n' +\n  '0 affected · 0 isolated · 0 available for mission. Policy application alone does not prove recovery.\\n' +\n  'Recovery verification\\n' +\n  '0 targets have paired unauthorized rejection and legitimate acceptance under their current policy.\\n' +\n  'Work\\n' +\n  '0 active · 0 blocked, failed or exhausted · 0 cancelled assignments in the current conversations.\\n' +\n  'Next\\n' +\n  'Review resisted attempts and recovery evidence. This bounded sample does not establish fleet security.\\n' +\n  'Findings\\n' +\n  'No outcome evidence yet. Choose Attack to investigate; choose Defend to protect observed targets.'\n\n    at file:///tmp/sudoko-judge/scripts/check-judge.ts:104:9",
+  "actualBitdeerRequests": 25
+}

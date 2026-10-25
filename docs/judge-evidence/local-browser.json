@@ -1,0 +1,34 @@
+{
+  "scope": "Actual Chromium, actual local SpacetimeDB, fixture decisions, 200 drones",
+  "resets": 3,
+  "activeSockets": 2,
+  "pad": [
+    168,
+    1,
+    168
+  ],
+  "heapBefore": {
+    "usedSize": 11481996,
+    "totalSize": 14151680,
+    "embedderHeapUsedSize": 2289640,
+    "backingStorageSize": 4177111
+  },
+  "heapAfter": {
+    "usedSize": 11193484,
+    "totalSize": 13103104,
+    "embedderHeapUsedSize": 2194720,
+    "backingStorageSize": 4178024
+  },
+  "timings": {
+    "simulation": [
+      {
+        "queueReceiptToResolvedMs": 4069
+      },
+      {
+        "queueReceiptToResolvedMs": 3733
+      }
+    ],
+    "persistedToVisibleMs": 312,
+    "method": "Fixture decisions, real database: action queue receipt to observed resolution; recon persistence receipt to visible terminal summary. Includes HTTP/polling overhead; not GPU render time."
+  }
+}

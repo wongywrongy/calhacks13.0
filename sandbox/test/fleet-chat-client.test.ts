@@ -230,3 +230,29 @@ test("agent replies become readable lists without losing facts, IDs or literal m
   assert.deepEqual(replyBlocks("Waiting for evidence."), [{ list: false, lines: ["Waiting for evidence."] }]);
   assert.deepEqual(replyBlocks(" "), []);
 });
+
+test("a definitive Maincloud rejection clears retry state while transport uncertainty preserves the original key", async t => {
+  const { SenderError } = await import("spacetimedb");
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  const values=new Map<string,string>();
+  Object.defineProperty(globalThis,"localStorage",{configurable:true,value:{getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v),removeItem:(k:string)=>values.delete(k)}});
+  t.after(()=>descriptor?Object.defineProperty(globalThis,"localStorage",descriptor):Reflect.deleteProperty(globalThis,"localStorage"));
+  let failure:Error|undefined=new SenderError("Conversation already pending");
+  const keys:string[]=[];
+  const snapshot={fleet:{epoch:1,active:true},conversation:1,messages:[],operations:[],turns:[]};
+  const transport={snapshot:async()=>snapshot,newChat:async()=>snapshot,close:()=>{},submit:async(key:string)=>{keys.push(key);if(failure)throw failure;return snapshot;}};
+  const client=new OperationChat("test","attacker",()=>{},()=>{},1,1,transport);t.after(()=>client.close());
+  await assert.rejects(client.submit("First"),/pending/);assert.equal(values.size,0);
+  failure=new Error("Connection lost after admission");
+  await assert.rejects(client.submit("Second"),/Connection lost/);assert.equal(values.size,1);
+  await assert.rejects(client.submit("Different"),/Retry the pending/);
+  failure=undefined;await client.submit("Second");assert.equal(keys[1],keys[2]);assert.equal(values.size,0);
+  let rejectOld!:(error:Error)=>void;
+  const oldReply=new Promise<never>((_,reject)=>{rejectOld=reject;});
+  transport.submit=async(key:string)=>{keys.push(key);if(keys.length===4)return oldReply;throw new Error("New reply lost");};
+  const oldSubmission=client.submit("Old conversation");client.advanceConversation(2);
+  await assert.rejects(client.submit("New conversation"),/New reply lost/);
+  rejectOld(new SenderError("Stale conversation"));await oldSubmission;
+  assert.equal(values.size,1,"A late old-conversation rejection cannot erase the new conversation's saved retry");
+
+});

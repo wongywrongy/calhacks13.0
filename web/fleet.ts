@@ -1,3 +1,4 @@
+import { fleetAssessment } from "./fleet-assessment.ts";
 import { attemptOutcome, attemptReport, groupActivity, stateSuggestions, taskActive, type BattleHealth, type BattleOption, type AttemptActivity, type AgentTask, type TeamActivity } from "./fleet-activity.ts";
 import { MaincloudChat } from "./maincloud-chat.ts";
 import { explainFleetError, fleetOutcome } from "../sandbox/src/fleet-outcome.ts";
@@ -343,7 +344,7 @@ function header(d: Derived) {
   $("clock").querySelector("span")!.textContent = modelDriven ? "" : " / 1:00";
   $("clock").parentElement!.hidden = demoMode;
   $("reset-sandbox").hidden = $("reset-swarm").hidden = !demoMode || role === "observer" || maincloudMode && !maincloudCanReset;
-  $("new-chat").hidden = !operationChat;
+  $("new-chat").hidden = !operationChat || role === "observer";
   $("progress").parentElement!.style.visibility = modelDriven
     ? "hidden"
     : "visible";
@@ -442,9 +443,31 @@ function rails(d: Derived) {
   } else body.push(el("p", "muted", "Click a drone, an activity row or a chip to select it."));
   patchList($("selected"), body);
   if (role === "observer") {
+    assessment();
     const rows = entries(d).filter((e) => sel && e.drone === sel.id).slice(-60).reverse();
     patchList($("evidence"), rows.length ? rows.map((e) => rowEl(e, d)) : [el("li", "note", sel ? "No evidence rows for this drone." : "Select a drone to see its evidence.")]);
   }
+}
+
+function assessment() {
+  const a = fleetAssessment({drones:frame.drones, battle:frame.battle ?? [], attempts:frame.attempts ?? [], events:frame.events, tasks:frame.tasks ?? []});
+  const item = (title:string, text:string) => { const li=el("li","mission");li.append(el("b","",title),el("span","",text));return li; };
+  const nodes = [
+    item("Synthetic simulation · read only", `${inferenceLabel || "Decision source unavailable"} · ${statusKind === "live" ? "Live records" : `Disconnected · last known records${lastReceived ? " · " + eventTime(lastReceived * 1000) : ""}`}`),
+    item("Coverage", `${a.tested} / ${a.total} unique targets tested by resolved attack attempts. ${a.untested} untested; security unknown.`),
+    item("Current impact", `${a.exposed} affected · ${a.isolated} isolated · ${a.available} available for mission. Policy application alone does not prove recovery.`),
+    item("Recovery verification", `${a.verifiedRecoveries} targets have paired unauthorized rejection and legitimate acceptance in history; ${a.paired} under their current policy. Release changes policy and preserves earlier checks as history.`),
+    item("Work", `${a.active} active · ${a.unresolved} blocked, failed or exhausted · ${a.cancelled} cancelled assignments in the current conversations.`),
+    ...((frame.teams ?? []).filter(t => t.stage === "execution_failure").map(t => item(t.role === "attacker" ? "Attack request failed" : "Defense request failed", t.summary))),
+    item("Next", statusKind === "live" ? a.next : "Reconnect to refresh this assessment; current progress is unknown."),
+  ];
+  for (const e of a.findings.slice(0,12)) {
+    const li=el("li","note"), button=el("button","chip",`${tag(e.drone)} · ${e.kind.replaceAll("_"," ")} · #${e.id}`);
+    button.dataset.evidenceId=String(e.id);button.setAttribute("aria-pressed",String(selectedEvent===e.id));
+    button.onclick=()=>{selectedEvent=e.id;pull(e.drone);};li.append(button);nodes.push(li);
+  }
+  if (!a.findings.length) nodes.push(item("Findings", "No outcome evidence yet. Choose Attack to investigate; choose Defend to protect observed targets."));
+  patchList($("assessment"),nodes);
 }
 
 /* ---------- agent detail modal ---------- */
@@ -942,7 +965,7 @@ function chat(d: Derived) {
     const currentIds = new Set(messages.filter((m) => m.speaker === "operator").map((m) => String(m.id)));
     for (const group of Array.from(t.querySelectorAll<HTMLElement>("[data-origin-id]"))) if (!currentIds.has(group.dataset.originId!)) group.remove();
     if (!messages.length) {
-      if (!t.querySelector(".hint")) t.replaceChildren(el("div", "bubble hint", "Ask about the fleet, or send an objective to deploy specialists."));
+      if (!t.querySelector(".hint")) t.replaceChildren(el("div", "bubble hint", "Test a synthetic fleet with AI attack and defense specialists. Ask about the fleet, send an objective, then open Observer to review measured evidence."));
     } else t.querySelector(".hint")?.remove();
     for (const user of messages.filter((m) => m.speaker === "operator")) {
       let group = t.querySelector<HTMLElement>(`[data-origin-id="${user.id}"]`);
@@ -1925,6 +1948,7 @@ function setStatus(text: string, kind: "live" | "stale" | "replay") {
   p.title = text;
   $("status-dot").className = "dot " + (kind === "live" ? "" : kind);
   if(modelDriven)teamStatus();
+  if(role === "observer") assessment();
 }
 async function workspace(next: Role, reconnect = false) {
   if (resetting) return;
@@ -1935,8 +1959,8 @@ async function workspace(next: Role, reconnect = false) {
   userMoved = false;
   close();
   stateConnected = false;
-  setStatus("Connecting…", "stale");
-  lastReceived = 0;
+  setStatus(reconnect ? "Disconnected · reconnecting · last known records" : "Connecting…", "stale");
+  if (!reconnect) lastReceived = 0;
   operationChat?.close();
   operationChat = undefined;
   role = next;
@@ -1949,10 +1973,11 @@ async function workspace(next: Role, reconnect = false) {
   playing = false;
   closeModal();
   typing.hidden = true;
-  // The only full transcript rebuild: switching role swaps in that role's conversation.
-  $("transcript").replaceChildren(typing);
-  $("error").textContent = webglNote;
-  render(EMPTY);
+  if (!reconnect) {
+    $("transcript").replaceChildren(typing);
+    $("error").textContent = webglNote;
+    render(EMPTY);
+  }
   if (recording) {
     render(recording.frames[index][role]);
     setStatus("Recorded · fixture", "replay");
@@ -1985,6 +2010,7 @@ async function workspace(next: Role, reconnect = false) {
     if (v !== version) { hosted.close(); return; }
     const state = await hosted.snapshot();
     config.epoch = state.fleet.epoch; config.conversation = state.conversation;
+    if (role === "observer") { hosted.close(); hosted = undefined; }
   }
   if (v !== version) return;
   if (config.recorded) {
@@ -2025,7 +2051,7 @@ async function workspace(next: Role, reconnect = false) {
     try { await defender.reset(epoch, demo); }
     finally { defender.close(); }
   } : undefined;
-  if (config.chat) {
+  if (config.chat && role !== "observer") {
     $("transcript").replaceChildren(typing);
     operationChat = new OperationChat(
       config.sandbox,
@@ -2101,7 +2127,6 @@ async function workspace(next: Role, reconnect = false) {
           c.disconnect();
           return;
         }
-        stateConnected = true;
         let queued = false;
         const update = () => {
           if (queued) return;
@@ -2110,6 +2135,9 @@ async function workspace(next: Role, reconnect = false) {
           requestAnimationFrame(() => {
             queued = false;
             if (v !== version || current !== attempt) return;
+            const session = [...c.db.visibleFleetSession.iter()][0];
+            if (!session) return;
+            stateConnected = true;
             lastReceived = Date.now();
             setStatus(
               config.authenticated ? "Live · model operations" : "Live · fixture",
@@ -2122,8 +2150,6 @@ async function workspace(next: Role, reconnect = false) {
                   typeof val === "bigint" ? Number(val) : val,
                 ]),
               );
-            const session = [...c.db.visibleFleetSession.iter()][0];
-            if (!session) return;
             render({
               epoch: Number(session.epoch),
               conversation: Number(session.conversation),

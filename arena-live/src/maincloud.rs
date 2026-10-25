@@ -66,15 +66,16 @@ pub fn send_maincloud_message(ctx:&ReducerContext,key:String,message:String,targ
         let v:Value=serde_json::from_str(&t.config).map_err(|_|"Invalid stored turn")?;
         return if v["message"]==message&&v["target"].as_u64().unwrap_or(0)==target as u64{Ok(())}else{Err("Idempotency conflict".into())}
     }
-    let continuing=["continue","keep going","continue operation","continue the operation"].contains(&message.trim().trim_end_matches(['.','!']).to_ascii_lowercase().as_str());
+    let control=message.trim().trim_end_matches(['.','!']).to_ascii_lowercase();
+    let continuing=["continue","keep going","continue operation","continue the operation"].contains(&control.as_str());
     let pending_turn=ctx.db.backend_chat_turn().scope().filter((role.as_str(),epoch,generation)).find(|t|["queued","running"].contains(&t.state.as_str()));
     if pending_turn.is_some() {
-        if !continuing&&!["stop","cancel","pause"].contains(&message.trim().to_ascii_lowercase().as_str()){return Err("Conversation already pending".into())}
+        if !continuing&&!["stop","cancel","pause"].contains(&control.as_str()){return Err("Conversation already pending".into())}
     }
     // shortcut: retain at most 200 hosted turns per role; add archival before long-running hosting.
     if ctx.db.backend_chat_turn().role().filter(role.as_str()).take(200).count()>=200{
         // Safety controls remain available without growing retained history past the cap.
-        if ["stop","cancel","pause"].contains(&message.trim().to_ascii_lowercase().as_str()){cancel_role(ctx,&role);return Ok(())}
+        if ["stop","cancel","pause"].contains(&control.as_str()){cancel_role(ctx,&role);return Ok(())}
         return Err("Session history limit reached; archive before continuing".into())
     }
     let id=ctx.new_uuid_v4().map_err(|_|"Identity generation failed")?.to_string();
@@ -90,7 +91,7 @@ pub fn send_maincloud_message(ctx:&ReducerContext,key:String,message:String,targ
             ctx.db.backend_chat_turn().insert(ChatTurn{epoch:chat_epoch(ctx),generation:conversation_generation(ctx,&role),id,request_key,role:role.clone(),state:"completed".into(),config:config.to_string(),result:json!({"intent":"answer"}).to_string(),created:now(ctx),updated:now(ctx)});return Ok(())
         }
     }
-    if ["stop","cancel","pause"].contains(&message.trim().to_ascii_lowercase().as_str()) {
+    if ["stop","cancel","pause"].contains(&control.as_str()) {
         cancel_role(ctx,&role);
         append_chat_message(ctx,generation,format!("{}:reply",id),&role,"","coordinator","Stopped your pending work. In-flight results cannot apply.".into(),0)?;
         ctx.db.backend_chat_turn().insert(ChatTurn{epoch:chat_epoch(ctx),generation:conversation_generation(ctx,&role),id,request_key,role:role.clone(),state:"completed".into(),config:config.to_string(),result:json!({"intent":"answer"}).to_string(),created:now(ctx),updated:now(ctx)});
@@ -128,7 +129,7 @@ fn insert_job(ctx:&ReducerContext,j:Job){
     alarm(ctx,&j.id,now(ctx),false);alarm(ctx,&j.id,j.deadline,true);ctx.db.hosted_job().insert(j);
 }
 fn tasks_schema(max:u64)->Value {
- json!({"type":"array","minItems":0,"maxItems":4,"items":{"type":"object","additionalProperties":false,"required":["name","specialty","target","targets","objective","goal"],"properties":{"targets":{"type":"array","minItems":1,"maxItems":8,"items":{"type":"integer","minimum":1,"maximum":max}},"goal":{"type":"string","enum":["recon","capture","spread","contain","recover","restore","harden"]},"name":{"type":"string"},"specialty":{"type":"string"},"target":{"type":"integer","minimum":1,"maximum":max},"objective":{"type":"string"}}}})
+ json!({"type":"array","minItems":0,"maxItems":4,"items":{"type":"object","additionalProperties":false,"required":["name","specialty","target","targets","objective","goal"],"properties":{"targets":{"type":"array","minItems":1,"maxItems":8,"items":{"type":"integer","minimum":1,"maximum":max}},"goal":{"type":"string","description":"Match the requested end state: recover cleans but leaves isolation; restore also releases clean drones for mission participation.","enum":["recon","capture","spread","contain","recover","restore","harden"]},"name":{"type":"string"},"specialty":{"type":"string"},"target":{"type":"integer","minimum":1,"maximum":max},"objective":{"type":"string"}}}})
 }
 fn records(ctx:&ReducerContext,id:&str)->Vec<Value> {
  ctx.db.backend_chat().id().find(id.to_string()).map(|op|hydrate_operation(ctx,op)).and_then(|r|serde_json::from_str(&r.result).ok()).unwrap_or_default()

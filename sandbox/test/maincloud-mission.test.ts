@@ -14,9 +14,10 @@ import { RunStore } from "../src/run-store.ts";
 // simulation reducers. The fixture endpoints are absent from the production module.
 test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { skip: !process.env.SPACETIME_BINARY, timeout: 180000 }, async t => {
   execFileSync("cargo", ["build", "--manifest-path", "arena-live/Cargo.toml", "--target", "wasm32-unknown-unknown", "--release", "--features", "mission-fixtures", "--target-dir", "arena-live/target/mission-fixtures"], {stdio:"pipe"});
-  await build({stdin:{contents:await readFile("web/fleet.ts","utf8")+"\nObject.assign(globalThis,{auditViewport:()=>({pad:pad.scale.toArray(),epoch:fleetEpoch,count:frame.drones.length}),auditSelect:(id)=>pull(id),auditSuggestionTick:()=>render({...frame,teams:[...(frame.teams??[]),{role:\"defender\",operation:\"\",objective:\"\",targets:[],stage:\"observing\",summary:\"Fixture unrelated update\",active_agents:0}]})});",resolveDir:process.cwd()+"/web",loader:"ts"},bundle:true,format:"esm",outfile:"web/dist/fleet.js"});
+  await build({stdin:{contents:await readFile("web/fleet.ts","utf8")+"\nObject.assign(globalThis,{auditViewport:()=>({pad:pad.scale.toArray(),epoch:fleetEpoch,count:frame.drones.length}),auditSelect:(id)=>pull(id),auditDisconnect:()=>close(),auditSuggestionTick:()=>render({...frame,teams:[...(frame.teams??[]),{role:\"defender\",operation:\"\",objective:\"\",targets:[],stage:\"observing\",summary:\"Fixture unrelated update\",active_agents:0}]})});",resolveDir:process.cwd()+"/web",loader:"ts"},bundle:true,format:"esm",outfile:"output/mission-loop/fleet.js"});
   const db = await testDatabase("arena-live/target/mission-fixtures/wasm32-unknown-unknown/release/sudoko_live.wasm");
   const owner = new RunStore({uri:db.env.SPACETIME_URI, database:db.env.SPACETIME_DATABASE, token:db.env.SPACETIME_TOKEN});
+  const timings: {queueReceiptToResolvedMs:number}[] = [];
   const rows = async (table:string):Promise<any[]> => {
     const all=await owner.query("SELECT * FROM " + table);
     if(["battle_attempt","fleet_evidence"].includes(table)){const [s]=await owner.query("SELECT * FROM fleet_session");return all.filter((r:any)=>r.epoch===s?.epoch);}
@@ -63,6 +64,13 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
         await reply(turn.id,{intent,answer:"Fixture: a short read-only response or clarification.",evidenceIds:[],tasks:[]});
         assert.equal((await rows("backend_chat_turn")).find(t=>t.id===turn.id).state,"completed");assert.equal((await rows("fleet_agent")).length,0);
       }
+      const pendingTurn=await send("Explain the fleet");
+      const session=(await viewer.query("SELECT * FROM visible_fleet_session"))[0],requestKey=pendingTurn.request_key.split(":").at(-1);
+      await assert.rejects(viewer.call("send_maincloud_message",[requestKey,"Conflicting retry",0,session.epoch,session.conversation]));
+      assert.equal(JSON.parse((await rows("backend_chat_turn")).find(t=>t.id===pendingTurn.id).config).message,"Explain the fleet");
+      await viewer.call("send_maincloud_message",[randomUUID(),"Stop.",0,session.epoch,session.conversation]);
+      assert.equal((await rows("backend_chat_turn")).find(t=>t.id===pendingTurn.id).state,"cancelled");
+      await assert.rejects(reply(pendingTurn.id,{intent:"answer",answer:"Late fixture reply",evidenceIds:[],tasks:[]}));
       const op=await start();const old=await latest(op.id,op.config.tasks[0].agentId);await reserve(old.id);const pending=await latest(op.id,op.config.tasks[0].agentId);await reserve(pending.id);
       const turn=await send("Change the objective to discovering drones 1 and 2");
       await reply(turn.id,{intent:"replace",answer:"Fixture: revised discovery objective.",evidenceIds:[],tasks:[1,2].map(target=>({name:`Scout ${target}`,specialty:"recon",target,targets:[target],objective:"Verify discovery",goal:"recon"}))});
@@ -175,7 +183,7 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
     });
     await t.test("verified objectives close assignments and persist their server-checked conditions",async()=>{
       await reset(2);const op=await start([1,18]);
-      for(const a of op.config.tasks){await reserve((await latest(op.id,a.agentId)).id);const j=await latest(op.id,a.agentId);await decide(j,"command");const r=await resolve(j);assert.equal(r.simulation.succeeded,1);}
+      for(const a of op.config.tasks){await reserve((await latest(op.id,a.agentId)).id);const j=await latest(op.id,a.agentId);await decide(j,"command");const queuedAt=Date.now();const r=await resolve(j);timings.push({queueReceiptToResolvedMs:Date.now()-queuedAt});assert.equal(r.simulation.succeeded,1);}
       const done=await operation(op.id);assert.equal(done.state,"completed");
       const result=done.results.find((r:any)=>r.type==="mission");assert.equal(result.outcome,"verified_success");assert.ok(result.conditions.every((c:any)=>c.verified&&c.goal==="capture"));
       assert.equal((await viewer.query("SELECT * FROM visible_team_activity"))[0].active_agents,0);
@@ -207,12 +215,18 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
       assert.equal((await rows("battle_attempt")).length,0);assert.ok(done.results.filter((r:any)=>r.type==="inference"&&r.stage==="specialist").every((r:any)=>r.status==="failed"));
       const saved=await rows("hosted_job");await db.restart();assert.deepEqual((await rows("hosted_job")).sort((a,b)=>a.id.localeCompare(b.id)),saved.sort((a,b)=>a.id.localeCompare(b.id)));
       assert.deepEqual((await operation(op.id)).results,done.results);
+      const session=(await viewer.query("SELECT * FROM visible_fleet_session"))[0],key=randomUUID();
+      await viewer.call("send_maincloud_message",[key,"Explain current evidence",0,session.epoch,session.conversation]);
+      const turn=(await rows("backend_chat_turn")).find(t=>t.request_key.endsWith(key));await reserve(turn.id);await reply(turn.id,{},"provider_malformed_output");
+      assert.equal((await viewer.query("SELECT * FROM visible_team_activity"))[0].stage,"execution_failure");
+
     });
     await t.test("existing Maincloud UI shows durable acknowledgment, verified summary and removes terminal cards",async()=>{
       await reset();await call("start_fleet",[200,0,0,false]);await call("enable_fleet_chat",[]);
       const defender:any=await fetch(db.env.SPACETIME_URI+"/v1/identity",{method:"POST"}).then(r=>r.json());await call("grant_fleet_view",[defender.identity,"defender"]);
-      const config={maincloud:true,uri:db.env.SPACETIME_URI,database:db.env.SPACETIME_DATABASE,sandbox:db.env.SPACETIME_DATABASE,authenticated:true,chat:true,demo:true,switchableRoles:["attacker","defender"],engine:"mocked",workspaces:{attacker:{token:identity.token},defender:{token:defender.token}},models:{coordinator:"Fixture decisions",specialist:"Fixture decisions"}};
-      const files:Record<string,[string,string]>={"/":["web/fleet.html","text/html"],"/theme.css":["web/theme.css","text/css"],"/fleet.js":["web/dist/fleet.js","text/javascript"],"/assets/swarm-blockout.glb":["web/assets/swarm-blockout.glb","model/gltf-binary"],"/assets/environments/sudoko-dusk-basin.webp":["web/assets/environments/sudoko-dusk-basin.webp","image/webp"]};
+      const observer:any=await fetch(db.env.SPACETIME_URI+"/v1/identity",{method:"POST"}).then(r=>r.json());await call("grant_fleet_view",[observer.identity,"observer"]);
+      const config={maincloud:true,uri:db.env.SPACETIME_URI,database:db.env.SPACETIME_DATABASE,sandbox:db.env.SPACETIME_DATABASE,authenticated:true,chat:true,demo:true,switchableRoles:["attacker","defender","observer"],engine:"mocked",workspaces:{attacker:{token:identity.token},defender:{token:defender.token},observer:{token:observer.token}},models:{coordinator:"Fixture decisions",specialist:"Fixture decisions"}};
+      const files:Record<string,[string,string]>={"/":["web/fleet.html","text/html"],"/theme.css":["web/theme.css","text/css"],"/fleet.js":["output/mission-loop/fleet.js","text/javascript"],"/assets/swarm-blockout.glb":["web/assets/swarm-blockout.glb","model/gltf-binary"],"/assets/environments/sudoko-dusk-basin.webp":["web/assets/environments/sudoko-dusk-basin.webp","image/webp"]};
       const server=createServer((request,response)=>{void(async()=>{
         const path=new URL(request.url!,"http://localhost").pathname;
         if(path==="/fleet-config"){response.setHeader("content-type","application/json");response.end(JSON.stringify(config));return;}
@@ -248,9 +262,19 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
         assert.equal(JSON.parse(followup.config).target,null,"Tab acceptance preserves the suggestion's broad scope instead of the selected drone");
         await reserve(followup.id);await reply(followup.id,{intent:"answer",answer:"Fixture: one recon assignment remains active.",evidenceIds:[],tasks:[]});
         await reserve((await latest(op.id,plan.config.tasks[1].agentId)).id);
+        const persistedAt=Date.now();
         await page.waitForFunction(()=>document.querySelectorAll("#agents .agent").length===0);
         await page.waitForFunction(id=>/2 of 2 objectives verified/.test(document.querySelector(`[data-turn-id="${id}"]`)?.textContent??""),turn.id);
+        const persistedToVisibleMs=Date.now()-persistedAt;
         assert.match(await page.locator(`[data-turn-id="${turn.id}"]`).innerText(),/Discover the two assigned synthetic catalog targets/);
+        await page.locator("#say").fill("Explain the fleet before cancellation");await page.getByRole("button",{name:"Send",exact:true}).click();
+        const cancelledTurn=await wait(async()=>(await rows("backend_chat_turn")).find(t=>JSON.parse(t.config).message==="Explain the fleet before cancellation"));
+        await reserve(cancelledTurn.id);
+        await page.locator("#say").fill("Stop.");await page.getByRole("button",{name:"Send",exact:true}).click();
+        await wait(async()=>(await rows("backend_chat_turn")).find(t=>t.id===cancelledTurn.id)?.state==="cancelled");
+        await assert.rejects(reply(cancelledTurn.id,{intent:"answer",answer:"Late fixture reply",evidenceIds:[],tasks:[]}));
+        await reply(cancelledTurn.id,{},"provider_timeout");
+        await page.waitForFunction(()=>document.querySelector("#transcript")?.textContent?.includes("Stopped your pending work"));
         const receiptCount=(await rows("fleet_chat_action")).length;await page.reload();
         await page.waitForFunction(id=>/2 of 2 objectives verified/.test(document.querySelector(`[data-turn-id="${id}"]`)?.textContent??""),turn.id);
         assert.equal((await rows("fleet_chat_action")).length,receiptCount);assert.equal(await page.locator("#agents .agent").count(),0);
@@ -270,19 +294,35 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
           assert.deepEqual((await page.evaluate(()=> (globalThis as any).auditViewport())).pad,viewportBefore.pad);
         }
         await wait(async()=>sockets.size===2);await cdp.send("HeapProfiler.collectGarbage");const heapAfter=await cdp.send("Runtime.getHeapUsage");
-        await mkdir("output/audit-20261025",{recursive:true});await writeFile("output/audit-20261025/local-browser.json",JSON.stringify({scope:"Actual Chromium, actual local SpacetimeDB, fixture decisions, 200 drones",resets:3,activeSockets:sockets.size,pad:viewportBefore.pad,heapBefore,heapAfter},null,2));
+        await mkdir("output/audit-20261025",{recursive:true});await writeFile("output/audit-20261025/local-browser.json",JSON.stringify({scope:"Actual Chromium, actual local SpacetimeDB, fixture decisions, 200 drones",resets:3,activeSockets:sockets.size,pad:viewportBefore.pad,heapBefore,heapAfter,timings:{simulation:timings,persistedToVisibleMs,method:"Fixture decisions, real database: action queue receipt to observed resolution; recon persistence receipt to visible terminal summary. Includes HTTP/polling overhead; not GPU render time."}},null,2));
+        await page.locator('nav [data-role="observer"]').click();
+        await page.waitForFunction(()=>document.body.dataset.role==="observer"&&document.querySelector("#live")?.textContent?.startsWith("Live"));
+        await page.waitForFunction(()=>document.querySelector("#assessment")?.textContent?.includes("0 / 200"));
+        assert.equal(await page.locator("#compose").isVisible(),false);assert.equal(await page.locator("#reset-swarm").isVisible(),false);
+        assert.match(await page.locator("#assessment").innerText(),/200 untested; security unknown/);
+        await page.screenshot({path:"output/mission-loop/observer.png"});
+        await page.route("**/fleet-config*",async route=>{await delay(1800);await route.continue();});
+        await page.evaluate(()=> (globalThis as any).auditDisconnect());
+        await page.waitForFunction(()=>document.querySelector("#live")?.textContent!=="Live");
+        await page.waitForTimeout(2000);
+        assert.equal((await page.evaluate(()=> (globalThis as any).auditViewport())).count,200,"Reconnect must retain the last fleet snapshot while configuration is delayed");
+        assert.match(await page.locator("#assessment").innerText(),/Disconnected · last known records/);
+        await page.waitForFunction(()=>document.querySelector("#live")?.textContent==="Live");
+        assert.equal((await page.evaluate(()=> (globalThis as any).auditViewport())).count,200,"Live requires the hydrated subscription snapshot");
+        await page.unroute("**/fleet-config*");
+
         await page.locator('nav [data-role="attacker"]').click();await page.waitForFunction(id=>/2 of 2 objectives verified/.test(document.querySelector(`[data-turn-id="${id}"]`)?.textContent??""),turn.id);
         await page.reload();await page.waitForFunction(id=>/2 of 2 objectives verified/.test(document.querySelector(`[data-turn-id="${id}"]`)?.textContent??""),turn.id);
         page.once("dialog",dialog=>void dialog.accept());await page.locator("#menu-btn").click();await page.locator("#reset-sandbox").click();
         await page.waitForFunction(()=>document.querySelector("#reset-status")?.textContent?.includes("Both chats are fresh"));
         assert.equal(await page.locator(`[data-turn-id="${turn.id}"]`).count(),0);
         await mkdir("output/mission-loop",{recursive:true});await page.screenshot({path:"output/mission-loop/desktop.png"});
-        await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:"output/mission-loop/mobile.png"});assert.deepEqual(errors,[]);
+        await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.ok(await page.locator("#filter button").evaluateAll(buttons=>buttons.every(b=>b.scrollWidth<=b.clientWidth)),"Narrow Activity controls must not overlap their labels");await page.screenshot({path:"output/mission-loop/mobile.png"});assert.deepEqual(errors,[]);
       }finally{await browser?.close();server.closeAllConnections();await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}
     });
     await t.test("cancellation and reset fence late inference and pending attempt resolution",async()=>{
       await reset();let op=await start(),a=op.config.tasks[0];await reserve((await latest(op.id,a.agentId)).id);let j=await latest(op.id,a.agentId);await decide(j,"command");
-      const session=(await viewer.query("SELECT * FROM visible_fleet_session"))[0];await viewer.call("send_maincloud_message",[randomUUID(),"stop",0,session.epoch,session.conversation]);
+      const session=(await viewer.query("SELECT * FROM visible_fleet_session"))[0];await viewer.call("send_maincloud_message",[randomUUID(),"Stop.",0,session.epoch,session.conversation]);
       await delay(4500);assert.equal((await rows("fleet_drone")).find(d=>d.id===8).controller,"defender");assert.equal((await operation(op.id)).state,"cancelled");assert.equal((await operation(op.id)).results.findLast((r:any)=>r.type==="mission").outcome,"cancellation");
       await reset();op=await start();a=op.config.tasks[0];await reserve((await latest(op.id,a.agentId)).id);j=await latest(op.id,a.agentId);await reserve(j.id);const c=context(await job(j.id));
       const old=(await viewer.query("SELECT * FROM visible_fleet_session"))[0];await call("start_fleet",[32,0,0,false]);
@@ -292,6 +332,19 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
       assert.ok((await viewer.query("SELECT * FROM visible_chat_operations")).every((r:any)=>!["planning","running"].includes(r.state)),"Retained conversation contains only terminal old missions");
       assert.equal((await rows("fleet_agent")).length,0);assert.equal((await rows("battle_attempt")).length,0);
       await assert.rejects(viewer.call("send_maincloud_message",[randomUUID(),"stale",0,old.epoch,old.conversation]));
+    });
+    await t.test("new chat cancels reserved inference without resetting fleet or allowing late replies",async()=>{
+      await reset();const op=await start([1],"capture"),task=op.config.tasks[0];
+      await reserve((await latest(op.id,task.agentId)).id);const j=await latest(op.id,task.agentId);await reserve(j.id);
+      const before=(await viewer.query("SELECT * FROM visible_fleet_session"))[0];
+      await viewer.call("new_maincloud_chat",[before.epoch,before.conversation]);
+      const after=(await viewer.query("SELECT * FROM visible_fleet_session"))[0];
+      assert.equal(after.epoch,before.epoch);assert.equal(after.conversation,before.conversation+1);
+      assert.deepEqual(await viewer.query("SELECT * FROM visible_chat_operations"),[]);
+      assert.deepEqual(await viewer.query("SELECT * FROM visible_chat_messages"),[]);
+      await assert.rejects(reply(j.id,{kind:"command",target:1,recipientAgentId:0,explanation:"Late fixture decision",evidenceIds:[]}));
+      assert.equal((await rows("battle_attempt")).length,0);assert.ok((await rows("fleet_drone")).every(d=>d.controller==="defender"));
+      await reply(j.id,{},"provider_timeout"); // The cancelled HTTP reservation releases only when its response/timeout arrives.
     });
     await t.test("owned fleet grows from 120 to 200 without resetting its epoch, evidence or agents",async()=>{
       await call("start_fleet",[120,0,0,false]);await call("enable_fleet_chat",[]);
@@ -313,7 +366,7 @@ test("Maincloud durable mission loop (Fixture decisions, real SpacetimeDB)", { s
       const op=await start();
       assert.equal((await rows("backend_chat_turn")).filter(t=>t.role==="attacker").length,200);
       await viewer.call("send_maincloud_message",["history-limit-198","stop",0,session.epoch,session.conversation]);
-      await viewer.call("send_maincloud_message",["history-limit-200","stop",0,session.epoch,session.conversation]);
+      await viewer.call("send_maincloud_message",["history-limit-200","Stop.",0,session.epoch,session.conversation]);
       assert.equal((await operation(op.id)).state,"cancelled","History exhaustion cannot prevent cancellation");
       await assert.rejects(viewer.call("send_maincloud_message",["history-limit-201","Another mission",0,session.epoch,session.conversation]));
       assert.equal((await rows("backend_chat_turn")).filter(t=>t.role==="attacker").length,200);

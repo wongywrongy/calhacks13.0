@@ -12,7 +12,7 @@ let existing:any;
 try { existing=JSON.parse(await readFile(configPath,"utf8")); } catch (e:any) { if(e.code!=="ENOENT") throw e; }
 if (existing && existing.database!==database) throw Error("Config database mismatch");
 const workspaces:any=existing?.workspaces ?? {};
-for (const role of ["attacker","defender"]) {
+for (const role of ["attacker","defender","observer"]) {
   if (!workspaces[role]) {
     const r=await fetch(`${uri}/v1/identity`,{method:"POST"});
     if (!r.ok) throw Error(`Maincloud identity: HTTP ${r.status}`);
@@ -21,7 +21,7 @@ for (const role of ["attacker","defender"]) {
     workspaces[role]={token:credentials.token,identity:credentials.identity};
   }
 }
-const config={maincloud:true,uri,database,sandbox:database,authenticated:true,demo:true,chat:true,engine:"bitdeer",switchableRoles:["attacker","defender"],models:{coordinator:process.env.BITDEER_COORDINATOR_MODEL||"zai-org/GLM-5.3-Flash",specialist:process.env.BITDEER_SPECIALIST_MODEL||"zai-org/GLM-5.3-Flash"},workspaces};
+const config={maincloud:true,uri,database,sandbox:database,authenticated:true,demo:true,chat:true,engine:"bitdeer",switchableRoles:["attacker","defender","observer"],models:{coordinator:process.env.BITDEER_COORDINATOR_MODEL||"zai-org/GLM-5.3-Flash",specialist:process.env.BITDEER_SPECIALIST_MODEL||"zai-org/GLM-5.3-Flash"},workspaces};
 await writeFile(configPath,JSON.stringify(config,null,2)+"\n",{mode:0o600});
 // Provisioning grants never initializes or resets existing data.
 console.log(`Prepared role-scoped demo credentials for ${database} at ${configPath}. Owner and provider credentials are excluded.`);

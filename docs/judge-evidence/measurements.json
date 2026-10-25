@@ -1,0 +1,59 @@
+{
+  "actualProviderRequests": {
+    "initial": 25,
+    "restoration": 21,
+    "final": 22,
+    "total": 68,
+    "limit": 100
+  },
+  "conditions": "Disposable standalone SpacetimeDB 2.13.0 / production WASM / Chromium SwiftShader / 200 synthetic drones",
+  "note": "Local software-rendered Chromium; integration tests also running on this host. Inference intervals include HTTP and server completion processing. UI observation timings include input, transport and polling. No hosting/GPU attribution.",
+  "inference": {
+    "coordinator": {
+      "n": 9,
+      "median": 1561,
+      "p95": 2454,
+      "max": 2454
+    },
+    "specialist": {
+      "n": 13,
+      "median": 1342,
+      "p95": 1688,
+      "max": 1688
+    },
+    "peakObserved": 2
+  },
+  "acknowledgmentMs": {
+    "n": 9,
+    "median": 511,
+    "p95": 5728,
+    "max": 5728
+  },
+  "missions": [
+    {
+      "role": "attacker",
+      "firstMeaningfulMs": 2574,
+      "terminalMs": 15079,
+      "outcome": "partial_completion"
+    },
+    {
+      "role": "defender",
+      "firstMeaningfulMs": 21011,
+      "terminalMs": 64976,
+      "outcome": "budget_exhausted"
+    }
+  ],
+  "wasmSha256": "f759094518043bbf5edd9fa22ab102d3edc6da32abd8cfa37a2d527bcb038c8d",
+  "fixtureTimings": {
+    "simulation": [
+      {
+        "queueReceiptToResolvedMs": 4069
+      },
+      {
+        "queueReceiptToResolvedMs": 3733
+      }
+    ],
+    "persistedToVisibleMs": 312,
+    "method": "Fixture decisions, real database: action queue receipt to observed resolution; recon persistence receipt to visible terminal summary. Includes HTTP/polling overhead; not GPU render time."
+  }
+}

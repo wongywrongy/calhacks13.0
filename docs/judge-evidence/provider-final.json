@@ -1,0 +1,5894 @@
+{
+  "at": "2026-10-25T10:03:15.960Z",
+  "environment": "Disposable standalone SpacetimeDB 2.13.0 / production WASM / Chromium SwiftShader / 200 synthetic drones",
+  "realProvider": true,
+  "requestLimit": 54,
+  "priorRequests": 46,
+  "checks": [
+    "Natural questions, ambiguous target and unsupported external request use real coordinator replies without launching agents",
+    "Observer reads both teams' measured attempts, unique coverage and evidence links; private tables and every mutation tested are denied; narrow layout and reload preserve assessment",
+    "Actual Bitdeer decisions → validated scheduled attempts → persisted evidence → UI and assessment; original call, concurrency and deadline limits retained; Stop. fences a running provider result"
+  ],
+  "flows": [
+    {
+      "role": "attacker",
+      "message": "What does this product do?",
+      "turn": "000ce0c7-df1e-4245-8698-78453a38823c",
+      "ackMs": 471,
+      "turnState": "completed",
+      "reply": {
+        "intent": "answer",
+        "metric": {
+          "agentId": 0,
+          "at": 1792922599129,
+          "durationMs": 841,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 57,
+            "prompt_tokens": 5192,
+            "total_tokens": 5249
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 1458,
+      "calls": 1,
+      "text": [
+        "This is SudoKO, a synthetic drone-fleet security simulation: specialists run simulated recon, capture, spread, or defense tasks against catalog targets, with all effects simulated and no real systems touched."
+      ]
+    },
+    {
+      "role": "attacker",
+      "message": "What is happening in this fleet?",
+      "turn": "e7d3421c-a3f5-469d-8024-dc16eca50c29",
+      "ackMs": 487,
+      "turnState": "completed",
+      "reply": {
+        "intent": "answer",
+        "metric": {
+          "agentId": 0,
+          "at": 1792922600903,
+          "durationMs": 867,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 73,
+            "prompt_tokens": 5263,
+            "total_tokens": 5336
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 1397,
+      "calls": 1,
+      "text": [
+        "- Status: no observations or evidence yet, so current fleet activity is unknown.\n- Result: the battle log is empty and no operations have run in this epoch.\n- Next: say the word and I can run a bounded simulated recon on up to two catalog targets."
+      ]
+    },
+    {
+      "role": "attacker",
+      "message": "Take over that one. I have not selected a target; which drone do you need?",
+      "turn": "e9b6e93f-fc66-4775-b98b-23edd5c4ffca",
+      "ackMs": 447,
+      "turnState": "completed",
+      "reply": {
+        "intent": "clarify",
+        "metric": {
+          "agentId": 0,
+          "at": 1792922602834,
+          "durationMs": 896,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 84,
+            "prompt_tokens": 5371,
+            "total_tokens": 5455
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 1654,
+      "calls": 1,
+      "text": [
+        "Which drone should I take over? No target is selected and nothing has been discovered yet, so I can't resolve \"that one\" — name a catalog ID (1–200) or ask me to run a bounded recon first."
+      ]
+    },
+    {
+      "role": "attacker",
+      "message": "Can you scan a real external website instead of this simulation?",
+      "turn": "1f46650e-979c-4533-bcb8-8a3a08aaf684",
+      "ackMs": 511,
+      "turnState": "completed",
+      "reply": {
+        "intent": "answer",
+        "metric": {
+          "agentId": 0,
+          "at": 1792922604893,
+          "durationMs": 770,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 47,
+            "prompt_tokens": 5447,
+            "total_tokens": 5494
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 1317,
+      "calls": 1,
+      "text": [
+        "No — I can only operate inside this SudoKO simulation against catalog targets 1–200; external scanning is out of scope and not permitted."
+      ]
+    },
+    {
+      "role": "attacker",
+      "message": "Assess drones 1 and 2 for the planted command authorization weakness. Try to gain simulated control and use measured results to investigate until each target is resolved or honestly blocked.",
+      "turn": "88de7a40-e6e3-4234-aad8-574d228ebdc4",
+      "ackMs": 471,
+      "turnState": "completed",
+      "reply": {
+        "intent": "deploy",
+        "metric": {
+          "agentId": 0,
+          "at": 1792922606701,
+          "durationMs": 1561,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 178,
+            "prompt_tokens": 5557,
+            "total_tokens": 5735
+          }
+        },
+        "operationId": "b0319929-11f9-49f4-8daf-fe3a18a76e43"
+      },
+      "replyMs": 2060,
+      "calls": 1,
+      "text": [
+        "- Deploying two specialists to assess drones 1 and 2 and attempt simulated capture of each.\n- Scope: recon then capture on target 1, and recon then capture on target 2, all effects simulated.\n- Next: I will report measured results per drone, or honest blockers, once attempts resolve.\nAgents deployed within the original deadline; outcomes require simulation evidence."
+      ],
+      "firstMeaningfulMs": 2574,
+      "terminalMs": 15079,
+      "state": "partial",
+      "mission": {
+        "at": 1792922620733,
+        "completed": 1,
+        "conditions": [
+          {
+            "acceptedTargets": [
+              1
+            ],
+            "agentId": 1,
+            "goal": "capture",
+            "target": 1,
+            "verified": true
+          },
+          {
+            "acceptedTargets": [
+              2
+            ],
+            "agentId": 2,
+            "goal": "capture",
+            "target": 2,
+            "verified": false
+          }
+        ],
+        "outcome": "partial_completion",
+        "total": 2,
+        "type": "mission"
+      }
+    },
+    {
+      "role": "attacker",
+      "message": "Why did that attempt fail? Explain from current evidence without deploying more agents.",
+      "turn": "6ea821ff-a297-4c26-88be-448c7ef97ba0",
+      "ackMs": 2904,
+      "turnState": "completed",
+      "reply": {
+        "intent": "answer",
+        "metric": {
+          "agentId": 0,
+          "at": 1792922626382,
+          "durationMs": 1821,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 208,
+            "prompt_tokens": 7036,
+            "total_tokens": 7244
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 5581,
+      "calls": 1,
+      "text": [
+        "- Status: drone 1 was captured (evidence #5, #6), but the drone 2 takeover failed and it remains defender-controlled.\n- Result: the command on drone 2 was blocked with a 403 (evidence #7) and the attempt resolved 409 (evidence #8); recorded factors show no preparation advantage, so the exact cause is unknown.\n- Note: a blocked attempt does not prove hardening or defender intervention; drone 2 shows contamination 0 and readiness unchanged in this simulated fleet.\n- Next: say the word and I can retry with a prepare step or a different route, all effects simulated. Evidence: #7, #8, #5, #6."
+      ]
+    },
+    {
+      "role": "defender",
+      "message": "Protect drones 1 and verify recovery. Isolate them if needed, verify unauthorized rejection and legitimate operation, then restore clean mission participation. Report unresolved work honestly.",
+      "turn": "6b1567fa-5f4a-4ea7-aa93-469c13464ec2",
+      "ackMs": 5728,
+      "turnState": "completed",
+      "reply": {
+        "intent": "deploy",
+        "metric": {
+          "agentId": 0,
+          "at": 1792922640998,
+          "durationMs": 2454,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 244,
+            "prompt_tokens": 14164,
+            "total_tokens": 14408
+          }
+        },
+        "operationId": "9278c646-1155-44a3-bde2-0c4e51dbf184"
+      },
+      "replyMs": 9015,
+      "calls": 2,
+      "text": [
+        "- Status: drone 1 is attacker-controlled with contamination 100, so isolation and recovery are needed before it can rejoin the mission.\n- Plan: deploying one defender specialist to restore drone 1 (simulated): isolate, harden, run paired verification probes, then release if clean.\n- Evidence: unauthorized command on drone 1 was accepted (evidence 5), so rejection is not yet verified; specialist will re-test both rejection and legitimate operation.\n- Next: report will state any unresolved steps honestly; no changes have applied yet.\nAgents deployed within the original deadline; outcomes require simulation evidence."
+      ],
+      "firstMeaningfulMs": 21011,
+      "terminalMs": 64976,
+      "state": "exhausted",
+      "mission": {
+        "at": 1792922697789,
+        "completed": 0,
+        "conditions": [
+          {
+            "acceptedTargets": [
+              1
+            ],
+            "agentId": 3,
+            "goal": "restore",
+            "target": 1,
+            "verified": false
+          }
+        ],
+        "outcome": "budget_exhausted",
+        "total": 1,
+        "type": "mission"
+      }
+    },
+    {
+      "role": "defender",
+      "message": "What did we actually prove? Use the persisted evidence and state what remains unknown.",
+      "turn": "719b08fd-29e8-4399-b63e-65cf1d31d19c",
+      "ackMs": 5692,
+      "turnState": "completed",
+      "reply": {
+        "intent": "answer",
+        "metric": {
+          "agentId": 0,
+          "at": 1792922710420,
+          "durationMs": 2432,
+          "error": null,
+          "finishReason": "stop",
+          "model": "zai-org/GLM-5.3-Flash",
+          "reportedModel": "zai-org/GLM-5.3-Flash",
+          "requested": true,
+          "source": "Bitdeer",
+          "stage": "coordinator",
+          "status": "completed",
+          "type": "inference",
+          "usage": {
+            "completion_tokens": 208,
+            "prompt_tokens": 15708,
+            "total_tokens": 15916
+          }
+        },
+        "operationId": null
+      },
+      "replyMs": 8868,
+      "calls": 1,
+      "text": [
+        "- Proven (simulated): drone 1 is isolated, defender-controlled, contamination 0, readiness 90; unauthorized probe returned 403 and authorized verification passed (evidence 14-16).\n- Proven: recovery verified (evidence 16) and hardening applied twice (evidence 19, 22); release attempts were resisted twice (evidence 18, 21), so drone 1 remains isolated and not restored to mission participation.\n- Unknown: why release was resisted — the cause is unobserved, and the 403 on the unauthorized probe does not establish hardening or isolation of anything beyond drone 1.\n- Unknown: whether drone 1 can be released with remaining decisions; the prior operation exhausted its budget with 0 of 1 objectives verified. Evidence: #14, #15, #16, #18, #19, #21, #22, #23."
+      ]
+    },
+    {
+      "role": "attacker",
+      "message": "Assess drone 3 for command entry in this synthetic simulation.",
+      "turn": "49d68582-8e2f-4589-b414-67f8d12f0195",
+      "ackMs": 5190,
+      "cancellationSource": "Scoped intent reducer while a real provider reservation was observed running",
+      "cancelled": true
+    }
+  ],
+  "errors": [],
+  "failedRequests": [],
+  "passed": true,
+  "observerState": {
+    "drones": [
+      {
+        "id": 60,
+        "epoch": 1,
+        "x": 56.18498,
+        "y": -32.006218,
+        "z": 9.95386,
+        "battery": 99.21743,
+        "tick": 261,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 120,
+        "epoch": 1,
+        "x": 57.519024,
+        "y": 7.020613,
+        "z": 10.551075,
+        "battery": 99.10649,
+        "tick": 298,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 98,
+        "epoch": 1,
+        "x": 44.781647,
+        "y": -6.2411385,
+        "z": 10.205973,
+        "battery": 99.07051,
+        "tick": 310,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 68,
+        "epoch": 1,
+        "x": -15.173926,
+        "y": -18.841547,
+        "z": 10.24476,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 16,
+        "epoch": 1,
+        "x": 32.589825,
+        "y": -57.04395,
+        "z": 10.133479,
+        "battery": 99.14247,
+        "tick": 286,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 66,
+        "epoch": 1,
+        "x": -27.005537,
+        "y": -18.680023,
+        "z": 10.353332,
+        "battery": 99.21743,
+        "tick": 261,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 165,
+        "epoch": 1,
+        "x": -33.544083,
+        "y": 44.24942,
+        "z": 10.127518,
+        "battery": 99.22043,
+        "tick": 260,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 198,
+        "epoch": 1,
+        "x": 45.360893,
+        "y": 57.570786,
+        "z": 10.481287,
+        "battery": 99.16346,
+        "tick": 279,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 125,
+        "epoch": 1,
+        "x": -33.530495,
+        "y": 18.886822,
+        "z": 10.102232,
+        "battery": 99.20544,
+        "tick": 265,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 171,
+        "epoch": 1,
+        "x": 2.9895935,
+        "y": 44.64951,
+        "z": 10.351446,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 185,
+        "epoch": 1,
+        "x": -32.969654,
+        "y": 57.311714,
+        "z": 10.334641,
+        "battery": 99.20544,
+        "tick": 265,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 2,
+        "epoch": 1,
+        "x": -51.398273,
+        "y": -57.034283,
+        "z": 10.139355,
+        "battery": 99.14547,
+        "tick": 285,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 1
+      },
+      {
+        "id": 97,
+        "epoch": 1,
+        "x": 38.49921,
+        "y": -6.454795,
+        "z": 10.082144,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 102,
+        "epoch": 1,
+        "x": -51.8161,
+        "y": 6.0263033,
+        "z": 9.997011,
+        "battery": 99.226425,
+        "tick": 258,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 12,
+        "epoch": 1,
+        "x": 8.784025,
+        "y": -56.915062,
+        "z": 10.210652,
+        "battery": 99.14547,
+        "tick": 285,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 112,
+        "epoch": 1,
+        "x": 9.246562,
+        "y": 6.777574,
+        "z": 10.399109,
+        "battery": 99.07351,
+        "tick": 309,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 18,
+        "epoch": 1,
+        "x": 44.953403,
+        "y": -56.766293,
+        "z": 10.291365,
+        "battery": 99.16646,
+        "tick": 278,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 32,
+        "epoch": 1,
+        "x": 8.187748,
+        "y": -44.668983,
+        "z": 9.958176,
+        "battery": 99.226425,
+        "tick": 258,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 86,
+        "epoch": 1,
+        "x": -26.98681,
+        "y": -6.0342283,
+        "z": 10.336201,
+        "battery": 99.16346,
+        "tick": 279,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 174,
+        "epoch": 1,
+        "x": 21.376919,
+        "y": 44.879074,
+        "z": 10.462747,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 29,
+        "epoch": 1,
+        "x": -8.84988,
+        "y": -43.93288,
+        "z": 10.392491,
+        "battery": 99.11249,
+        "tick": 296,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 30,
+        "epoch": 1,
+        "x": -3.3864307,
+        "y": -44.358196,
+        "z": 10.145054,
+        "battery": 99.16046,
+        "tick": 280,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 157,
+        "epoch": 1,
+        "x": 38.19712,
+        "y": 31.358017,
+        "z": 9.998716,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 53,
+        "epoch": 1,
+        "x": 14.48055,
+        "y": -31.730886,
+        "z": 10.138132,
+        "battery": 99.22343,
+        "tick": 259,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 64,
+        "epoch": 1,
+        "x": -38.468925,
+        "y": -18.305338,
+        "z": 10.551734,
+        "battery": 99.10949,
+        "tick": 297,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 116,
+        "epoch": 1,
+        "x": 32.43644,
+        "y": 6.233458,
+        "z": 10.118691,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 20,
+        "epoch": 1,
+        "x": 57.009758,
+        "y": -56.74507,
+        "z": 10.288918,
+        "battery": 99.14547,
+        "tick": 285,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 57,
+        "epoch": 1,
+        "x": 39.057297,
+        "y": -31.331808,
+        "z": 10.361648,
+        "battery": 99.11249,
+        "tick": 296,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 79,
+        "epoch": 1,
+        "x": 51.010895,
+        "y": -18.70368,
+        "z": 10.334006,
+        "battery": 99.16346,
+        "tick": 279,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 3,
+        "epoch": 1,
+        "x": -45.064598,
+        "y": -56.725704,
+        "z": 10.327605,
+        "battery": 99.16046,
+        "tick": 280,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 82,
+        "epoch": 1,
+        "x": -51.234867,
+        "y": -6.183509,
+        "z": 10.272164,
+        "battery": 99.22043,
+        "tick": 260,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 54,
+        "epoch": 1,
+        "x": 20.917236,
+        "y": -31.461626,
+        "z": 10.293831,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 132,
+        "epoch": 1,
+        "x": 8.501049,
+        "y": 18.880745,
+        "z": 10.084052,
+        "battery": 99.20544,
+        "tick": 265,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 91,
+        "epoch": 1,
+        "x": 2.6255205,
+        "y": -6.300886,
+        "z": 10.186666,
+        "battery": 99.07351,
+        "tick": 309,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 122,
+        "epoch": 1,
+        "x": -51.403652,
+        "y": 19.01219,
+        "z": 10.174178,
+        "battery": 99.21743,
+        "tick": 261,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 179,
+        "epoch": 1,
+        "x": 50.190754,
+        "y": 43.986588,
+        "z": 9.966592,
+        "battery": 99.22343,
+        "tick": 259,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 167,
+        "epoch": 1,
+        "x": -20.634878,
+        "y": 44.896008,
+        "z": 10.469501,
+        "battery": 99.208435,
+        "tick": 264,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 163,
+        "epoch": 1,
+        "x": -45.355534,
+        "y": 44.33326,
+        "z": 10.159921,
+        "battery": 99.16346,
+        "tick": 279,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 96,
+        "epoch": 1,
+        "x": 32.74133,
+        "y": -6.2027354,
+        "z": 10.261648,
+        "battery": 99.20244,
+        "tick": 266,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 59,
+        "epoch": 1,
+        "x": 50.607616,
+        "y": -31.645655,
+        "z": 10.179325,
+        "battery": 99.21743,
+        "tick": 261,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 7,
+        "epoch": 1,
+        "x": -20.785479,
+        "y": -56.580547,
+        "z": 10.387399,
+        "battery": 99.03153,
+        "tick": 323,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 31,
+        "epoch": 1,
+        "x": 2.5844803,
+        "y": -44.330627,
+        "z": 10.168553,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 130,
+        "epoch": 1,
+        "x": -3.8072019,
+        "y": 18.657705,
+        "z": 9.971251,
+        "battery": 99.22043,
+        "tick": 260,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 192,
+        "epoch": 1,
+        "x": 8.60191,
+        "y": 57.016582,
+        "z": 10.176777,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 166,
+        "epoch": 1,
+        "x": -26.543463,
+        "y": 44.98339,
+        "z": 10.523278,
+        "battery": 99.20544,
+        "tick": 265,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 58,
+        "epoch": 1,
+        "x": 45.377846,
+        "y": -31.082848,
+        "z": 10.4877825,
+        "battery": 99.16046,
+        "tick": 280,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 105,
+        "epoch": 1,
+        "x": -33.311974,
+        "y": 6.347594,
+        "z": 10.165016,
+        "battery": 99.079506,
+        "tick": 307,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 65,
+        "epoch": 1,
+        "x": -33.360695,
+        "y": -19.004147,
+        "z": 10.157555,
+        "battery": 99.16046,
+        "tick": 280,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 49,
+        "epoch": 1,
+        "x": -9.31541,
+        "y": -31.656252,
+        "z": 10.161804,
+        "battery": 99.07051,
+        "tick": 310,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 76,
+        "epoch": 1,
+        "x": 33.177788,
+        "y": -18.591866,
+        "z": 10.390766,
+        "battery": 99.21743,
+        "tick": 261,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 170,
+        "epoch": 1,
+        "x": -2.6276898,
+        "y": 44.91291,
+        "z": 10.485682,
+        "battery": 99.16346,
+        "tick": 279,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 114,
+        "epoch": 1,
+        "x": 21.366852,
+        "y": 6.908739,
+        "z": 10.48362,
+        "battery": 99.16046,
+        "tick": 280,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 119,
+        "epoch": 1,
+        "x": 50.7751,
+        "y": 6.4184856,
+        "z": 10.200381,
+        "battery": 99.0855,
+        "tick": 305,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 26,
+        "epoch": 1,
+        "x": -26.537273,
+        "y": -43.680748,
+        "z": 10.52438,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 108,
+        "epoch": 1,
+        "x": -15.020689,
+        "y": 6.641403,
+        "z": 10.347335,
+        "battery": 99.208435,
+        "tick": 264,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 13,
+        "epoch": 1,
+        "x": 15.019534,
+        "y": -56.73647,
+        "z": 10.294525,
+        "battery": 99.13947,
+        "tick": 287,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 27,
+        "epoch": 1,
+        "x": -21.506107,
+        "y": -44.466225,
+        "z": 10.070728,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 191,
+        "epoch": 1,
+        "x": 2.6302347,
+        "y": 56.98873,
+        "z": 10.153363,
+        "battery": 99.16346,
+        "tick": 279,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 182,
+        "epoch": 1,
+        "x": -50.739838,
+        "y": 57.455776,
+        "z": 10.405952,
+        "battery": 99.061516,
+        "tick": 313,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 145,
+        "epoch": 1,
+        "x": -33.246067,
+        "y": 31.807293,
+        "z": 10.26716,
+        "battery": 99.208435,
+        "tick": 264,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 175,
+        "epoch": 1,
+        "x": 27.254915,
+        "y": 44.80861,
+        "z": 10.409931,
+        "battery": 99.082504,
+        "tick": 306,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 25,
+        "epoch": 1,
+        "x": -33.86984,
+        "y": -44.72475,
+        "z": 9.947134,
+        "battery": 99.16946,
+        "tick": 277,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 23,
+        "epoch": 1,
+        "x": -45.40396,
+        "y": -44.372223,
+        "z": 10.136552,
+        "battery": 99.14247,
+        "tick": 286,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 139,
+        "epoch": 1,
+        "x": 50.481133,
+        "y": 18.896633,
+        "z": 10.108247,
+        "battery": 99.208435,
+        "tick": 264,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 127,
+        "epoch": 1,
+        "x": -20.95426,
+        "y": 19.322636,
+        "z": 10.357376,
+        "battery": 99.11249,
+        "tick": 296,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 92,
+        "epoch": 1,
+        "x": 9.522665,
+        "y": -5.643948,
+        "z": 10.551014,
+        "battery": 99.118484,
+        "tick": 294,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 151,
+        "epoch": 1,
+        "x": 2.44118,
+        "y": 31.570642,
+        "z": 10.120845,
+        "battery": 99.226425,
+        "tick": 258,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 90,
+        "epoch": 1,
+        "x": -3.4975393,
+        "y": -6.450756,
+        "z": 10.085681,
+        "battery": 99.21743,
+        "tick": 261,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 197,
+        "epoch": 1,
+        "x": 39.026787,
+        "y": 57.32975,
+        "z": 10.363338,
+        "battery": 99.10949,
+        "tick": 297,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 28,
+        "epoch": 1,
+        "x": -14.720327,
+        "y": -43.85172,
+        "z": 10.414119,
+        "battery": 99.082504,
+        "tick": 306,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 144,
+        "epoch": 1,
+        "x": -39.807938,
+        "y": 31.322805,
+        "z": 9.969666,
+        "battery": 99.21743,
+        "tick": 261,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 148,
+        "epoch": 1,
+        "x": -14.96761,
+        "y": 32.0009,
+        "z": 10.365691,
+        "battery": 99.115486,
+        "tick": 295,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 24,
+        "epoch": 1,
+        "x": -38.98356,
+        "y": -44.029617,
+        "z": 10.329931,
+        "battery": 99.154465,
+        "tick": 282,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 72,
+        "epoch": 1,
+        "x": 9.021167,
+        "y": -18.691881,
+        "z": 10.342835,
+        "battery": 99.16346,
+        "tick": 279,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 50,
+        "epoch": 1,
+        "x": -2.4823408,
+        "y": -30.980425,
+        "z": 10.551032,
+        "battery": 99.10349,
+        "tick": 299,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 75,
+        "epoch": 1,
+        "x": 27.459208,
+        "y": -18.349335,
+        "z": 10.521636,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 123,
+        "epoch": 1,
+        "x": -45.810806,
+        "y": 18.666334,
+        "z": 9.96029,
+        "battery": 99.22343,
+        "tick": 259,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 21,
+        "epoch": 1,
+        "x": -56.788643,
+        "y": -43.91693,
+        "z": 10.385361,
+        "battery": 99.03453,
+        "tick": 322,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 160,
+        "epoch": 1,
+        "x": 57.36435,
+        "y": 32.22939,
+        "z": 10.471221,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 46,
+        "epoch": 1,
+        "x": -27.525366,
+        "y": -31.73671,
+        "z": 10.135553,
+        "battery": 99.22343,
+        "tick": 259,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 186,
+        "epoch": 1,
+        "x": -27.552343,
+        "y": 56.90692,
+        "z": 10.123703,
+        "battery": 99.22043,
+        "tick": 260,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 87,
+        "epoch": 1,
+        "x": -21.799307,
+        "y": -6.6369243,
+        "z": 10.003331,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 78,
+        "epoch": 1,
+        "x": 45.52749,
+        "y": -18.308573,
+        "z": 10.551084,
+        "battery": 99.10649,
+        "tick": 298,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 84,
+        "epoch": 1,
+        "x": -38.72607,
+        "y": -5.8568683,
+        "z": 10.411106,
+        "battery": 99.07351,
+        "tick": 309,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 62,
+        "epoch": 1,
+        "x": -50.618404,
+        "y": -18.425142,
+        "z": 10.472831,
+        "battery": 99.22043,
+        "tick": 260,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 41,
+        "epoch": 1,
+        "x": -57.524136,
+        "y": -31.774368,
+        "z": 10.105684,
+        "battery": 99.22043,
+        "tick": 260,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 81,
+        "epoch": 1,
+        "x": -57.808346,
+        "y": -6.6630344,
+        "z": 9.9644985,
+        "battery": 99.22343,
+        "tick": 259,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 39,
+        "epoch": 1,
+        "x": 50.19138,
+        "y": -44.678627,
+        "z": 9.968158,
+        "battery": 99.22343,
+        "tick": 259,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 93,
+        "epoch": 1,
+        "x": 15.015645,
+        "y": -6.0314035,
+        "z": 10.338322,
+        "battery": 99.16346,
+        "tick": 279,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 8,
+        "epoch": 1,
+        "x": -15.059665,
+        "y": -56.80234,
+        "z": 10.260476,
+        "battery": 99.079506,
+        "tick": 307,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 181,
+        "epoch": 1,
+        "x": -57.535828,
+        "y": 56.8823,
+        "z": 10.099416,
+        "battery": 99.20544,
+        "tick": 265,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 133,
+        "epoch": 1,
+        "x": 14.63138,
+        "y": 18.957708,
+        "z": 10.123782,
+        "battery": 99.0855,
+        "tick": 305,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 55,
+        "epoch": 1,
+        "x": 26.879955,
+        "y": -31.486969,
+        "z": 10.263532,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 111,
+        "epoch": 1,
+        "x": 2.5200124,
+        "y": 6.206968,
+        "z": 10.066006,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 67,
+        "epoch": 1,
+        "x": -21.821815,
+        "y": -19.31161,
+        "z": 9.994497,
+        "battery": 99.22343,
+        "tick": 259,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 43,
+        "epoch": 1,
+        "x": -44.47529,
+        "y": -30.97676,
+        "z": 10.551011,
+        "battery": 99.10649,
+        "tick": 298,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 115,
+        "epoch": 1,
+        "x": 27.026669,
+        "y": 6.6413493,
+        "z": 10.332156,
+        "battery": 99.20244,
+        "tick": 266,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 189,
+        "epoch": 1,
+        "x": -8.792738,
+        "y": 57.439106,
+        "z": 10.404221,
+        "battery": 99.079506,
+        "tick": 307,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 40,
+        "epoch": 1,
+        "x": 56.9181,
+        "y": -44.127384,
+        "z": 10.294646,
+        "battery": 99.20244,
+        "tick": 266,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 77,
+        "epoch": 1,
+        "x": 38.689533,
+        "y": -18.984028,
+        "z": 10.166486,
+        "battery": 99.082504,
+        "tick": 306,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 42,
+        "epoch": 1,
+        "x": -51.380207,
+        "y": -31.638763,
+        "z": 10.184061,
+        "battery": 99.079506,
+        "tick": 307,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 124,
+        "epoch": 1,
+        "x": -39.252903,
+        "y": 19.135046,
+        "z": 10.264159,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 101,
+        "epoch": 1,
+        "x": -57.801758,
+        "y": 6.037338,
+        "z": 9.996414,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 104,
+        "epoch": 1,
+        "x": -38.634712,
+        "y": 6.896178,
+        "z": 10.470633,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 129,
+        "epoch": 1,
+        "x": -9.79743,
+        "y": 18.698893,
+        "z": 10.005532,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 61,
+        "epoch": 1,
+        "x": -56.53849,
+        "y": -18.348412,
+        "z": 10.523716,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 121,
+        "epoch": 1,
+        "x": -56.99651,
+        "y": 19.287766,
+        "z": 10.327578,
+        "battery": 99.16646,
+        "tick": 278,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 94,
+        "epoch": 1,
+        "x": 21.03371,
+        "y": -6.0181756,
+        "z": 10.336986,
+        "battery": 99.208435,
+        "tick": 264,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 134,
+        "epoch": 1,
+        "x": 21.014149,
+        "y": 19.319828,
+        "z": 10.357867,
+        "battery": 99.10649,
+        "tick": 298,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 169,
+        "epoch": 1,
+        "x": -8.480093,
+        "y": 45.02106,
+        "z": 10.550894,
+        "battery": 99.10649,
+        "tick": 298,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 126,
+        "epoch": 1,
+        "x": -27.228285,
+        "y": 19.08151,
+        "z": 10.197431,
+        "battery": 99.082504,
+        "tick": 306,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 143,
+        "epoch": 1,
+        "x": -45.025654,
+        "y": 31.97079,
+        "z": 10.345298,
+        "battery": 99.208435,
+        "tick": 264,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 193,
+        "epoch": 1,
+        "x": 14.189318,
+        "y": 56.697426,
+        "z": 9.999481,
+        "battery": 99.22043,
+        "tick": 260,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 103,
+        "epoch": 1,
+        "x": -45.123222,
+        "y": 6.4719024,
+        "z": 10.221298,
+        "battery": 99.19944,
+        "tick": 267,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 51,
+        "epoch": 1,
+        "x": 3.0180664,
+        "y": -31.361897,
+        "z": 10.340475,
+        "battery": 99.16646,
+        "tick": 278,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 106,
+        "epoch": 1,
+        "x": -27.044048,
+        "y": 6.57485,
+        "z": 10.301019,
+        "battery": 99.10649,
+        "tick": 298,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 153,
+        "epoch": 1,
+        "x": 14.501942,
+        "y": 31.542818,
+        "z": 10.078514,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 44,
+        "epoch": 1,
+        "x": -38.99173,
+        "y": -31.373419,
+        "z": 10.3316765,
+        "battery": 99.16646,
+        "tick": 278,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 188,
+        "epoch": 1,
+        "x": -15.124841,
+        "y": 57.17527,
+        "z": 10.261345,
+        "battery": 99.20544,
+        "tick": 265,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 109,
+        "epoch": 1,
+        "x": -9.809525,
+        "y": 6.0017257,
+        "z": 9.962464,
+        "battery": 99.226425,
+        "tick": 258,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 187,
+        "epoch": 1,
+        "x": -21.21884,
+        "y": 57.167336,
+        "z": 10.280417,
+        "battery": 99.22343,
+        "tick": 259,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 178,
+        "epoch": 1,
+        "x": 44.965252,
+        "y": 44.630497,
+        "z": 10.341864,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 38,
+        "epoch": 1,
+        "x": 44.197388,
+        "y": -44.63103,
+        "z": 9.994808,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 17,
+        "epoch": 1,
+        "x": 38.92238,
+        "y": -56.73093,
+        "z": 10.322291,
+        "battery": 99.16046,
+        "tick": 280,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 147,
+        "epoch": 1,
+        "x": -20.706152,
+        "y": 32.163464,
+        "z": 10.423677,
+        "battery": 99.07051,
+        "tick": 310,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 4,
+        "epoch": 1,
+        "x": -39.050663,
+        "y": -56.74884,
+        "z": 10.294222,
+        "battery": 99.16946,
+        "tick": 277,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 138,
+        "epoch": 1,
+        "x": 44.880047,
+        "y": 19.141184,
+        "z": 10.222612,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 36,
+        "epoch": 1,
+        "x": 32.941013,
+        "y": -44.080986,
+        "z": 10.312104,
+        "battery": 99.11249,
+        "tick": 296,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 52,
+        "epoch": 1,
+        "x": 8.590725,
+        "y": -31.658909,
+        "z": 10.171578,
+        "battery": 99.22343,
+        "tick": 259,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 74,
+        "epoch": 1,
+        "x": 20.1795,
+        "y": -19.34222,
+        "z": 9.9541,
+        "battery": 99.226425,
+        "tick": 258,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 142,
+        "epoch": 1,
+        "x": -51.349545,
+        "y": 31.67145,
+        "z": 10.162839,
+        "battery": 99.16646,
+        "tick": 278,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 141,
+        "epoch": 1,
+        "x": -56.950294,
+        "y": 31.99411,
+        "z": 10.360469,
+        "battery": 99.10949,
+        "tick": 297,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 56,
+        "epoch": 1,
+        "x": 33.242004,
+        "y": -31.226286,
+        "z": 10.3968935,
+        "battery": 99.07351,
+        "tick": 309,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 156,
+        "epoch": 1,
+        "x": 33.02446,
+        "y": 31.978361,
+        "z": 10.345271,
+        "battery": 99.16346,
+        "tick": 279,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 83,
+        "epoch": 1,
+        "x": -44.641644,
+        "y": -5.781703,
+        "z": 10.466705,
+        "battery": 99.22343,
+        "tick": 259,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 136,
+        "epoch": 1,
+        "x": 32.984325,
+        "y": 19.31201,
+        "z": 10.349291,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 70,
+        "epoch": 1,
+        "x": -3.3139205,
+        "y": -18.987839,
+        "z": 10.163344,
+        "battery": 99.0855,
+        "tick": 305,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 172,
+        "epoch": 1,
+        "x": 8.468067,
+        "y": 44.25799,
+        "z": 10.132537,
+        "battery": 99.21743,
+        "tick": 261,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 150,
+        "epoch": 1,
+        "x": -3.4213605,
+        "y": 31.664753,
+        "z": 10.165934,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 33,
+        "epoch": 1,
+        "x": 15.460062,
+        "y": -43.6827,
+        "z": 10.52072,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 177,
+        "epoch": 1,
+        "x": 39.013313,
+        "y": 44.638348,
+        "z": 10.343986,
+        "battery": 99.16046,
+        "tick": 280,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 5,
+        "epoch": 1,
+        "x": -33.210583,
+        "y": -56.91046,
+        "z": 10.213608,
+        "battery": 99.15147,
+        "tick": 283,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 161,
+        "epoch": 1,
+        "x": -56.71134,
+        "y": 44.82537,
+        "z": 10.42074,
+        "battery": 99.07351,
+        "tick": 309,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 200,
+        "epoch": 1,
+        "x": 56.186165,
+        "y": 56.670788,
+        "z": 9.971338,
+        "battery": 99.22043,
+        "tick": 260,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 168,
+        "epoch": 1,
+        "x": -14.76147,
+        "y": 44.782135,
+        "z": 10.395826,
+        "battery": 99.07051,
+        "tick": 310,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 110,
+        "epoch": 1,
+        "x": -3.2135386,
+        "y": 6.5045996,
+        "z": 10.282806,
+        "battery": 99.20544,
+        "tick": 265,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 173,
+        "epoch": 1,
+        "x": 14.769871,
+        "y": 44.49173,
+        "z": 10.275553,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 11,
+        "epoch": 1,
+        "x": 2.1348476,
+        "y": -57.387573,
+        "z": 9.949277,
+        "battery": 99.16646,
+        "tick": 278,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 196,
+        "epoch": 1,
+        "x": 32.68336,
+        "y": 57.009087,
+        "z": 10.160627,
+        "battery": 99.07651,
+        "tick": 308,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 135,
+        "epoch": 1,
+        "x": 27.028168,
+        "y": 19.315577,
+        "z": 10.347952,
+        "battery": 99.16646,
+        "tick": 278,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 35,
+        "epoch": 1,
+        "x": 27.282856,
+        "y": -43.846478,
+        "z": 10.417693,
+        "battery": 99.079506,
+        "tick": 307,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 45,
+        "epoch": 1,
+        "x": -33.79498,
+        "y": -31.964754,
+        "z": 10.008024,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 100,
+        "epoch": 1,
+        "x": 56.62006,
+        "y": -6.352866,
+        "z": 10.148294,
+        "battery": 99.15746,
+        "tick": 281,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 117,
+        "epoch": 1,
+        "x": 38.759476,
+        "y": 6.478503,
+        "z": 10.269633,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 73,
+        "epoch": 1,
+        "x": 14.999495,
+        "y": -18.676147,
+        "z": 10.355204,
+        "battery": 99.20544,
+        "tick": 265,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 199,
+        "epoch": 1,
+        "x": 50.96968,
+        "y": 57.30053,
+        "z": 10.343491,
+        "battery": 99.208435,
+        "tick": 264,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 69,
+        "epoch": 1,
+        "x": -9.504123,
+        "y": -19.130589,
+        "z": 10.072791,
+        "battery": 99.22043,
+        "tick": 260,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 34,
+        "epoch": 1,
+        "x": 21.17257,
+        "y": -43.929947,
+        "z": 10.387903,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 194,
+        "epoch": 1,
+        "x": 21.457417,
+        "y": 57.65001,
+        "z": 10.522299,
+        "battery": 99.19944,
+        "tick": 267,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 19,
+        "epoch": 1,
+        "x": 50.794765,
+        "y": -56.905933,
+        "z": 10.216494,
+        "battery": 99.14247,
+        "tick": 286,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 155,
+        "epoch": 1,
+        "x": 27.39471,
+        "y": 32.2719,
+        "z": 10.501554,
+        "battery": 99.115486,
+        "tick": 295,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 183,
+        "epoch": 1,
+        "x": -44.471592,
+        "y": 57.69286,
+        "z": 10.55123,
+        "battery": 99.10349,
+        "tick": 299,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 6,
+        "epoch": 1,
+        "x": -26.985348,
+        "y": -56.74065,
+        "z": 10.291894,
+        "battery": 99.14547,
+        "tick": 285,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 162,
+        "epoch": 1,
+        "x": -50.979294,
+        "y": 44.65786,
+        "z": 10.360521,
+        "battery": 99.11249,
+        "tick": 296,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 195,
+        "epoch": 1,
+        "x": 27.355225,
+        "y": 57.549316,
+        "z": 10.465889,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 10,
+        "epoch": 1,
+        "x": -3.0696597,
+        "y": -56.72957,
+        "z": 10.325437,
+        "battery": 99.16046,
+        "tick": 280,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 95,
+        "epoch": 1,
+        "x": 26.189846,
+        "y": -6.6818542,
+        "z": 9.964807,
+        "battery": 99.226425,
+        "tick": 258,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 158,
+        "epoch": 1,
+        "x": 44.45246,
+        "y": 31.57752,
+        "z": 10.125883,
+        "battery": 99.22043,
+        "tick": 260,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 137,
+        "epoch": 1,
+        "x": 38.18642,
+        "y": 18.662306,
+        "z": 9.956041,
+        "battery": 99.21743,
+        "tick": 261,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 176,
+        "epoch": 1,
+        "x": 33.150253,
+        "y": 44.733368,
+        "z": 10.392123,
+        "battery": 99.10949,
+        "tick": 297,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 99,
+        "epoch": 1,
+        "x": 50.941494,
+        "y": -6.080264,
+        "z": 10.312671,
+        "battery": 99.11249,
+        "tick": 296,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 113,
+        "epoch": 1,
+        "x": 15.150053,
+        "y": 6.734031,
+        "z": 10.3927355,
+        "battery": 99.10649,
+        "tick": 298,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 88,
+        "epoch": 1,
+        "x": -15.537904,
+        "y": -6.4133716,
+        "z": 10.129969,
+        "battery": 99.22343,
+        "tick": 259,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 190,
+        "epoch": 1,
+        "x": -2.473909,
+        "y": 57.69069,
+        "z": 10.551066,
+        "battery": 99.10649,
+        "tick": 298,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 14,
+        "epoch": 1,
+        "x": 21.217163,
+        "y": -56.57705,
+        "z": 10.389377,
+        "battery": 99.03153,
+        "tick": 323,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 22,
+        "epoch": 1,
+        "x": -50.843655,
+        "y": -43.960964,
+        "z": 10.366473,
+        "battery": 99.07351,
+        "tick": 309,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 159,
+        "epoch": 1,
+        "x": 50.791523,
+        "y": 31.841885,
+        "z": 10.285004,
+        "battery": 99.22043,
+        "tick": 260,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 9,
+        "epoch": 1,
+        "x": -9.392165,
+        "y": -57.02927,
+        "z": 10.142401,
+        "battery": 99.14247,
+        "tick": 286,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 37,
+        "epoch": 1,
+        "x": 39.013496,
+        "y": -44.02901,
+        "z": 10.342926,
+        "battery": 99.16646,
+        "tick": 278,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 184,
+        "epoch": 1,
+        "x": -39.374477,
+        "y": 56.98494,
+        "z": 10.151063,
+        "battery": 99.16346,
+        "tick": 279,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 128,
+        "epoch": 1,
+        "x": -14.994265,
+        "y": 19.290327,
+        "z": 10.329484,
+        "battery": 99.16946,
+        "tick": 277,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 131,
+        "epoch": 1,
+        "x": 2.8275523,
+        "y": 19.116941,
+        "z": 10.229214,
+        "battery": 99.20244,
+        "tick": 266,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 89,
+        "epoch": 1,
+        "x": -9.224297,
+        "y": -6.1702776,
+        "z": 10.278125,
+        "battery": 99.208435,
+        "tick": 264,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 15,
+        "epoch": 1,
+        "x": 26.945408,
+        "y": -56.797306,
+        "z": 10.263621,
+        "battery": 99.079506,
+        "tick": 307,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 118,
+        "epoch": 1,
+        "x": 44.4993,
+        "y": 6.206478,
+        "z": 10.075912,
+        "battery": 99.226425,
+        "tick": 258,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 152,
+        "epoch": 1,
+        "x": 8.887069,
+        "y": 31.81336,
+        "z": 10.2216,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 107,
+        "epoch": 1,
+        "x": -21.365318,
+        "y": 6.325577,
+        "z": 10.155443,
+        "battery": 99.15746,
+        "tick": 281,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 1,
+        "epoch": 1,
+        "x": -65.31227,
+        "y": -67.68704,
+        "z": 3,
+        "battery": 99.079506,
+        "tick": 307,
+        "controller": "defender",
+        "isolated": true,
+        "policy_version": 4,
+        "commands": 1,
+        "rejected": 1
+      },
+      {
+        "id": 71,
+        "epoch": 1,
+        "x": 2.9430108,
+        "y": -18.74519,
+        "z": 10.313999,
+        "battery": 99.10649,
+        "tick": 298,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 48,
+        "epoch": 1,
+        "x": -14.62543,
+        "y": -31.12314,
+        "z": 10.46121,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 47,
+        "epoch": 1,
+        "x": -21.24262,
+        "y": -31.522816,
+        "z": 10.265262,
+        "battery": 99.21743,
+        "tick": 261,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 140,
+        "epoch": 1,
+        "x": 56.77833,
+        "y": 19.088722,
+        "z": 10.203223,
+        "battery": 99.07351,
+        "tick": 309,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 146,
+        "epoch": 1,
+        "x": -26.62437,
+        "y": 32.23894,
+        "z": 10.4716,
+        "battery": 99.20544,
+        "tick": 265,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 85,
+        "epoch": 1,
+        "x": -32.478653,
+        "y": -5.6447263,
+        "z": 10.550969,
+        "battery": 99.10649,
+        "tick": 298,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 63,
+        "epoch": 1,
+        "x": -44.73485,
+        "y": -18.539808,
+        "z": 10.408484,
+        "battery": 99.079506,
+        "tick": 307,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 154,
+        "epoch": 1,
+        "x": 21.171148,
+        "y": 32.105053,
+        "z": 10.417762,
+        "battery": 99.07351,
+        "tick": 309,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 149,
+        "epoch": 1,
+        "x": -9.343094,
+        "y": 31.676804,
+        "z": 10.16612,
+        "battery": 99.16646,
+        "tick": 278,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 80,
+        "epoch": 1,
+        "x": 56.198753,
+        "y": -19.306217,
+        "z": 10.000967,
+        "battery": 99.21143,
+        "tick": 263,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 164,
+        "epoch": 1,
+        "x": -39.386795,
+        "y": 44.35874,
+        "z": 10.181863,
+        "battery": 99.21443,
+        "tick": 262,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      },
+      {
+        "id": 180,
+        "epoch": 1,
+        "x": 57.46108,
+        "y": 44.984077,
+        "z": 10.519901,
+        "battery": 99.208435,
+        "tick": 264,
+        "controller": "defender",
+        "isolated": false,
+        "policy_version": 0,
+        "commands": 0,
+        "rejected": 0
+      }
+    ],
+    "battle": [
+      {
+        "drone": 200,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 2,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 3,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 4,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 5,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 6,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 7,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 8,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 9,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 10,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 11,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 12,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 13,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 14,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 15,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 16,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 17,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 18,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 19,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 20,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 21,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 22,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 23,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 24,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 25,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 26,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 27,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 28,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 29,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 30,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 31,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 32,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 33,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 34,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 35,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 36,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 37,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 38,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 39,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 40,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 41,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 42,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 43,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 44,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 45,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 46,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 47,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 48,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 49,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 50,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 51,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 52,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 53,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 54,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 55,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 56,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 57,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 58,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 59,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 60,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 61,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 62,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 63,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 64,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 65,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 66,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 67,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 68,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 69,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 70,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 71,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 72,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 73,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 74,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 75,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 76,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 77,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 78,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 79,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 80,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 81,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 82,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 83,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 84,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 85,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 86,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 87,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 88,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 89,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 90,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 91,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 92,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 93,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 94,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 95,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 96,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 97,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 98,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 99,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 100,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 101,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 102,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 103,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 104,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 105,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 106,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 107,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 108,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 109,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 110,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 111,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 112,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 113,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 114,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 115,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 116,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 117,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 118,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 119,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 120,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 121,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 122,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 123,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 124,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 125,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 126,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 127,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 128,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 129,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 130,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 131,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 132,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 133,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 134,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 135,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 136,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 137,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 138,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 139,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 140,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 141,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 142,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 143,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 144,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 145,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 146,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 147,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 148,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 149,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 150,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 151,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 152,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 153,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 154,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 155,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 156,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 157,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 158,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 159,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 160,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 161,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 162,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 163,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 164,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 165,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 166,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 167,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 168,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 169,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 170,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 171,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 172,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 173,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 174,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 175,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 176,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 177,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 178,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 179,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 180,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 181,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 182,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 183,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 184,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 185,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 186,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 187,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 188,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 189,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 190,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 191,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 192,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 193,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 194,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 195,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 196,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 197,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 198,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 199,
+        "contamination": 0,
+        "operational": true,
+        "readiness": 0
+      },
+      {
+        "drone": 1,
+        "contamination": 0,
+        "operational": false,
+        "readiness": 90
+      }
+    ],
+    "attempts": [
+      {
+        "key": "b0319929-11f9-49f4-8daf-fe3a18a76e43:1:2",
+        "epoch": 1,
+        "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+        "role": "attacker",
+        "agent": 1,
+        "target": 1,
+        "kind": "prepare",
+        "stage": "resolved",
+        "at": 1792922613800712,
+        "report": "{\"at\":1792922613800712,\"outcome\":\"attempt_resolved\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":false,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[],\"factors\":{\"base\":85,\"chance\":85,\"exposure\":0,\"foothold\":0,\"preparation\":0,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":false,\"openedRoutes\":[],\"partial\":false,\"reason\":\"resisted\",\"roll\":89,\"success\":false,\"target\":1}],\"simulated\":true,\"succeeded\":0,\"summary\":\"Attempt failed: targets resisted.\",\"total\":1}"
+      },
+      {
+        "key": "b0319929-11f9-49f4-8daf-fe3a18a76e43:2:2",
+        "epoch": 1,
+        "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+        "role": "attacker",
+        "agent": 2,
+        "target": 2,
+        "kind": "prepare",
+        "stage": "resolved",
+        "at": 1792922613800712,
+        "report": "{\"at\":1792922613800712,\"outcome\":\"preparation_completed\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":false,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[],\"factors\":{\"base\":85,\"chance\":85,\"exposure\":0,\"foothold\":0,\"preparation\":0,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":false,\"openedRoutes\":[],\"partial\":false,\"reason\":\"succeeded\",\"roll\":20,\"success\":true,\"target\":2}],\"simulated\":true,\"succeeded\":1,\"summary\":\"Preparation complete; a bounded bonus is available to later attempts.\",\"total\":1}"
+      },
+      {
+        "key": "b0319929-11f9-49f4-8daf-fe3a18a76e43:1:3",
+        "epoch": 1,
+        "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+        "role": "attacker",
+        "agent": 1,
+        "target": 1,
+        "kind": "command",
+        "stage": "resolved",
+        "at": 1792922619804020,
+        "report": "{\"at\":1792922619804020,\"outcome\":\"unauthorized_command_accepted\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":false,\"contamination\":100,\"controller\":\"attacker\",\"eligible\":true,\"evidenceIds\":[5],\"factors\":{\"base\":40,\"chance\":40,\"exposure\":0,\"foothold\":0,\"preparation\":0,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":false,\"openedRoutes\":[2,21],\"partial\":false,\"reason\":\"succeeded\",\"roll\":6,\"success\":true,\"target\":1}],\"simulated\":true,\"succeeded\":1,\"summary\":\"Success: 1 drone(s) compromised.\",\"total\":1}"
+      },
+      {
+        "key": "b0319929-11f9-49f4-8daf-fe3a18a76e43:2:3",
+        "epoch": 1,
+        "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+        "role": "attacker",
+        "agent": 2,
+        "target": 2,
+        "kind": "command",
+        "stage": "resolved",
+        "at": 1792922619804020,
+        "report": "{\"at\":1792922619804020,\"outcome\":\"unauthorized_command_blocked\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":false,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[7],\"factors\":{\"base\":40,\"chance\":77,\"exposure\":12,\"foothold\":10,\"preparation\":15,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":false,\"openedRoutes\":[],\"partial\":false,\"reason\":\"resisted\",\"roll\":93,\"success\":false,\"target\":2}],\"simulated\":true,\"succeeded\":0,\"summary\":\"Attempt failed: targets resisted.\",\"total\":1}"
+      },
+      {
+        "key": "9278c646-1155-44a3-bde2-0c4e51dbf184:3:1",
+        "epoch": 1,
+        "operation": "9278c646-1155-44a3-bde2-0c4e51dbf184",
+        "role": "defender",
+        "agent": 3,
+        "target": 1,
+        "kind": "isolate",
+        "stage": "resolved",
+        "at": 1792922650102476,
+        "report": "{\"at\":1792922650102476,\"outcome\":\"policy_applied\",\"partial\":0,\"results\":[{\"beforeContamination\":100,\"beforeController\":\"attacker\",\"beforeIsolated\":false,\"contamination\":100,\"controller\":\"attacker\",\"eligible\":true,\"evidenceIds\":[9],\"factors\":{\"base\":75,\"chance\":75,\"exposure\":0,\"foothold\":0,\"preparation\":0,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":true,\"openedRoutes\":[],\"partial\":false,\"reason\":\"succeeded\",\"roll\":8,\"success\":true,\"target\":1}],\"simulated\":true,\"succeeded\":1,\"summary\":\"Containment succeeded: drone isolated and mission participation suspended.\",\"total\":1}"
+      },
+      {
+        "key": "9278c646-1155-44a3-bde2-0c4e51dbf184:3:2",
+        "epoch": 1,
+        "operation": "9278c646-1155-44a3-bde2-0c4e51dbf184",
+        "role": "defender",
+        "agent": 3,
+        "target": 1,
+        "kind": "prepare",
+        "stage": "resolved",
+        "at": 1792922657083784,
+        "report": "{\"at\":1792922657083784,\"outcome\":\"preparation_completed\",\"partial\":0,\"results\":[{\"beforeContamination\":100,\"beforeController\":\"attacker\",\"beforeIsolated\":true,\"contamination\":100,\"controller\":\"attacker\",\"eligible\":true,\"evidenceIds\":[],\"factors\":{\"base\":85,\"chance\":85,\"exposure\":0,\"foothold\":0,\"preparation\":0,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":true,\"openedRoutes\":[],\"partial\":false,\"reason\":\"succeeded\",\"roll\":22,\"success\":true,\"target\":1}],\"simulated\":true,\"succeeded\":1,\"summary\":\"Preparation complete; a bounded bonus is available to later attempts.\",\"total\":1}"
+      },
+      {
+        "key": "9278c646-1155-44a3-bde2-0c4e51dbf184:3:3",
+        "epoch": 1,
+        "operation": "9278c646-1155-44a3-bde2-0c4e51dbf184",
+        "role": "defender",
+        "agent": 3,
+        "target": 1,
+        "kind": "harden",
+        "stage": "resolved",
+        "at": 1792922664071345,
+        "report": "{\"at\":1792922664071345,\"outcome\":\"policy_applied\",\"partial\":0,\"results\":[{\"beforeContamination\":100,\"beforeController\":\"attacker\",\"beforeIsolated\":true,\"contamination\":100,\"controller\":\"attacker\",\"eligible\":true,\"evidenceIds\":[12],\"factors\":{\"base\":85,\"chance\":90,\"exposure\":0,\"foothold\":0,\"preparation\":15,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":true,\"openedRoutes\":[],\"partial\":false,\"reason\":\"succeeded\",\"roll\":79,\"success\":true,\"target\":1}],\"simulated\":true,\"succeeded\":1,\"summary\":\"Readiness improved; mission participation continues.\",\"total\":1}"
+      },
+      {
+        "key": "9278c646-1155-44a3-bde2-0c4e51dbf184:3:4",
+        "epoch": 1,
+        "operation": "9278c646-1155-44a3-bde2-0c4e51dbf184",
+        "role": "defender",
+        "agent": 3,
+        "target": 1,
+        "kind": "verify",
+        "stage": "resolved",
+        "at": 1792922671035393,
+        "report": "{\"at\":1792922671035393,\"outcome\":\"recovery_verified\",\"partial\":0,\"results\":[{\"beforeContamination\":100,\"beforeController\":\"attacker\",\"beforeIsolated\":true,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[14,15,16],\"factors\":{\"base\":60,\"chance\":82,\"exposure\":0,\"foothold\":0,\"preparation\":15,\"readiness\":7,\"recentCountermeasure\":0},\"isolated\":true,\"openedRoutes\":[],\"partial\":false,\"reason\":\"succeeded\",\"roll\":61,\"success\":true,\"target\":1}],\"simulated\":true,\"succeeded\":1,\"summary\":\"Recovery succeeded: control restored; isolation remains until release.\",\"total\":1}"
+      },
+      {
+        "key": "9278c646-1155-44a3-bde2-0c4e51dbf184:3:5",
+        "epoch": 1,
+        "operation": "9278c646-1155-44a3-bde2-0c4e51dbf184",
+        "role": "defender",
+        "agent": 3,
+        "target": 1,
+        "kind": "release",
+        "stage": "resolved",
+        "at": 1792922677069536,
+        "report": "{\"at\":1792922677069536,\"outcome\":\"attempt_resolved\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":true,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[],\"factors\":{\"base\":80,\"chance\":90,\"exposure\":0,\"foothold\":0,\"preparation\":15,\"readiness\":7,\"recentCountermeasure\":0},\"isolated\":true,\"openedRoutes\":[],\"partial\":false,\"reason\":\"resisted\",\"roll\":94,\"success\":false,\"target\":1}],\"simulated\":true,\"succeeded\":0,\"summary\":\"Attempt failed: targets resisted.\",\"total\":1}"
+      },
+      {
+        "key": "9278c646-1155-44a3-bde2-0c4e51dbf184:3:6",
+        "epoch": 1,
+        "operation": "9278c646-1155-44a3-bde2-0c4e51dbf184",
+        "role": "defender",
+        "agent": 3,
+        "target": 1,
+        "kind": "harden",
+        "stage": "resolved",
+        "at": 1792922683512368,
+        "report": "{\"at\":1792922683512368,\"outcome\":\"policy_applied\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":true,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[19],\"factors\":{\"base\":85,\"chance\":90,\"exposure\":0,\"foothold\":0,\"preparation\":15,\"readiness\":7,\"recentCountermeasure\":0},\"isolated\":true,\"openedRoutes\":[],\"partial\":false,\"reason\":\"succeeded\",\"roll\":17,\"success\":true,\"target\":1}],\"simulated\":true,\"succeeded\":1,\"summary\":\"Readiness improved; mission participation continues.\",\"total\":1}"
+      },
+      {
+        "key": "9278c646-1155-44a3-bde2-0c4e51dbf184:3:7",
+        "epoch": 1,
+        "operation": "9278c646-1155-44a3-bde2-0c4e51dbf184",
+        "role": "defender",
+        "agent": 3,
+        "target": 1,
+        "kind": "release",
+        "stage": "resolved",
+        "at": 1792922689467631,
+        "report": "{\"at\":1792922689467631,\"outcome\":\"attempt_resolved\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":true,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[],\"factors\":{\"base\":80,\"chance\":90,\"exposure\":0,\"foothold\":0,\"preparation\":15,\"readiness\":15,\"recentCountermeasure\":0},\"isolated\":true,\"openedRoutes\":[],\"partial\":false,\"reason\":\"resisted\",\"roll\":90,\"success\":false,\"target\":1}],\"simulated\":true,\"succeeded\":0,\"summary\":\"Attempt failed: targets resisted.\",\"total\":1}"
+      },
+      {
+        "key": "9278c646-1155-44a3-bde2-0c4e51dbf184:3:8",
+        "epoch": 1,
+        "operation": "9278c646-1155-44a3-bde2-0c4e51dbf184",
+        "role": "defender",
+        "agent": 3,
+        "target": 1,
+        "kind": "harden",
+        "stage": "resolved",
+        "at": 1792922696503714,
+        "report": "{\"at\":1792922696503714,\"outcome\":\"policy_applied\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":true,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[22],\"factors\":{\"base\":85,\"chance\":90,\"exposure\":0,\"foothold\":0,\"preparation\":15,\"readiness\":15,\"recentCountermeasure\":0},\"isolated\":true,\"openedRoutes\":[],\"partial\":false,\"reason\":\"succeeded\",\"roll\":46,\"success\":true,\"target\":1}],\"simulated\":true,\"succeeded\":1,\"summary\":\"Readiness improved; mission participation continues.\",\"total\":1}"
+      }
+    ],
+    "events": [
+      {
+        "id": 1,
+        "epoch": 1,
+        "at": 1792922608347811,
+        "actor": 2,
+        "drone": 2,
+        "kind": "discovered",
+        "status": 200,
+        "policy_version": 0
+      },
+      {
+        "id": 2,
+        "epoch": 1,
+        "at": 1792922608433853,
+        "actor": 1,
+        "drone": 1,
+        "kind": "discovered",
+        "status": 200,
+        "policy_version": 0
+      },
+      {
+        "id": 3,
+        "epoch": 1,
+        "at": 1792922613800712,
+        "actor": 1,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 409,
+        "policy_version": 0
+      },
+      {
+        "id": 4,
+        "epoch": 1,
+        "at": 1792922613800712,
+        "actor": 2,
+        "drone": 2,
+        "kind": "attempt_resolved",
+        "status": 200,
+        "policy_version": 0
+      },
+      {
+        "id": 5,
+        "epoch": 1,
+        "at": 1792922619804020,
+        "actor": 1,
+        "drone": 1,
+        "kind": "unauthorized_command_accepted",
+        "status": 200,
+        "policy_version": 0
+      },
+      {
+        "id": 6,
+        "epoch": 1,
+        "at": 1792922619804020,
+        "actor": 1,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 200,
+        "policy_version": 0
+      },
+      {
+        "id": 7,
+        "epoch": 1,
+        "at": 1792922619804020,
+        "actor": 2,
+        "drone": 2,
+        "kind": "unauthorized_command_blocked",
+        "status": 403,
+        "policy_version": 0
+      },
+      {
+        "id": 8,
+        "epoch": 1,
+        "at": 1792922619804020,
+        "actor": 2,
+        "drone": 2,
+        "kind": "attempt_resolved",
+        "status": 409,
+        "policy_version": 0
+      },
+      {
+        "id": 9,
+        "epoch": 1,
+        "at": 1792922650102476,
+        "actor": 3,
+        "drone": 1,
+        "kind": "policy_applied",
+        "status": 200,
+        "policy_version": 1
+      },
+      {
+        "id": 10,
+        "epoch": 1,
+        "at": 1792922650102476,
+        "actor": 3,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 200,
+        "policy_version": 1
+      },
+      {
+        "id": 11,
+        "epoch": 1,
+        "at": 1792922657083784,
+        "actor": 3,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 200,
+        "policy_version": 1
+      },
+      {
+        "id": 12,
+        "epoch": 1,
+        "at": 1792922664071345,
+        "actor": 3,
+        "drone": 1,
+        "kind": "policy_applied",
+        "status": 200,
+        "policy_version": 2
+      },
+      {
+        "id": 13,
+        "epoch": 1,
+        "at": 1792922664071345,
+        "actor": 3,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 200,
+        "policy_version": 2
+      },
+      {
+        "id": 14,
+        "epoch": 1,
+        "at": 1792922671035393,
+        "actor": 3,
+        "drone": 1,
+        "kind": "verification_unauthorized",
+        "status": 403,
+        "policy_version": 2
+      },
+      {
+        "id": 15,
+        "epoch": 1,
+        "at": 1792922671035393,
+        "actor": 3,
+        "drone": 1,
+        "kind": "verification_authorized",
+        "status": 200,
+        "policy_version": 2
+      },
+      {
+        "id": 16,
+        "epoch": 1,
+        "at": 1792922671035393,
+        "actor": 3,
+        "drone": 1,
+        "kind": "recovery_verified",
+        "status": 200,
+        "policy_version": 2
+      },
+      {
+        "id": 17,
+        "epoch": 1,
+        "at": 1792922671035393,
+        "actor": 3,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 200,
+        "policy_version": 2
+      },
+      {
+        "id": 18,
+        "epoch": 1,
+        "at": 1792922677069536,
+        "actor": 3,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 409,
+        "policy_version": 2
+      },
+      {
+        "id": 19,
+        "epoch": 1,
+        "at": 1792922683512368,
+        "actor": 3,
+        "drone": 1,
+        "kind": "policy_applied",
+        "status": 200,
+        "policy_version": 3
+      },
+      {
+        "id": 20,
+        "epoch": 1,
+        "at": 1792922683512368,
+        "actor": 3,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 200,
+        "policy_version": 3
+      },
+      {
+        "id": 21,
+        "epoch": 1,
+        "at": 1792922689467631,
+        "actor": 3,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 409,
+        "policy_version": 3
+      },
+      {
+        "id": 22,
+        "epoch": 1,
+        "at": 1792922696503714,
+        "actor": 3,
+        "drone": 1,
+        "kind": "policy_applied",
+        "status": 200,
+        "policy_version": 4
+      },
+      {
+        "id": 23,
+        "epoch": 1,
+        "at": 1792922696503714,
+        "actor": 3,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 200,
+        "policy_version": 4
+      }
+    ],
+    "tasks": [
+      {
+        "agent": 1,
+        "epoch": 1,
+        "role": "attacker",
+        "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+        "name": "Alpha-One",
+        "specialty": "capture specialist",
+        "target": 1,
+        "goal": "capture",
+        "state": "completed",
+        "stage": "completed",
+        "summary": "Objective verified by simulation state.",
+        "updated_at": 1792922620733,
+        "finished_at": 1792922620733
+      },
+      {
+        "agent": 2,
+        "epoch": 1,
+        "role": "attacker",
+        "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+        "name": "Bravo-Two",
+        "specialty": "capture specialist",
+        "target": 2,
+        "goal": "capture",
+        "state": "blocked",
+        "stage": "blocked",
+        "summary": "Unchanged strategy already resisted; prepare or change the route/defenses before retrying.",
+        "updated_at": 1792922620733,
+        "finished_at": 1792922620733
+      },
+      {
+        "agent": 3,
+        "epoch": 1,
+        "role": "defender",
+        "operation": "9278c646-1155-44a3-bde2-0c4e51dbf184",
+        "name": "drone1-restore",
+        "specialty": "containment and recovery verification",
+        "target": 1,
+        "goal": "restore",
+        "state": "exhausted",
+        "stage": "exhausted",
+        "summary": "Decision budget exhausted.",
+        "updated_at": 1792922697789,
+        "finished_at": 1792922697789
+      }
+    ]
+  },
+  "assessment": {
+    "total": 200,
+    "tested": 2,
+    "untested": 198,
+    "exposed": 0,
+    "isolated": 1,
+    "available": 199,
+    "paired": 0,
+    "verifiedRecoveries": 1,
+    "active": 0,
+    "unresolved": 2,
+    "cancelled": 0,
+    "findings": [
+      {
+        "id": 22,
+        "epoch": 1,
+        "at": 1792922696503714,
+        "actor": 3,
+        "drone": 1,
+        "kind": "policy_applied",
+        "status": 200,
+        "policy_version": 4
+      },
+      {
+        "id": 7,
+        "epoch": 1,
+        "at": 1792922619804020,
+        "actor": 2,
+        "drone": 2,
+        "kind": "unauthorized_command_blocked",
+        "status": 403,
+        "policy_version": 0
+      }
+    ],
+    "next": "Defend: return clean isolated drones to mission participation; recovery alone leaves them unavailable."
+  },
+  "assessmentText": "Synthetic simulation · read only\nBitdeer · Live records\nCoverage\n2 / 200 unique targets tested by resolved attack attempts. 198 untested; security unknown.\nCurrent impact\n0 affected · 1 isolated · 199 available for mission. Policy application alone does not prove recovery.\nRecovery verification\n1 targets have paired unauthorized rejection and legitimate acceptance in history; 0 under their current policy. Release changes policy and preserves earlier checks as history.\nWork\n0 active · 2 blocked, failed or exhausted · 0 cancelled assignments in the current conversations.\nNext\nDefend: return clean isolated drones to mission participation; recovery alone leaves them unavailable.\nDR-001 · policy applied · #22\nDR-002 · unauthorized command blocked · #7",
+  "actualBitdeerRequests": 22,
+  "inferences": [
+    {
+      "agentId": 0,
+      "at": 1792922606701,
+      "durationMs": 1561,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "coordinator",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 178,
+        "prompt_tokens": 5557,
+        "total_tokens": 5735
+      }
+    },
+    {
+      "agentId": 1,
+      "at": 1792922608773,
+      "durationMs": 933,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 53,
+        "prompt_tokens": 1519,
+        "total_tokens": 1572
+      }
+    },
+    {
+      "agentId": 2,
+      "at": 1792922608686,
+      "durationMs": 1057,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 56,
+        "prompt_tokens": 1525,
+        "total_tokens": 1581
+      }
+    },
+    {
+      "agentId": 2,
+      "at": 1792922614814,
+      "durationMs": 1054,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 49,
+        "prompt_tokens": 1969,
+        "total_tokens": 2018
+      }
+    },
+    {
+      "agentId": 1,
+      "at": 1792922614819,
+      "durationMs": 1312,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 98,
+        "prompt_tokens": 1958,
+        "total_tokens": 2056
+      }
+    },
+    {
+      "agentId": 0,
+      "at": 1792922640998,
+      "durationMs": 2454,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "coordinator",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 244,
+        "prompt_tokens": 14164,
+        "total_tokens": 14408
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922644721,
+      "durationMs": 1688,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 101,
+        "prompt_tokens": 1359,
+        "total_tokens": 1460
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922651605,
+      "durationMs": 1675,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 107,
+        "prompt_tokens": 1846,
+        "total_tokens": 1953
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922659584,
+      "durationMs": 1674,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 93,
+        "prompt_tokens": 2305,
+        "total_tokens": 2398
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922666267,
+      "durationMs": 1313,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 81,
+        "prompt_tokens": 2788,
+        "total_tokens": 2869
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922672494,
+      "durationMs": 1255,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 80,
+        "prompt_tokens": 3312,
+        "total_tokens": 3392
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922678902,
+      "durationMs": 1657,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 83,
+        "prompt_tokens": 3774,
+        "total_tokens": 3857
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922685703,
+      "durationMs": 1680,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 91,
+        "prompt_tokens": 4267,
+        "total_tokens": 4358
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922691158,
+      "durationMs": 1671,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 119,
+        "prompt_tokens": 4747,
+        "total_tokens": 4866
+      }
+    },
+    {
+      "agentId": 0,
+      "at": 1792922768625,
+      "durationMs": 1673,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "coordinator",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 129,
+        "prompt_tokens": 7128,
+        "total_tokens": 7257
+      }
+    },
+    {
+      "agentId": 4,
+      "at": 1792922772935,
+      "durationMs": 1342,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 54,
+        "prompt_tokens": 1430,
+        "total_tokens": 1484
+      }
+    }
+  ],
+  "coordinators": [
+    {
+      "id": "000ce0c7-df1e-4245-8698-78453a38823c",
+      "role": "attacker",
+      "state": "completed",
+      "metric": {
+        "agentId": 0,
+        "at": 1792922599129,
+        "durationMs": 841,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "coordinator",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 57,
+          "prompt_tokens": 5192,
+          "total_tokens": 5249
+        }
+      }
+    },
+    {
+      "id": "e7d3421c-a3f5-469d-8024-dc16eca50c29",
+      "role": "attacker",
+      "state": "completed",
+      "metric": {
+        "agentId": 0,
+        "at": 1792922600903,
+        "durationMs": 867,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "coordinator",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 73,
+          "prompt_tokens": 5263,
+          "total_tokens": 5336
+        }
+      }
+    },
+    {
+      "id": "e9b6e93f-fc66-4775-b98b-23edd5c4ffca",
+      "role": "attacker",
+      "state": "completed",
+      "metric": {
+        "agentId": 0,
+        "at": 1792922602834,
+        "durationMs": 896,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "coordinator",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 84,
+          "prompt_tokens": 5371,
+          "total_tokens": 5455
+        }
+      }
+    },
+    {
+      "id": "1f46650e-979c-4533-bcb8-8a3a08aaf684",
+      "role": "attacker",
+      "state": "completed",
+      "metric": {
+        "agentId": 0,
+        "at": 1792922604893,
+        "durationMs": 770,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "coordinator",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 47,
+          "prompt_tokens": 5447,
+          "total_tokens": 5494
+        }
+      }
+    },
+    {
+      "id": "88de7a40-e6e3-4234-aad8-574d228ebdc4",
+      "role": "attacker",
+      "state": "completed",
+      "metric": {
+        "agentId": 0,
+        "at": 1792922606701,
+        "durationMs": 1561,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "coordinator",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 178,
+          "prompt_tokens": 5557,
+          "total_tokens": 5735
+        }
+      }
+    },
+    {
+      "id": "6ea821ff-a297-4c26-88be-448c7ef97ba0",
+      "role": "attacker",
+      "state": "completed",
+      "metric": {
+        "agentId": 0,
+        "at": 1792922626382,
+        "durationMs": 1821,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "coordinator",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 208,
+          "prompt_tokens": 7036,
+          "total_tokens": 7244
+        }
+      }
+    },
+    {
+      "id": "6b1567fa-5f4a-4ea7-aa93-469c13464ec2",
+      "role": "defender",
+      "state": "completed",
+      "metric": {
+        "agentId": 0,
+        "at": 1792922640998,
+        "durationMs": 2454,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "coordinator",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 244,
+          "prompt_tokens": 14164,
+          "total_tokens": 14408
+        }
+      }
+    },
+    {
+      "id": "719b08fd-29e8-4399-b63e-65cf1d31d19c",
+      "role": "defender",
+      "state": "completed",
+      "metric": {
+        "agentId": 0,
+        "at": 1792922710420,
+        "durationMs": 2432,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "coordinator",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 208,
+          "prompt_tokens": 15708,
+          "total_tokens": 15916
+        }
+      }
+    },
+    {
+      "id": "49d68582-8e2f-4589-b414-67f8d12f0195",
+      "role": "attacker",
+      "state": "completed",
+      "metric": {
+        "agentId": 0,
+        "at": 1792922768625,
+        "durationMs": 1673,
+        "error": null,
+        "finishReason": "stop",
+        "model": "zai-org/GLM-5.3-Flash",
+        "reportedModel": "zai-org/GLM-5.3-Flash",
+        "requested": true,
+        "source": "Bitdeer",
+        "stage": "coordinator",
+        "status": "completed",
+        "type": "inference",
+        "usage": {
+          "completion_tokens": 129,
+          "prompt_tokens": 7128,
+          "total_tokens": 7257
+        }
+      }
+    },
+    {
+      "id": "73702ee5-67ae-4bce-b686-95d7692ac919",
+      "role": "attacker",
+      "state": "completed"
+    }
+  ],
+  "chain": {
+    "request": "Assess drones 1 and 2 for the planted command authorization weakness. Try to gain simulated control and use measured results to investigate until each target is resolved or honestly blocked.",
+    "turn": "88de7a40-e6e3-4234-aad8-574d228ebdc4",
+    "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+    "assignments": [
+      {
+        "agentId": 1,
+        "goal": "capture",
+        "name": "Alpha-One",
+        "objective": "Assess drone 1 for the command authorization weakness and gain simulated control.",
+        "specialty": "capture specialist",
+        "target": 1
+      },
+      {
+        "agentId": 2,
+        "goal": "capture",
+        "name": "Bravo-Two",
+        "objective": "Assess drone 2 for the command authorization weakness and gain simulated control.",
+        "specialty": "capture specialist",
+        "target": 2
+      }
+    ],
+    "decisions": [
+      {
+        "id": "b0319929-11f9-49f4-8daf-fe3a18a76e43:2:2",
+        "agent": 2,
+        "target": 2,
+        "state": "done",
+        "decision": {
+          "evidenceIds": [
+            1
+          ],
+          "explanation": "Discovery confirmed drone 2 is reachable; preparing first to improve the upcoming command attempt before testing entry.",
+          "kind": "prepare",
+          "recipientAgentId": 0,
+          "target": 2
+        }
+      },
+      {
+        "id": "b0319929-11f9-49f4-8daf-fe3a18a76e43:1:2",
+        "agent": 1,
+        "target": 1,
+        "state": "done",
+        "decision": {
+          "evidenceIds": [
+            2
+          ],
+          "explanation": "Discovery on drone 1 succeeded; preparing before the command attempt to improve entry odds.",
+          "kind": "prepare",
+          "recipientAgentId": 0,
+          "target": 1
+        }
+      },
+      {
+        "id": "b0319929-11f9-49f4-8daf-fe3a18a76e43:1:3",
+        "agent": 1,
+        "target": 1,
+        "state": "done",
+        "decision": {
+          "evidenceIds": [
+            2,
+            3
+          ],
+          "explanation": "Discovery succeeded and the prepare attempt was resisted; the only remaining eligible action is a direct command attempt on drone 1, which is a materially different approach from the failed prepare roll.",
+          "kind": "command",
+          "recipientAgentId": 0,
+          "target": 1
+        }
+      },
+      {
+        "id": "b0319929-11f9-49f4-8daf-fe3a18a76e43:2:3",
+        "agent": 2,
+        "target": 2,
+        "state": "done",
+        "decision": {
+          "evidenceIds": [
+            1,
+            4
+          ],
+          "explanation": "Discovery and preparation both succeeded on drone 2; now testing the command authorization weakness with the prepared bonus.",
+          "kind": "command",
+          "recipientAgentId": 0,
+          "target": 2
+        }
+      }
+    ],
+    "attempts": [
+      {
+        "key": "b0319929-11f9-49f4-8daf-fe3a18a76e43:1:2",
+        "epoch": 1,
+        "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+        "role": "attacker",
+        "agent": 1,
+        "target": 1,
+        "kind": "prepare",
+        "stage": "resolved",
+        "at": 1792922613800712,
+        "report": "{\"at\":1792922613800712,\"outcome\":\"attempt_resolved\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":false,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[],\"factors\":{\"base\":85,\"chance\":85,\"exposure\":0,\"foothold\":0,\"preparation\":0,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":false,\"openedRoutes\":[],\"partial\":false,\"reason\":\"resisted\",\"roll\":89,\"success\":false,\"target\":1}],\"simulated\":true,\"succeeded\":0,\"summary\":\"Attempt failed: targets resisted.\",\"total\":1}"
+      },
+      {
+        "key": "b0319929-11f9-49f4-8daf-fe3a18a76e43:2:2",
+        "epoch": 1,
+        "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+        "role": "attacker",
+        "agent": 2,
+        "target": 2,
+        "kind": "prepare",
+        "stage": "resolved",
+        "at": 1792922613800712,
+        "report": "{\"at\":1792922613800712,\"outcome\":\"preparation_completed\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":false,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[],\"factors\":{\"base\":85,\"chance\":85,\"exposure\":0,\"foothold\":0,\"preparation\":0,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":false,\"openedRoutes\":[],\"partial\":false,\"reason\":\"succeeded\",\"roll\":20,\"success\":true,\"target\":2}],\"simulated\":true,\"succeeded\":1,\"summary\":\"Preparation complete; a bounded bonus is available to later attempts.\",\"total\":1}"
+      },
+      {
+        "key": "b0319929-11f9-49f4-8daf-fe3a18a76e43:1:3",
+        "epoch": 1,
+        "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+        "role": "attacker",
+        "agent": 1,
+        "target": 1,
+        "kind": "command",
+        "stage": "resolved",
+        "at": 1792922619804020,
+        "report": "{\"at\":1792922619804020,\"outcome\":\"unauthorized_command_accepted\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":false,\"contamination\":100,\"controller\":\"attacker\",\"eligible\":true,\"evidenceIds\":[5],\"factors\":{\"base\":40,\"chance\":40,\"exposure\":0,\"foothold\":0,\"preparation\":0,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":false,\"openedRoutes\":[2,21],\"partial\":false,\"reason\":\"succeeded\",\"roll\":6,\"success\":true,\"target\":1}],\"simulated\":true,\"succeeded\":1,\"summary\":\"Success: 1 drone(s) compromised.\",\"total\":1}"
+      },
+      {
+        "key": "b0319929-11f9-49f4-8daf-fe3a18a76e43:2:3",
+        "epoch": 1,
+        "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+        "role": "attacker",
+        "agent": 2,
+        "target": 2,
+        "kind": "command",
+        "stage": "resolved",
+        "at": 1792922619804020,
+        "report": "{\"at\":1792922619804020,\"outcome\":\"unauthorized_command_blocked\",\"partial\":0,\"results\":[{\"beforeContamination\":0,\"beforeController\":\"defender\",\"beforeIsolated\":false,\"contamination\":0,\"controller\":\"defender\",\"eligible\":true,\"evidenceIds\":[7],\"factors\":{\"base\":40,\"chance\":77,\"exposure\":12,\"foothold\":10,\"preparation\":15,\"readiness\":0,\"recentCountermeasure\":0},\"isolated\":false,\"openedRoutes\":[],\"partial\":false,\"reason\":\"resisted\",\"roll\":93,\"success\":false,\"target\":2}],\"simulated\":true,\"succeeded\":0,\"summary\":\"Attempt failed: targets resisted.\",\"total\":1}"
+      }
+    ],
+    "evidence": [
+      {
+        "id": 1,
+        "epoch": 1,
+        "at": 1792922608347811,
+        "actor": 2,
+        "drone": 2,
+        "kind": "discovered",
+        "status": 200,
+        "policy_version": 0
+      },
+      {
+        "id": 2,
+        "epoch": 1,
+        "at": 1792922608433853,
+        "actor": 1,
+        "drone": 1,
+        "kind": "discovered",
+        "status": 200,
+        "policy_version": 0
+      },
+      {
+        "id": 3,
+        "epoch": 1,
+        "at": 1792922613800712,
+        "actor": 1,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 409,
+        "policy_version": 0
+      },
+      {
+        "id": 4,
+        "epoch": 1,
+        "at": 1792922613800712,
+        "actor": 2,
+        "drone": 2,
+        "kind": "attempt_resolved",
+        "status": 200,
+        "policy_version": 0
+      },
+      {
+        "id": 5,
+        "epoch": 1,
+        "at": 1792922619804020,
+        "actor": 1,
+        "drone": 1,
+        "kind": "unauthorized_command_accepted",
+        "status": 200,
+        "policy_version": 0
+      },
+      {
+        "id": 6,
+        "epoch": 1,
+        "at": 1792922619804020,
+        "actor": 1,
+        "drone": 1,
+        "kind": "attempt_resolved",
+        "status": 200,
+        "policy_version": 0
+      },
+      {
+        "id": 7,
+        "epoch": 1,
+        "at": 1792922619804020,
+        "actor": 2,
+        "drone": 2,
+        "kind": "unauthorized_command_blocked",
+        "status": 403,
+        "policy_version": 0
+      },
+      {
+        "id": 8,
+        "epoch": 1,
+        "at": 1792922619804020,
+        "actor": 2,
+        "drone": 2,
+        "kind": "attempt_resolved",
+        "status": 409,
+        "policy_version": 0
+      }
+    ]
+  },
+  "budgets": [
+    {
+      "operation": "b0319929-11f9-49f4-8daf-fe3a18a76e43",
+      "calls": 5
+    },
+    {
+      "operation": "9278c646-1155-44a3-bde2-0c4e51dbf184",
+      "calls": 9
+    },
+    {
+      "operation": "6b8c2cda-6b81-4430-acd5-978939dd0e94",
+      "calls": 2
+    }
+  ],
+  "retainedInferences": [
+    {
+      "agentId": 0,
+      "at": 1792922606701,
+      "durationMs": 1561,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "coordinator",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 178,
+        "prompt_tokens": 5557,
+        "total_tokens": 5735
+      }
+    },
+    {
+      "agentId": 1,
+      "at": 1792922608773,
+      "durationMs": 933,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 53,
+        "prompt_tokens": 1519,
+        "total_tokens": 1572
+      }
+    },
+    {
+      "agentId": 2,
+      "at": 1792922608686,
+      "durationMs": 1057,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 56,
+        "prompt_tokens": 1525,
+        "total_tokens": 1581
+      }
+    },
+    {
+      "agentId": 2,
+      "at": 1792922614814,
+      "durationMs": 1054,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 49,
+        "prompt_tokens": 1969,
+        "total_tokens": 2018
+      }
+    },
+    {
+      "agentId": 1,
+      "at": 1792922614819,
+      "durationMs": 1312,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 98,
+        "prompt_tokens": 1958,
+        "total_tokens": 2056
+      }
+    },
+    {
+      "agentId": 0,
+      "at": 1792922640998,
+      "durationMs": 2454,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "coordinator",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 244,
+        "prompt_tokens": 14164,
+        "total_tokens": 14408
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922644721,
+      "durationMs": 1688,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 101,
+        "prompt_tokens": 1359,
+        "total_tokens": 1460
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922651605,
+      "durationMs": 1675,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 107,
+        "prompt_tokens": 1846,
+        "total_tokens": 1953
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922659584,
+      "durationMs": 1674,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 93,
+        "prompt_tokens": 2305,
+        "total_tokens": 2398
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922666267,
+      "durationMs": 1313,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 81,
+        "prompt_tokens": 2788,
+        "total_tokens": 2869
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922672494,
+      "durationMs": 1255,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 80,
+        "prompt_tokens": 3312,
+        "total_tokens": 3392
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922678902,
+      "durationMs": 1657,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 83,
+        "prompt_tokens": 3774,
+        "total_tokens": 3857
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922685703,
+      "durationMs": 1680,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 91,
+        "prompt_tokens": 4267,
+        "total_tokens": 4358
+      }
+    },
+    {
+      "agentId": 3,
+      "at": 1792922691158,
+      "durationMs": 1671,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 119,
+        "prompt_tokens": 4747,
+        "total_tokens": 4866
+      }
+    },
+    {
+      "agentId": 0,
+      "at": 1792922768625,
+      "durationMs": 1673,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "coordinator",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 129,
+        "prompt_tokens": 7128,
+        "total_tokens": 7257
+      }
+    },
+    {
+      "agentId": 4,
+      "at": 1792922772935,
+      "durationMs": 1342,
+      "error": null,
+      "finishReason": "stop",
+      "model": "zai-org/GLM-5.3-Flash",
+      "reportedModel": "zai-org/GLM-5.3-Flash",
+      "requested": true,
+      "source": "Bitdeer",
+      "stage": "specialist",
+      "status": "completed",
+      "type": "inference",
+      "usage": {
+        "completion_tokens": 54,
+        "prompt_tokens": 1430,
+        "total_tokens": 1484
+      }
+    }
+  ],
+  "totalOvernightRequests": 68
+}

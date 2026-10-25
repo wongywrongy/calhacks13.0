@@ -1,0 +1,26 @@
+{
+  "origin": "https://sudo-ko.us",
+  "at": "2026-10-25T10:11:20.230Z",
+  "readOnly": true,
+  "passed": false,
+  "checks": [],
+  "errors": [],
+  "requests": [
+    "/",
+    "/css2",
+    "/theme.css",
+    "/fleet.js",
+    "/assets/swarm-blockout.glb",
+    "/s/jetbrainsmono/v24/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxDcwg.woff2",
+    "/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2",
+    "/fleet-config",
+    "/assets/environments/sudoko-dusk-basin.webp",
+    "/v1/identity/websocket-token",
+    "/v1/identity/websocket-token",
+    "/fleet-config",
+    "/v1/identity/websocket-token",
+    "/v1/identity/websocket-token"
+  ],
+  "initialText": "SUDOKO\nAttack\nDefend\nObserver\nRed team\n·\nFC-01\n·\nFleet size unknown, red credential\nLive\nAGENTS\n0\nSWARM\nSeized\n0\nHome\n0\nLost\n0\nBlocked\n0\nFollow\nFit\nTop-down\nCRIMSON\nBitdeer · zai-org/GLM-5.3-Flash\nNo active specialists. Send Crimson an objective to assign work.\nSELECTED\n\nClick a drone, an activity row or a chip to select it.\n\nACTIVITY\nAll\nProblems\nYou\nDrone\nAll\n09:35:35\nDR-002\nExecuted\nd5069d0aSpread One · executed: attempt_resolved · evidence #91\n09:35:25\nDR-002\nDeployed\nSpread One deployed · attacker spread · DR-002\n09:34:52\nDR-002\nExecuted\n447b1693Entry One · executed: unauthorized_command_accepted · evidence #87\n09:34:45\nDR-002\nExecuted\n447b1693Entry One · executed: preparation_completed · evidence #85\n09:34:38\nDR-002\nExecuted\n447b1693Entry One · executed: unauthorized_command_blocked · evidence #84\n09:34:28\nDR-002\nDeployed\nEntry One deployed · attacker capture · DR-002\n09:33:40\nDR-001\nExecuted\n78ae1ce3Scout Alpha · executed: discovered · evidence #82\n09:33:40\nDR-002\nExecuted\n78ae1ce3Scout Bravo · executed: discovered · evidence #81\n09:33:37\nDR-002\nDeployed\nScout Bravo deployed · attacker recon · DR-002\n09:33:37\nDR-001\nDeployed\nScout Alpha deployed · attacker recon · DR-001\nDiscover two catalog drones\nStatus: deploying two recon specialists to discover two catalog drones in this simulated environment.\nPlan: each specialist runs discovery on one distinct catalog target; results reported with evidenceIds when observed.\n\nAgents deployed within the original deadline; outcomes require simulation evidence.\n\nMission verified success: 2 of 2 objectives verified in the synthetic simulation.\n\nVerified assignments: recon DR-001, recon DR-002.\n\nDetails and evidence\nWhat does the current evidence show?\nStatus: recon on both drones verified in the simulated environment; evidence 82 (drone 1) and 81 (drone 2) show discovery, HTTP 200.\nObservations: drones 1 and 2 remain defender-controlled, contamination 0, not prepared.\nResult: no capture or spread has occurred; only discovery telemetry exists. Evidence: #81, #82.\nDetails and evidence\nDiscover drones on FC-01\n\nclarify\n\nDetails and evidence\nAttempt entry on DR-002\nStatus: deploying one capture specialist on DR-002 per your entry request in this simulated environment.\nPlan: discover if needed, prepare, then command for entry; results reported with evidenceIds.\nNote: DR-002 is currently defender-controlled; entry is a fallible simulated attempt, not guaranteed.\n\nAgents deployed within the original deadline; outcomes require simulation evidence.\n\nMission verified success: 1 of 1 objectives verified in the synthetic simulation.\nVerified assignments: capture DR-002.\nEvidence: #87, #85, #84.\nDetails and evidence\nWhich drones are newly reachable from DR-002?\nResult: the simulated entry on DR-002 opened routes to drones 1, 3, and 22 (evidence #86).\nStatus: DR-002 is now attacker-controlled with contamination 100; drones 3 and 22 are not yet discovered.\nNote: reachability is simulated telemetry, not a completed capture of those neighbors. Evidence: #86.\nDetails and evidence\nAttempt spread through DR-002\nStatus: deploying one spread specialist on DR-002 per your request in this simulated environment.\nPlan: spread from captured DR-002 toward reachable neighbors 1, 3, and 22; outcomes reported with evidenceIds.\nNote: spread attempts are fallible simulated actions, not guaranteed; drone 1 is currently defender-controlled.\n\nAgents deployed within the original deadline; outcomes require simulation evidence.\n\nMission verified success: 1 of 1 objectives verified in the synthetic simulation.\nVerified assignments: spread DR-002.\nEvidence: #91.\nDetails and evidence\nDiscover two catalog drones\nTab\nWhat does the current evidence show?\nWhich entry tests are currently permitted?",
+  "error": "observer workspace must be available"
+}
