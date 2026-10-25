@@ -69,3 +69,19 @@ test("resolution caps high DPR, degrades under sustained load and recovers slowl
   for (let i = 0; i < 500; i++) low.sample(33);
   assert.equal(low.ratio, 0.5, "never supersample a low DPR device");
 });
+
+test("dusk basin stays flat around the operating area and rises deterministically outside it", async () => {
+  const {basinHeight}=await import("../../web/fleet-render.ts");
+  for(const [cx,cz,hx,hz] of [[45,10,60,30],[50,50,70,80]]) {
+    for(const [x,z] of [[cx,cz],[cx-hx,cz-hz],[cx+hx,cz+hz],[cx+hx+20,cz]])assert.equal(basinHeight(x,z,cx,cz,hx,hz),-0.4);
+    const ridge=basinHeight(cx+600,cz-500,cx,cz,hx,hz);
+    assert.ok(Number.isFinite(ridge)&&ridge>30&&ridge<240);
+    assert.equal(basinHeight(cx+600,cz-500,cx,cz,hx,hz),ridge);
+  }
+});
+test("decorative outposts use one bounded shared geometry with finite normals", async () => {
+  const {outpostGeometry}=await import("../../web/fleet-render.ts");
+  const geometry=outpostGeometry();geometry.computeBoundingBox();
+  assert.ok(geometry.attributes.position.count<300);assert.ok(geometry.boundingBox!.min.y>=-1e-6);assert.ok(geometry.boundingBox!.max.y<=14);
+  assert.ok(Array.from(geometry.attributes.normal.array).every(Number.isFinite));geometry.dispose();
+});

@@ -88,3 +88,90 @@ export class ViewportResolution {
     return before !== this.ratio;
   }
 }
+
+/** A world-fixed photograph, visible only where a distant flat card reads naturally. */
+export class DuskBackdrop extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> {
+  private direction = new THREE.Vector3();
+  private destroyed = false;
+  constructor(changed: () => void) {
+    const texture = new THREE.TextureLoader().load("/assets/environments/sudoko-dusk-basin.webp", loaded => {
+      if (this.destroyed) return;
+      this.scale.y = this.scale.x * loaded.image.height / loaded.image.width;
+      this.userData.state = "ready";
+      changed();
+    }, undefined, () => {
+      if (this.destroyed) return;
+      this.userData.state = "failed";
+      changed();
+    });
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, fog: false, toneMapped: false, opacity: 0 });
+    material.onBeforeCompile = shader => {
+      shader.fragmentShader = shader.fragmentShader.replace("#include <map_fragment>", `#include <map_fragment>
+        float sides = smoothstep(0.0, 0.14, vMapUv.x) * (1.0 - smoothstep(0.86, 1.0, vMapUv.x));
+        float bottom = smoothstep(0.55, 0.74, vMapUv.y);
+        float top = 1.0 - smoothstep(0.94, 1.0, vMapUv.y);
+        diffuseColor.a *= sides * bottom * top;`);
+    };
+    super(new THREE.PlaneGeometry(1, 1), material);
+    this.name = "dusk-basin-backdrop";
+    this.userData.state = "loading";
+    this.position.set(45, -250, -900);
+    this.scale.set(1800, 1800 * 752 / 1344, 1);
+    this.visible = false;
+  }
+  update(camera: THREE.Camera, target: THREE.Vector3) {
+    camera.getWorldDirection(this.direction);
+    const horizontal = Math.hypot(this.direction.x, this.direction.z);
+    const facing = horizontal ? -this.direction.z / horizontal : 0;
+    const yaw = THREE.MathUtils.smoothstep(facing, Math.cos(Math.PI / 3.6), Math.cos(Math.PI / 12));
+    const elevation = 1 - THREE.MathUtils.smoothstep(Math.abs(this.direction.y), 0.5, 0.77);
+    const near = THREE.MathUtils.smoothstep(camera.position.z - this.position.z, 300, 650);
+    const far = 1 - THREE.MathUtils.smoothstep(camera.position.distanceTo(target), 600, 900);
+    this.material.opacity = this.userData.state === "ready" ? 0.78 * yaw * elevation * near * far : 0;
+    this.visible = !this.destroyed && this.material.opacity > 0.001;
+  }
+  dispose() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.userData.state = "disposed";
+    this.visible = false;
+    this.removeFromParent();
+    this.material.map!.dispose();
+    this.material.dispose();
+    this.geometry.dispose();
+  }
+}
+
+const terrainHash = (a: number, b: number) => { const s=Math.sin(a*127.1+b*311.7)*43758.5453; return s-Math.floor(s); };
+const terrainNoise = (x: number, y: number) => {
+  const xi=Math.floor(x), yi=Math.floor(y), xf=x-xi, yf=y-yi;
+  const u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf);
+  const a=terrainHash(xi,yi), b=terrainHash(xi+1,yi), c=terrainHash(xi,yi+1), d=terrainHash(xi+1,yi+1);
+  return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;
+};
+const terrainFbm = (x: number, y: number) => {
+  let value=0, amplitude=0.5, frequency=1;
+  for(let i=0;i<4;i++){value+=amplitude*terrainNoise(x*frequency,y*frequency); frequency*=2.03; amplitude*=0.5;}
+  return value;
+};
+/** A quiet operating basin, low foothills, then larger ridges softened by scene fog. */
+export function basinHeight(x: number, z: number, cx: number, cz: number, hx: number, hz: number) {
+  const out=Math.hypot(Math.max(0,Math.abs(x-cx)-hx),Math.max(0,Math.abs(z-cz)-hz));
+  const rise=THREE.MathUtils.smoothstep(out,30,200), far=THREE.MathUtils.smoothstep(out,200,620);
+  const ridge=1-Math.abs(terrainFbm(x/190,z/190)*2-1);
+  return rise*(terrainFbm(x/150+3,z/150)*7+ridge*ridge*7)+far*(ridge*ridge*62+terrainFbm(x/300+9,z/300)*26)-(1-rise)*0.4;
+}
+
+/** Neutral, unlabelled scenery; no beacon, selection geometry, or simulation identity. */
+export function outpostGeometry() {
+  const parts = [
+    new THREE.BoxGeometry(10, 2, 6).translate(0, 1, 0),
+    new THREE.SphereGeometry(2.1, 10, 6, 0, Math.PI*2, 0, Math.PI/2).translate(-2, 2, 0),
+    new THREE.CylinderGeometry(0.13, 0.22, 14, 5).translate(3, 7, 0),
+    new THREE.BoxGeometry(3.5, 0.15, 0.15).translate(3, 11, 0),
+  ];
+  const merged=mergeGeometries(parts)!;
+  for(const geometry of parts)geometry.dispose();
+  return merged;
+}

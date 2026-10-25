@@ -99,3 +99,64 @@ Model-driven fleet operations now use scheduled, fallible battle attempts, cumul
 contamination, readiness and explicit mission availability. See [FLEET_ATTEMPTS.md](FLEET_ATTEMPTS.md)
 for the current backend mechanics, seeded validation and UI integration contract. The older
 fixture and historical UI descriptions above are not proof of model behavior or new UI integration.
+
+## Dusk basin environment (2026-10-25)
+
+The Higgsfield WebP in [LANDSCAPE_HANDOFF.md](LANDSCAPE_HANDOFF.md) is a stationary distant
+plane with its original aspect ratio, sRGB sampling and feathered sides/top/bottom. Its
+photographic ground is masked below the real terrain. It fades out for side/rear views,
+steep top-down views, extreme zoom-out and approaches to the plane. It never follows the
+camera, wraps onto a sphere, or supplies simulation positions. Procedural terrain, sky
+and fog remain in every direction and on image failure; the Canvas fallback keeps a dark,
+readable projected map without loading the image.
+
+The foreground basin is genuinely 3D, with a flat operating area, smoother lower ridges,
+subtle nearby contours and two neutral distant outposts. Scenery is illustrative and is
+excluded from drone selection. Shared dusk lighting/fog preserve team marker colors.
+Fog follows camera distance so zooming out does not erase the fleet; resizing updates the
+frustum while preserving an operator-adjusted camera. Fit still explicitly reframes it.
+
+The image loads once per WebGL scene. Role switches, reconnects and resets reuse its mesh,
+texture, the procedural sky and outpost geometry. Final page teardown cancels the render
+loop and disposes the new resources; the back/forward cache retains them. Terrain density
+is 128 × 128 cells rather than 220 × 220 (32,768 instead of 96,800 triangles), with two
+triangles for the scenic card and one shared instanced geometry for the outposts.
+
+The local backend and fixture demo explicitly serve
+`/assets/environments/sudoko-dusk-basin.webp` as `image/webp`. Both static export and Vercel
+build copy it to the same nested path; `.vercelignore` includes the source directory/file.
+No generation URL is requested at runtime. Maincloud configuration is still required for
+the production build; it is never generated or replaced by dummy credentials.
+
+Checks (set `SPACETIME_BINARY` and, when necessary, `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`):
+
+```sh
+npm run spacetime:build
+npm run test:fleet
+node scripts/check-landscape.ts --baseline
+node scripts/check-landscape.ts
+npm run export:fleet
+FLEET_MAINCLOUD_CONFIG=/path/to/existing/fleet-config.json npm run build:vercel
+node scripts/check-landscape-live.ts
+npm run typecheck
+npm test
+```
+
+The baseline check bundles the renderer at asset-handoff commit `7d60de5` and freezes a
+single measured 48-drone replay. The updated check uses that same fixture, viewport, DPR
+and baseline camera for its responsiveness comparison. Local screenshot/report artifacts
+are in `output/landscape/`; full-page review captures are in `.impeccable/review/`.
+The completed run inspected all roles, selection, default/side/rear/top-down and near/far
+views, mobile/desktop resizing, zero drones, blocked image loading and disabled WebGL.
+Five display resets retained resource identities and counts; three actual backend resets
+with 120 drones plus a database restart retained the image without another request.
+Both serving paths returned identical bytes and MIME type, and export/production outputs
+matched the original asset. The fixture demo can use `FLEET_PORT=0` for an isolated
+port; its default remains 4174.
+
+In the bounded 2.5-second Chromium software-WebGL comparison, the original renderer ran at
+about 25 fps and updated samples in the low-to-mid 30s. This is an indicative local sample,
+not a hardware GPU/mobile benchmark or a production-load result. At extreme zoom-out the
+fleet naturally becomes small; Fit or scroll restores inspection scale. The flat image is
+intentionally absent outside its suitable viewing range, while the 3D environment remains.
+No simulation, chat, scoring, authorization or agent-lifecycle behavior was changed.

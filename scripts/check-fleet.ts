@@ -356,7 +356,8 @@ try {
               ? "web/dist/fleet.js"
               : url.pathname === "/assets/swarm-blockout.glb"
                 ? "web/assets/swarm-blockout.glb"
-                : null;
+                : url.pathname === "/assets/environments/sudoko-dusk-basin.webp"
+                  ? "web/assets/environments/sudoko-dusk-basin.webp" : null;
         if (!path) {
           res.writeHead(404);
           res.end();
@@ -368,7 +369,7 @@ try {
             ? "text/html"
             : path.endsWith(".glb")
               ? "model/gltf-binary"
-              : "text/javascript",
+              : path.endsWith(".webp") ? "image/webp" : "text/javascript",
         );
         res.end(await readFile(path));
       } catch {
@@ -376,11 +377,12 @@ try {
         res.end("Fleet server error");
       }
     });
-    await new Promise<void>((resolve) =>
-      server.listen(Number(process.env.FLEET_PORT ?? 4174), "127.0.0.1", resolve),
-    );
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(Number(process.env.FLEET_PORT ?? 4174), "127.0.0.1", resolve);
+    });
     console.log(
-      `Fleet demo: http://127.0.0.1:${process.env.FLEET_PORT ?? 4174}. Enter restarts a 60-second baseline; Ctrl+C stops. Loopback operator access permits all three workspaces.`,
+      `Fleet demo: http://127.0.0.1:${(server.address() as any).port}. Enter restarts a 60-second baseline; Ctrl+C stops. Loopback operator access permits all three workspaces.`,
     );
     process.stdin.on("data", () => void call("start_fleet", [48, 8, 8, false]));
     process.stdin.resume();

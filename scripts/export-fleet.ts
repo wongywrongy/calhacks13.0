@@ -6,13 +6,14 @@ const recording = JSON.parse(
 );
 if (!recording.frames?.length)
   throw Error("Run test:fleet first to produce measured frames");
-await mkdir(join(destination, "assets"), { recursive: true });
+await mkdir(join(destination, "assets/environments"), { recursive: true });
 await copyFile("web/fleet.html", join(destination, "index.html"));
 await copyFile("web/dist/fleet.js", join(destination, "fleet.js"));
 await copyFile(
   "web/assets/swarm-blockout.glb",
   join(destination, "assets/swarm-blockout.glb"),
 );
+await copyFile("web/assets/environments/sudoko-dusk-basin.webp", join(destination, "assets/environments/sudoko-dusk-basin.webp"));
 await writeFile(
   join(destination, "fleet-config"),
   JSON.stringify({ recorded: true }),

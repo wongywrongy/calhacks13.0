@@ -20,6 +20,9 @@ web/*
 !web/assets/
 web/assets/*
 !web/assets/swarm-blockout.glb
+!web/assets/environments/
+web/assets/environments/*
+!web/assets/environments/sudoko-dusk-basin.webp
 !sandbox/
 sandbox/*
 !sandbox/src/

@@ -4,7 +4,7 @@ import { explainFleetError, fleetOutcome } from "../sandbox/src/fleet-outcome.ts
 import { OperationChat, activeOperation, replyBlocks, type Worker, type ChatMessage } from "./fleet-chat.ts";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { droneGeometry, FleetLines, ViewportResolution } from "./fleet-render.ts";
+import { droneGeometry, FleetLines, ViewportResolution, DuskBackdrop, basinHeight, outpostGeometry } from "./fleet-render.ts";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { display, FlockClock, linkFade, neighbours, type Formation } from "./flock.ts";
 import { DbConnection } from "./module_bindings/index.ts";
@@ -1007,9 +1007,9 @@ controls.zoomSpeed = 0.8;
 // Environment. Terrain, sky and the FC-01 mast are schematic scenery: they are not
 // measured geography, and drones never interact with them.
 const SKY: Record<Role, [string, string]> = {
-  defender: ["#03080d", "#18303f"],
-  attacker: ["#060407", "#2a1319"],
-  observer: ["#04080c", "#1d2731"],
+  defender: ["#1c2c43", "#4b5e78"],
+  attacker: ["#202b40", "#505c73"],
+  observer: ["#1d2c42", "#4c5e76"],
 };
 const skyCanvas = document.createElement("canvas");
 skyCanvas.width = 2;
@@ -1017,7 +1017,9 @@ skyCanvas.height = 256;
 const skyTex = new THREE.CanvasTexture(skyCanvas);
 skyTex.colorSpace = THREE.SRGBColorSpace;
 scene.background = skyTex;
-scene.fog = new THREE.Fog(0x0d1d29, 200, 600);
+scene.fog = new THREE.Fog(0x4b5e78, 200, 850);
+const duskBackdrop = renderer ? new DuskBackdrop(() => redraw()) : undefined;
+if (duskBackdrop) scene.add(duskBackdrop);
 let skyRole = "";
 function paintSky() {
   if (skyRole === role) return;
@@ -1037,46 +1039,17 @@ function paintSky() {
     role === "attacker" ? 0x7a2a33 : role === "defender" ? 0x2f5f99 : 0x55606b,
   );
 }
-scene.add(new THREE.HemisphereLight(0xa9cbe6, 0x05090d, 1.4));
-const sun = new THREE.DirectionalLight(0xe6eef7, 2.6);
-sun.position.set(-160, 70, -40);
+scene.add(new THREE.HemisphereLight(0xaabbd2, 0x192538, 1.5));
+const sun = new THREE.DirectionalLight(0xe4ded4, 2.3);
+sun.position.set(-180, 120, -150);
 scene.add(sun);
-const rim = new THREE.DirectionalLight(0x5b9dff, 0.6);
+const rim = new THREE.DirectionalLight(0x7d9fce, 0.5);
 rim.position.set(80, 40, -120);
 scene.add(rim);
 
-// Deterministic fbm so the scenery is identical across reloads and roles.
-const hash = (x: number, y: number) => {
-  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
-  return s - Math.floor(s);
-};
-const noise = (x: number, y: number) => {
-  const xi = Math.floor(x),
-    yi = Math.floor(y),
-    xf = x - xi,
-    yf = y - yi,
-    u = xf * xf * (3 - 2 * xf),
-    v = yf * yf * (3 - 2 * yf);
-  const a = hash(xi, yi),
-    b = hash(xi + 1, yi),
-    c = hash(xi, yi + 1),
-    d = hash(xi + 1, yi + 1);
-  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
-};
-const fbm = (x: number, y: number) => {
-  let s = 0,
-    amp = 0.5,
-    f = 1;
-  for (let i = 0; i < 5; i++) {
-    s += amp * noise(x * f, y * f);
-    f *= 2.03;
-    amp *= 0.5;
-  }
-  return s;
-};
 const terrainMat = new THREE.MeshStandardMaterial({
   vertexColors: true,
-  flatShading: true,
+  flatShading: false,
   roughness: 0.95,
   metalness: 0,
 });
@@ -1098,7 +1071,8 @@ terrainMat.onBeforeCompile = (shader) => {
       float line = 1.0 - smoothstep(0.0, 1.5 * w, abs(fract(h - 0.5) - 0.5));
       float major = 1.0 - smoothstep(0.0, 1.5 * w, abs(fract(h / 4.0 - 0.5) - 0.5) * 4.0);
       float show = smoothstep(0.6, 2.5, vHeight);
-      gl_FragColor.rgb += vec3(0.16, 0.27, 0.34) * show * max(line * 0.45, major) * (1.0 - fogFactor);`,
+      float closeContour = 1.0 - smoothstep(120.0, 420.0, length(vViewPosition));
+      gl_FragColor.rgb += vec3(0.065, 0.09, 0.12) * show * closeContour * max(line * 0.32, major * 0.65) * (1.0 - fogFactor);`,
     );
 };
 const terrain = new THREE.Mesh(new THREE.BufferGeometry(), terrainMat);
@@ -1106,14 +1080,14 @@ scene.add(terrain);
 // Operating area: a flat pad with a survey grid; scenery only rises outside it.
 const pad = new THREE.Mesh(
   new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
-  new THREE.MeshStandardMaterial({ color: 0x0b1620, roughness: 1 }),
+  new THREE.MeshStandardMaterial({ color: 0x172436, roughness: 1 }),
 );
 pad.position.y = 0.02;
 let padGrid: THREE.LineSegments | undefined;
 const padGridMat = new THREE.LineBasicMaterial({
-  color: 0x1d2c38,
+  color: 0x64738a,
   transparent: true,
-  opacity: 0.9,
+  opacity: 0.25,
 });
 const padEdge = new THREE.LineSegments(
   new THREE.EdgesGeometry(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)),
@@ -1145,6 +1119,9 @@ const beacon = new THREE.Mesh(
 beacon.position.y = 17.3;
 mast.add(mastBase, mastPole, beacon);
 scene.add(mast);
+const outposts = new THREE.InstancedMesh(outpostGeometry(), new THREE.MeshStandardMaterial({ color: 0x617086, roughness: 0.95, flatShading: true }), 2);
+outposts.name = "illustrative-outposts";
+scene.add(outposts);
 let terrainKey = "";
 function buildTerrain(box: THREE.Box3) {
   const key = [box.min.x, box.max.x, box.min.z, box.max.z]
@@ -1157,31 +1134,20 @@ function buildTerrain(box: THREE.Box3) {
     hx = (box.max.x - box.min.x) / 2 + 14,
     hz = (box.max.z - box.min.z) / 2 + 14,
     size = 1400,
-    seg = 220;
+    seg = 128;
   const geo = new THREE.PlaneGeometry(size, size, seg, seg).rotateX(
     -Math.PI / 2,
   );
   const pos = geo.attributes.position as THREE.BufferAttribute;
-  const low = new THREE.Color(0x09141c),
-    mid = new THREE.Color(0x183040),
-    high = new THREE.Color(0x4a6478),
+  const low = new THREE.Color(0x1b2a3e),
+    mid = new THREE.Color(0x364a64),
+    high = new THREE.Color(0x71849b),
     col = new THREE.Color(),
     colors: number[] = [];
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i) + cx,
       z = pos.getZ(i) + cz;
-    // Distance outside the operating pad, in metres.
-    const dx = Math.max(0, Math.abs(x - cx) - hx),
-      dz = Math.max(0, Math.abs(z - cz) - hz),
-      out = Math.hypot(dx, dz);
-    // Gentle foothills near the pad, ridgelines further out that fog into the horizon.
-    const rise = THREE.MathUtils.smoothstep(out, 6, 140);
-    const ridge = 1 - Math.abs(fbm(x / 110, z / 110) * 2 - 1);
-    const far = THREE.MathUtils.smoothstep(out, 180, 560);
-    const h =
-      rise * (fbm(x / 55 + 3, z / 55) * 14 + ridge * ridge * 26) +
-      far * (ridge * ridge * 150 + fbm(x / 240 + 9, z / 240) * 90) -
-      (1 - rise) * 0.4;
+    const h = basinHeight(x, z, cx, cz, hx, hz);
     pos.setXYZ(i, x, h, z);
     const t = Math.min(1, Math.max(0, h / 160));
     col
@@ -1216,6 +1182,10 @@ function buildTerrain(box: THREE.Box3) {
   );
   scene.add(padGrid);
   mast.position.set(cx - hx * 0.6, 0, cz - hz - 14);
+  const matrix = new THREE.Matrix4();
+  [[-180, -280], [220, -350]].forEach(([x, z], i) => outposts.setMatrixAt(i, matrix.makeTranslation(x, basinHeight(x,z,cx,cz,hx,hz), z)));
+  outposts.instanceMatrix.needsUpdate = true;
+  outposts.computeBoundingSphere();
 }
 
 const sceneryBox = new THREE.Box3(new THREE.Vector3(-3, 0, -3), new THREE.Vector3(93, 14, 24));
@@ -1630,6 +1600,10 @@ function draw() {
   placeTip(tipSel, selected);
   placeTip(tipHover, hovered && hovered !== selected ? hovered : 0);
   if (renderer) {
+    const distance = camera.position.distanceTo(controls.target), fog = scene.fog as THREE.Fog;
+    fog.near = Math.max(180, distance * 1.1);
+    fog.far = Math.max(850, distance * 4.4);
+    duskBackdrop?.update(camera, controls.target);
     renderer.render(scene, camera);
     return;
   }
@@ -1639,7 +1613,7 @@ function draw() {
     h = host.clientHeight,
     scale = Math.min(devicePixelRatio, 1.5);
   c.setTransform(scale, 0, 0, scale, 0, 0);
-  c.fillStyle = SKY[role][1];
+  c.fillStyle = SKY[role][0];
   c.fillRect(0, 0, w, h);
   const point = (x: number, y: number, z: number) => {
     const p = new THREE.Vector3(x, y, z).project(camera);
@@ -1704,7 +1678,7 @@ function draw() {
   }
 }
 function loop(t: number) {
-  requestAnimationFrame(loop);
+  animationFrame = requestAnimationFrame(loop);
   if (document.hidden) { lastT = t; return; }
   if (reduced.matches && !dirty) return;
   if (renderer && !reduced.matches && lastT && resolution.sample(t - lastT))
@@ -1715,7 +1689,20 @@ function loop(t: number) {
     draw();
   }
 }
-requestAnimationFrame(loop);
+let animationFrame = requestAnimationFrame(loop);
+let sceneDestroyed = false;
+// Navigation destroys this scene; the back/forward cache, role switches and resets do not.
+window.addEventListener("pagehide", event => {
+  if (event.persisted || sceneDestroyed) return;
+  sceneDestroyed = true;
+  cancelAnimationFrame(animationFrame);
+  duskBackdrop?.dispose();
+  outposts.geometry.dispose();
+  outposts.material.dispose();
+  skyTex.dispose();
+  controls.dispose();
+  renderer?.dispose();
+});
 reduced.addEventListener("change", () => {
   for (const g of drones.values()) g.userData.trailHead = g.userData.trailCount = 0;
   redraw();
@@ -1738,7 +1725,7 @@ new ResizeObserver(() => {
   }
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  fit(true);
+  fit();
   redraw();
 }).observe(host);
 // Blocked rings mark evidence from the last few seconds of the frame, not wall-clock time.
@@ -2185,7 +2172,7 @@ let overhead = false;
 let fitted = "";
 let userMoved = false;
 let dragging = false;
-const DIR_PERSP = new THREE.Vector3(0.14, 0.33, 1).normalize(),
+const DIR_PERSP = new THREE.Vector3(0.14, 0.20, 1).normalize(),
   DIR_TOP = new THREE.Vector3(0, 1, 0.002).normalize();
 // Frame the visible fleet with the real frustum: a 48-drone strip is 90 m x 14 m, a
 // 256-drone block is 90 m x 105 m, and both should fill the map at any aspect ratio.
