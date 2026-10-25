@@ -1,3 +1,4 @@
+import { FLEET } from "../shared/fleet.ts";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {readFile,mkdir,writeFile} from "node:fs/promises";
@@ -30,7 +31,7 @@ const wait=async(fn:()=>Promise<any>,ms=30000)=>{const until=Date.now()+ms;while
 const state=(page:Page)=>page.evaluate(()=>(globalThis as any).activityCheck());
 const send=async(page:Page,message:string)=>{await page.locator("#say").fill(message);const response=page.waitForResponse(r=>r.url().endsWith("/api/chat/messages")&&r.request().method()==="POST");await page.locator("#say").press("Enter");const r=await response;assert.equal(r.status(),202,await r.text());};
 try{
- await service.store.call("start_fleet",[120,0,0,false]);await service.store.call("enable_fleet_chat",[]);await service.store.call("set_battle_seed",[2]);
+ await service.store.call("start_fleet",[FLEET.drones,0,0,false]);await service.store.call("enable_fleet_chat",[]);await service.store.call("set_battle_seed",[2]);
  const pages:Record<string,Page>={};
  for(const role of ["attacker","defender"]){
   const identity:any=await original(db.env.SPACETIME_URI+"/v1/identity",{method:"POST"}).then(r=>r.json());await service.store.call("grant_fleet_view",[identity.identity,role]);env[`SUDOKO_DEMO_${role.toUpperCase()}_VIEWER_TOKEN`]=identity.token;

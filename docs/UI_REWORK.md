@@ -51,7 +51,7 @@ header. The old palette is remapped onto the arena tokens (`--bg`, `--panel`, `-
 
 - **Header.** Wordmark; role segmented control with 8px colour dots; the team line
   (`Red team · FC-01 · Fleet size unknown, red credential` on Attack, `Blue team · FC-01 ·
-  120 drones, blue credential` on Defend, `Observer · FC-01 · n drones, both teams`); the
+  n drones, blue credential` on Defend, `Observer · FC-01 · n drones, both teams`); the
   recording play/scrub and match clock when a recording or fixture run is shown (hidden in
   demo mode); then the **one status cell** (`#live`: dot, connection word, `·`, chat state in
   `#chat-sub`) and the ⋯ button. The old header badge, "Live" pill and chat-header status are

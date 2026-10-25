@@ -1,3 +1,4 @@
+import { FLEET } from "../shared/fleet.ts";
 import assert from "node:assert/strict";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
@@ -103,7 +104,7 @@ try {
   assert.equal(
     (
       await call("/v1/fleet/start", {
-        drones: 128,
+        drones: FLEET.drones,
         attackers: 16,
         defenders: 16,
         hardened: true,
@@ -122,7 +123,7 @@ try {
     return (await r.json()) as any;
   };
   const initial = await read();
-  assert.equal(initial[0].rows.length, 128);
+  assert.equal(initial[0].rows.length, FLEET.drones);
   assert.equal((await call("/v1/fleet/stop", {})).status, 200);
   const stopped = await read();
   await delay(400);
@@ -133,7 +134,7 @@ try {
   console.log(
     JSON.stringify({
       passed: true,
-      drones: 128,
+      drones: FLEET.drones,
       agents: 32,
       checks: [
         "authenticated service routes",

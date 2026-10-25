@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { testDatabase } from "./spacetime-helper.ts";
 import { RunStore } from "../src/run-store.ts";
+import { FLEET } from "../../shared/fleet.ts";
 
 // These are reducer integration fixtures, not model behavior or frontend animation.
 test("seeded battle: local cumulative effects, fallibility, adaptation, interruption and epoch reset", { skip: !process.env.SPACETIME_BINARY, timeout: 120000 }, async (t) => {
@@ -72,7 +73,7 @@ test("seeded battle: local cumulative effects, fallibility, adaptation, interrup
   });
   await t.test("defense can fail or partially recover; a connected source prevents cleanup",async()=>{
    const d=await plan("defender",[1,18]);
-   const connected=await resolved(await d.queue(0,"verify"));
+   const connected=await resolved(await d.queue(1,"verify"));
    assert.match(connected.summary,/source remains connected/);
    const isolation=await Promise.all([d.queue(0,"isolate"),d.queue(1,"isolate")]);
    const reports=await Promise.all(isolation.map(resolved));
@@ -90,7 +91,10 @@ test("seeded battle: local cumulative effects, fallibility, adaptation, interrup
    const release=await resolved(await d.queue(index,"release"));assert.equal(release.succeeded,1);
    assert.equal((await drone(id)).isolated,false,"Clean release restores availability");
    await d.finish();
-   const renewed=await plan("attacker",[1,18]);
+   // Open a real adjacent foothold under the configured graph before testing renewed exposure.
+   const renewed=await plan("attacker",[1,FLEET.columns+1]);
+   await renewed.queue(1,"discover");
+   assert.equal((await resolved(await renewed.queue(1,"command"))).succeeded,1);
    const reinfection=await resolved(await renewed.queue(0,"command"));
    assert.equal(reinfection.results[0].eligible,true);assert.ok(reinfection.results[0].factors.exposure>0);
    assert.equal(reinfection.succeeded,1,"Remaining connected footholds allow renewed exposure after recovery");

@@ -1,10 +1,14 @@
 //! Fleet motion model. Pure functions so the trajectory is testable without a database.
 //!
 //! Healthy drones fly one shared formation on the match clock, so the whole swarm moves in
-//! lockstep and keeps its 6 m x 7 m spacing. A hijacked drone stops following that clock: it
+//! lockstep in stable, centered slots. A hijacked drone stops following that clock: it
 //! is pulled off its slot, wobbles at its own frequency and sinks, and every effect grows with
 //! how long the attacker has held it. Recovery glides it back into step.
 use std::f32::consts::TAU;
+include!(concat!(env!("OUT_DIR"), "/fleet_config.rs"));
+pub const ROWS: u32 = DRONES.div_ceil(COLUMNS);
+pub const SPAN: f32 = (COLUMNS - 1) as f32 * SPACING;
+pub const ROW_SPACING: f32 = SPAN / if ROWS > 1 { (ROWS - 1) as f32 } else { 1.0 };
 
 /// Seconds for one figure-eight sweep of the formation.
 pub const PERIOD: f32 = 20.0;
@@ -16,18 +20,18 @@ pub const LOCK: f32 = 0.6;
 pub type Pose = (f32, f32, f32);
 
 pub fn slot(id: u32) -> (f32, f32) {
-    (((id - 1) % 16) as f32 * 6.0, ((id - 1) / 16) as f32 * 7.0)
+    (((id - 1) % COLUMNS) as f32 * SPACING - SPAN / 2.0,
+     ((id - 1) / COLUMNS) as f32 * ROW_SPACING - SPAN / 2.0)
 }
 
 /// Shared formation pose at match time `t` seconds. The same offset applies to every slot.
 pub fn formation(id: u32, t: f32) -> Pose {
     let w = TAU / PERIOD;
     let (sx, sy) = slot(id);
-    let col = ((id - 1) % 16) as f32;
     (
         sx + 6.0 * (w * t).sin(),
         sy + 3.0 * (2.0 * w * t).sin(),
-        10.0 + 1.5 * (3.0 * w * t - col * 0.45).sin(),
+        10.0 + 1.5 * (3.0 * w * t).sin(),
     )
 }
 
@@ -76,6 +80,21 @@ mod tests {
             let (s1, s40) = (slot(1), slot(40));
             assert!(((ax - s1.0) - (bx - s40.0)).abs() < 1e-4);
             assert!(((ay - s1.1) - (by - s40.1)).abs() < 1e-4);
+        }
+    }
+    #[test]
+    fn default_slots_fill_a_centered_square() {
+        let first = slot(1);
+        let last = slot(DRONES);
+        assert_eq!(DRONES % COLUMNS, 0, "default formation has no partial row");
+        assert!((first.0 + last.0).abs() < 1e-4);
+        assert!((first.1 + last.1).abs() < 1e-4);
+        assert!(((last.0 - first.0) - (last.1 - first.1)).abs() < 1e-4);
+        for id in 1..=DRONES {
+            let p = slot(id);
+            if id % COLUMNS != 0 { assert!((slot(id + 1).0 - p.0 - SPACING).abs() < 1e-4); }
+            if id + COLUMNS <= DRONES { assert!((slot(id + COLUMNS).1 - p.1 - ROW_SPACING).abs() < 1e-4); }
+            assert_eq!(formation(id, 4.0).2, formation(1, 4.0).2);
         }
     }
     #[test]

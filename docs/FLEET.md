@@ -33,8 +33,8 @@ An unauthorized fixture command exploits a planted missing authorization check a
 
 `test:fleet` deploys the compiled WASM to a new local database and checks:
 
-- 48 drones / 16 agents in a measured replay, breach and recovery evidence.
-- 128 drones / 32 agents in a hardened run; every drone ticks and no unauthorized command succeeds.
+- The configured default fleet / 16 agents in a measured replay, breach and recovery evidence.
+- The same configured count / 32 agents in a hardened run; every drone ticks and no unauthorized command succeeds.
 - Role privacy, private table denial, grant escalation denial, independent cadences, stop behavior, and clean reset.
 - Actual SDK WebSocket subscriptions for attacker, defender, observer, and unassigned identities.
 
@@ -44,7 +44,7 @@ These are bounded integration checks, not a latency/throughput benchmark or evid
 
 `arena-live/src/formation.rs` holds the motion model as pure functions with unit tests (`cargo test formation`); `drone_tick` applies it on each drone's own cadence.
 
-- **Healthy** (home control): every drone targets the same formation pose on the shared match clock: its 6 m x 7 m slot plus one common figure-eight offset (20 s period) and an altitude wave that rolls across the columns. The whole swarm moves in lockstep and keeps its spacing. Within 0.6 m of that pose a drone locks onto it exactly.
+- **Healthy** (home control): every drone targets the same formation pose on the shared match clock: its stable centered slot plus one common figure-eight offset (20 s period) and shared altitude wave. The whole swarm moves in lockstep and keeps its spacing. Within 0.6 m of that pose a drone locks onto it exactly.
 - **Hijacked** (attacker control): the drone stops following the match clock. From the pose it held at takeover it drifts along its own heading (1.2 m/s, up to 18 m), wobbles at its own 0.35-0.6 Hz with amplitude growing from 0.6 to 3.5 m, and sinks toward 3 m. Every effect grows with time held. The takeover time is kept in the private `fleet_hold` table, which is not exposed through any view.
 - **Recovered**: the hold is cleared and the drone glides back (35% of the gap per tick, no teleport) until it locks into step again.
 - **Detection latency**: fixture defenders act only on a breach held at least 4 s (`DETECT_AFTER_US`), oldest first, so a hijack visibly pulls a drone out of formation before recovery. Without it the fixture recovered in tens of milliseconds and drift was invisible. This is a fixture decision, not a measured detection time; recovery still requires the 403/200 verification.
@@ -71,13 +71,25 @@ The attacker and defender right columns are a chat with their agent (Crimson / S
 
 Three.js renders database positions with a reusable quadrotor from Higgsfield 3D Jutsu project `0680b9e1-329c-40ad-aff1-edc52fd7d7a2`, inspected revision 1. `web/assets/swarm-blockout.glb` is a 32 KB procedural blockout, not a photorealistic reconstruction. Drone geometry is shared across clones. Motion comes from measured state, without a background generative video or per-frame generation calls.
 
-Each drone is drawn at its database position with a stem to the ground, a state-tinted ground shadow, and (defender/observer) a dashed ground ring when isolated. Drones can come within about 4 m of each other on the 6 m × 7 m grid, so every per-drone marker stays inside a 2 m radius. Hovering shows a `DR-xxx · state` label; the selected drone keeps one.
+Each drone is drawn at its database position with a stem to the ground, a state-tinted ground shadow, and (defender/observer) a dashed ground ring when isolated. Drones can come within about 4 m of each other between formation columns, so every per-drone marker stays inside a 2 m radius. Hovering shows a `DR-xxx · state` label; the selected drone keeps one.
 
-The flock shape is display motion only (`web/flock.ts`). The viewport bends the 16-column slot grid into an S-curved crescent, adds a fixed per-drone scatter, and rolls two slow waves, a ripple and a gentle heading change through it; models bank and yaw with the flow, 2 s trails fade behind each drone and a faint cohesion net links slot neighbours. Database positions are never changed: the drone, its ghost slot and the tether pass through the same transform, so a drone more than `OFF_FORMATION_M` from its slot still shows the same gap. A drone under attacker control runs its own flow clock slow and loses sync, so it visibly wobbles and tumbles out of step and its net links turn red; after recovery it catches up and locks back in. `prefers-reduced-motion` keeps the static shape without waves, wobble or trails.
+The default is **200 drones in a 20 × 10 formation**, driven by `shared/fleet.json`.
+Columns are 6 m apart and rows are 114/9 m apart: both axes span 114 m, centered on
+(0, 0). Slot identity depends only on the drone ID and shared configuration, never arrival
+order, discovery order, reconnect or replay time. Recovery returns to that same slot.
+`arena-live/build.rs` embeds the JSON as Rust constants; `shared/fleet.ts` supplies the
+same geometry to the client and checks. The separate maximum is an input cap, not a default.
 
-The fleet sits on a flat operating pad with a 6 m survey grid. Around it, the terrain (procedural fbm with shader contour lines every 5 m), the role-tinted sky and fog, and the FC-01 mast are schematic scenery: they are not measured geography and nothing in the simulation interacts with them.
+The viewport renders authoritative positions without crescent bending, scatter or positional
+waves. Only the attitude of compromised models is decorative (`web/flock.ts`); movement,
+control changes and recovery remain reducer outcomes. Bodies and shadows use instanced
+meshes, and stems, trails and neighbour links use shared line buffers.
 
-The camera fits the visible fleet with the actual frustum and aspect ratio (a 48-drone strip is ~90 m × 14 m, a 256-drone block ~90 m × 105 m). The perspective view keeps the fleet in the lower part of the map so the horizon shows. Drag orbits, right-drag pans, scroll zooms; Fit or a double-click reframes. Once the user moves the camera, live updates and resizes no longer reframe it. There is no unsolicited camera animation.
+The operating pad and survey grid are square and centered at the scene origin, sized from
+role-visible bounds with a margin. Their size never uses the hidden session total. Terrain,
+fog, dusk backdrop and mast remain scenery. Camera Fit uses the visible fleet and square
+pad with the actual frustum and aspect ratio; Top-down exposes the even layout. Drag
+orbits, right-drag pans, and scroll zooms. User navigation survives ordinary state updates.
 
 A projected Canvas map is available when WebGL cannot initialize. Selection works through the map, status chips or log rows; a press that turns into a drag does not select. Playback pauses and scrubs. Inspecting an evidence row keeps that event pinned in the asset panel across live updates, and live redraws are coalesced to one per animation frame.
 
@@ -149,7 +161,7 @@ are in `output/landscape/`; full-page review captures are in `.impeccable/review
 The completed run inspected all roles, selection, default/side/rear/top-down and near/far
 views, mobile/desktop resizing, zero drones, blocked image loading and disabled WebGL.
 Five display resets retained resource identities and counts; three actual backend resets
-with 120 drones plus a database restart retained the image without another request.
+with the former fleet default plus a database restart retained the image without another request.
 Both serving paths returned identical bytes and MIME type, and export/production outputs
 matched the original asset. The fixture demo can use `FLEET_PORT=0` for an isolated
 port; its default remains 4174.

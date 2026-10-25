@@ -1,3 +1,4 @@
+import { FLEET } from "../shared/fleet.ts";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
@@ -49,7 +50,7 @@ if (!real) globalThis.fetch = async (input: any, init?: any) => {
 const db = await testDatabase();
 const env = { ...process.env, ...db.env, FLEET_PUBLIC_URI: db.env.SPACETIME_URI, SUDOKO_PUBLIC_ORIGIN: "", BITDEER_API_KEY: real ? process.env.BITDEER_API_KEY : "mock-only", SUDOKO_DEMO_MODE: "1" };
 const service = await startService({ operatorToken: randomBytes(32).toString("hex"), env });
-await service.store.call("start_fleet", [48, 0, 0, false]);
+await service.store.call("start_fleet", [FLEET.drones, 0, 0, false]);
 const report: any = { engine: real ? "bitdeer" : "mocked-inference", at: new Date().toISOString(), turns: [], operations: [], latency: [], checks: [] };
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 try {
@@ -366,7 +367,7 @@ try {
     mode = "normal";
     // Zero, one and many visible drones use the same framing controls.
     await switchTo("defender");
-    for (const count of [1, 256, 4]) {
+    for (const count of [1, FLEET.maxDrones, 4]) {
       await service.store.call("start_fleet", [count, 0, 0, false]);
       await page.waitForFunction(n => (globalThis as any).sceneCheck().frame.drones.length === n, count);
       for (const size of [{ width: 1440, height: 900 }, { width: 1100, height: 720 }]) {

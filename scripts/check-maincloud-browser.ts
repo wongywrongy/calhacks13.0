@@ -1,3 +1,4 @@
+import { FLEET } from "../shared/fleet.ts";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { chromium } from "@playwright/test";
@@ -26,7 +27,7 @@ try{
     const data=await r.json();return data[0].rows.map((values:any[])=>Object.fromEntries(data[0].schema.elements.map((f:any,i:number)=>[f.name.some,values[i]])));
   };
   const session=(await rows("visible_fleet_session"))[0];
-  assert.equal((await rows("visible_drones")).length,120);
+  assert.equal((await rows("visible_drones")).length,FLEET.drones);
   assert.equal((await rows("visible_agents")).length,0);
   report.epoch=session.epoch;
   for(const [name,role] of [["1. Prepare challenge","attacker"],["2. Prepare defense","defender"]]){
@@ -40,7 +41,7 @@ try{
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     for(const selector of ["#viewport","#compose"]){const box=await page.locator(selector).boundingBox();assert.ok(box&&box.height>0&&box.y>=0&&box.y+box.height<=768,`${selector} fits ${width}x768`)}
   }
-  report.checks.push("120 drones, zero initial agents, both guided roles and editable chat, viewport and composer fit laptop sizes");
+  report.checks.push(`${FLEET.drones} drones, zero initial agents, both guided roles and editable chat, viewport and composer fit laptop sizes`);
   await page.locator("#say").fill("");
   await page.reload();
   await page.waitForFunction(()=>document.querySelector("#live")?.textContent?.startsWith("Live"));
@@ -88,8 +89,8 @@ try{
     await page.getByRole("button",{name:"Reset Demo",exact:true}).click();
     await wait(async()=> (await rows("visible_fleet_session"))[0].epoch>session.epoch,10000);
     await page.waitForFunction(()=>document.querySelector("#live")?.textContent==="Live · Awaiting objective");
-    assert.equal((await rows("visible_drones")).length,120);assert.equal((await rows("visible_agents")).length,0);
-    report.checks.push("Confirmed browser reset returns to 120 persisted drones and zero agents");
+    assert.equal((await rows("visible_drones")).length,FLEET.drones);assert.equal((await rows("visible_agents")).length,0);
+    report.checks.push(`Confirmed browser reset returns to ${FLEET.drones} persisted drones and zero agents`);
   }
   await page.screenshot({path:`${out}/fleet.png`});
   assert.deepEqual(report.errors,[]);

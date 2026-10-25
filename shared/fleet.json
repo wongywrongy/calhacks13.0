@@ -1,0 +1,6 @@
+{
+  "drones": 200,
+  "columns": 20,
+  "spacing": 6,
+  "maxDrones": 256
+}

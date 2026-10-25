@@ -1,3 +1,4 @@
+import { FLEET, slot } from "../shared/fleet.ts";
 import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { pathToFileURL } from "node:url";
@@ -53,7 +54,6 @@ if (!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(uri))
   );
 /** Horizontal distance of each drone from the healthy drones' shared formation offset. */
 function formationDeviation(drones: any[]): [any, number][] {
-  const slot = (id: number) => [((id - 1) % 16) * 6, Math.floor((id - 1) / 16) * 7];
   const median = (v: number[]) => [...v].sort((a, b) => a - b)[v.length >> 1];
   const healthy = drones.filter((d) => d.controller !== "attacker");
   const ox = median(healthy.map((d) => d.x - slot(d.id)[0])),
@@ -131,7 +131,7 @@ try {
     ),
   });
   assert(
-    !(await call("start_fleet", [48, 8, 8, false], viewers.attacker.token)).ok,
+    !(await call("start_fleet", [FLEET.drones, 8, 8, false], viewers.attacker.token)).ok,
     "viewer cannot reset",
   );
   assert(
@@ -148,7 +148,7 @@ try {
     !(await sql("SELECT * FROM fleet_drone", viewers.attacker.token)).ok,
     "private drone table inaccessible",
   );
-  assert((await call("start_fleet", [48, 8, 8, false])).ok);
+  assert((await call("start_fleet", [FLEET.drones, 8, 8, false])).ok);
   const recording: any = {
     engine: "fixture",
     transport: "Recorded SpacetimeDB entity views",
@@ -168,11 +168,11 @@ try {
   recording.durationMs = Date.now() - began;
   const last = recording.frames.at(-1),
     early = recording.frames[1];
-  assert.equal(last.observer.drones.length, 48);
+  assert.equal(last.observer.drones.length, FLEET.drones);
   assert.equal(last.attacker.agents.length, 8);
   assert.equal(last.defender.agents.length, 8);
   assert.equal(last.observer.agents.length, 16);
-  assert(early.attacker.drones.length < 48, "undiscovered drones hidden");
+  assert(early.attacker.drones.length < FLEET.drones, "undiscovered drones hidden");
   assert(
     last.attacker.events.every(
       (e: any) => !["policy_applied", "recovery_verified"].includes(e.kind),
@@ -223,10 +223,10 @@ try {
   );
   await mkdir("output/fleet", { recursive: true });
   await writeFile("output/fleet/recording.json", JSON.stringify(recording));
-  assert((await call("start_fleet", [128, 16, 16, true])).ok);
+  assert((await call("start_fleet", [FLEET.drones, 16, 16, true])).ok);
   await delay(2400);
   const scale = await frame("observer");
-  assert.equal(scale.drones.length, 128);
+  assert.equal(scale.drones.length, FLEET.drones);
   assert.equal(scale.agents.length, 32);
   assert(scale.drones.every((d: any) => d.tick > 0));
   assert(
@@ -298,12 +298,24 @@ try {
       connection?.disconnect();
     }
   }
+  // A clean measured reducer snapshot also drives the formation screenshots and replay check.
+  assert((await call("start_fleet", [FLEET.drones, 0, 0, false])).ok);
+  assert((await call("stop_fleet", [])).ok);
+  const clean = { at: 0, attacker: await frame("attacker"), defender: await frame("defender"), observer: await frame("observer") };
+  assert.equal(clean.defender.drones.length, FLEET.drones);
+  assert.equal(clean.attacker.drones.length, 0);
+  for (const drone of clean.defender.drones) {
+    const [x, y] = slot(drone.id);
+    assert.ok(Math.abs(drone.x - x) < 0.001 && Math.abs(drone.y - y) < 0.001, "Rust and client slots agree");
+    assert.equal(drone.controller, "defender");
+  }
+  await writeFile("output/fleet/formation.json", JSON.stringify({ engine: "fixture", transport: "Recorded SpacetimeDB entity views", durationMs: 0, frames: [clean] }));
   console.log(
     JSON.stringify({
       passed: true,
-      testedDrones: 128,
+      testedDrones: FLEET.drones,
       testedAgents: 32,
-      recordedDrones: 48,
+      recordedDrones: FLEET.drones,
       recordedAgents: 16,
       checks: [
         "scoped views",
@@ -320,7 +332,7 @@ try {
     }),
   );
   if (process.argv.includes("--serve")) {
-    await call("start_fleet", [48, 8, 8, false]);
+    await call("start_fleet", [FLEET.drones, 8, 8, false]);
     const server = createServer(async (req, res) => {
       try {
         const url = new URL(req.url ?? "/", "http://localhost");
@@ -388,7 +400,7 @@ try {
     console.log(
       `Fleet demo: http://127.0.0.1:${(server.address() as any).port}. Enter restarts a 60-second baseline; Ctrl+C stops. Loopback operator access permits all three workspaces.`,
     );
-    process.stdin.on("data", () => void call("start_fleet", [48, 8, 8, false]));
+    process.stdin.on("data", () => void call("start_fleet", [FLEET.drones, 8, 8, false]));
     process.stdin.resume();
     await new Promise<void>((resolve) =>
       process.once("SIGINT", () => resolve()),

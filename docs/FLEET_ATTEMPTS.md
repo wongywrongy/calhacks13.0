@@ -43,7 +43,7 @@ uses scheduled continuation callbacks without keeping a provider request open.
 Drones retain their existing `controller` and `isolated` fields. Private `battle_drone`
 rows separately retain contamination (0–100), readiness (0–90), one capped preparation
 flag per side, and the latest countermeasure tick. The logical communication graph is a
-16-column grid: horizontal neighbors in a row, and IDs 16 apart. Presentation coordinates
+grid defined by `shared/fleet.json`: horizontal neighbors in a row, and IDs one configured column count apart. Presentation coordinates
 and animation cannot change it.
 
 - Attacker `command`: requires discovery; attempts entry on one uncaptured, connected

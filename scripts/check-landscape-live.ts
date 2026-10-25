@@ -1,3 +1,4 @@
+import { FLEET } from "../shared/fleet.ts";
 import assert from "node:assert/strict";
 import {randomUUID,createHash} from "node:crypto";
 import {readFile,writeFile} from "node:fs/promises";
@@ -21,7 +22,7 @@ const asset="/assets/environments/sudoko-dusk-basin.webp";
 const source=await readFile("web"+asset),hash=(bytes:Uint8Array)=>createHash("sha256").update(bytes).digest("hex");
 const checkAsset=async(url:string)=>{const response=await fetch(url+asset);assert.equal(response.status,200);assert.equal(response.headers.get("content-type"),"image/webp");assert.equal(hash(new Uint8Array(await response.arrayBuffer())),hash(source));};
 try{
- await service.store.call("start_fleet",[120,0,0,false]);
+ await service.store.call("start_fleet",[FLEET.drones,0,0,false]);
  for(const role of ["attacker","defender","observer"]){const identity:any=await fetch(db.env.SPACETIME_URI+"/v1/identity",{method:"POST"}).then(r=>r.json());await service.store.call("grant_fleet_view",[identity.identity,role]);env[`SUDOKO_DEMO_${role.toUpperCase()}_VIEWER_TOKEN`]=identity.token;}
  await checkAsset(service.url);
  for(const path of ["output/fleet-site"+asset,"output/vercel-static"+asset])assert.equal(hash(await readFile(path)),hash(source));
@@ -30,15 +31,15 @@ try{
  let requests=0;context.on("request",r=>{if(r.url().endsWith(asset))requests++;});
  const page=await context.newPage();page.on("pageerror",e=>report.errors.push(e.message));await page.goto(service.url);
  const state=()=>page.evaluate(()=>(globalThis as any).environmentState());
- await page.waitForFunction(()=>{const s=(globalThis as any).environmentState?.();return s?.count===120&&s?.state==="ready"});await delay(1000);
+ await page.waitForFunction(count=>{const s=(globalThis as any).environmentState?.();return s?.count===count&&s?.state==="ready"},FLEET.drones);await delay(1000);
  const initial=await state();
- for(let i=0;i<3;i++){const epoch=(await state()).epoch;await page.locator("#reset-swarm").click();await page.waitForFunction(previous=>(globalThis as any).environmentState().epoch>previous,epoch);await page.waitForFunction(()=>(globalThis as any).environmentState().count===120);}
+ for(let i=0;i<3;i++){const epoch=(await state()).epoch;await page.locator("#reset-swarm").click();await page.waitForFunction(previous=>(globalThis as any).environmentState().epoch>previous,epoch);await page.waitForFunction(count=>(globalThis as any).environmentState().count===count,FLEET.drones);}
  await delay(700);const reset=await state();assert.equal(reset.epoch,initial.epoch+3);
  for(const field of ["sky","card","texture"])assert.equal(reset[field],initial[field]);assert.equal(reset.scenery,1);assert.equal(requests,1);assert.deepEqual(reset.memory,initial.memory);
  await page.screenshot({path:".impeccable/review/live-reset.png",fullPage:true});await page.locator("#viewport").screenshot({path:"output/landscape/live-reset.png"});
- report.checks.push("Three real backend swarm resets retain 120 drones, one landscape, texture identities and GPU resource counts with no image reload");
+ report.checks.push(`Three real backend swarm resets retain ${FLEET.drones} drones, one landscape, texture identities and GPU resource counts with no image reload`);
  await page.locator('nav [data-role="attacker"]').click();await page.waitForFunction(()=>document.body.dataset.role==="attacker"&&(globalThis as any).environmentState().count===0);assert.equal((await state()).card,initial.card);
- await page.locator('nav [data-role="defender"]').click();await page.waitForFunction(()=>document.body.dataset.role==="defender"&&(globalThis as any).environmentState().count===120);
+ await page.locator('nav [data-role="defender"]').click();await page.waitForFunction(count=>document.body.dataset.role==="defender"&&(globalThis as any).environmentState().count===count,FLEET.drones);
  await db.restart();const [committed]=await service.store.query("SELECT * FROM fleet_drone WHERE id=1");await page.waitForFunction(t=>(globalThis as any).environmentState().tick>t,committed.tick,{timeout:20000});
  await page.screenshot({path:".impeccable/review/live-reconnect.png",fullPage:true});await page.locator("#viewport").screenshot({path:"output/landscape/live-reconnect.png"});
  assert.equal((await state()).texture,initial.texture);assert.equal(requests,1);
