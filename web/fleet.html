@@ -64,7 +64,7 @@
       body {
         margin: 0;
         display: grid;
-        grid-template-rows: 56px auto minmax(0, 1fr);
+        grid-template-rows: 56px auto auto minmax(0, 1fr);
         height: 100dvh;
         overflow: hidden;
       }
@@ -373,7 +373,7 @@
 
       /* 2. Main row: rail | map | chat on fixed tracks. */
       main {
-        grid-row: 3;
+        grid-row: 4;
         display: grid;
         grid-template-columns: 288px minmax(0, 1fr) 360px;
         min-height: 0;
@@ -982,6 +982,12 @@
           animation: none;
         }
       }
+      #judge-guide { grid-row:2; padding:10px 16px; background:#101c29; border-bottom:1px solid var(--line2); display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+      #judge-guide button { padding:7px 12px; border:1px solid var(--line2); border-radius:5px; background:var(--raised); }
+      #judge-guide button:disabled { opacity:.45; }
+      #judge-guide p { margin:0; font-size:12px; color:var(--muted); }
+      #judge-guide details { flex-basis:100%; max-height:min(240px, 30dvh); overflow:auto; }
+      #judge-guide li { margin:6px 0; }
     </style>
   </head>
   <body data-role="defender">
@@ -1025,6 +1031,7 @@
         </div>
       </div>
     </header>
+<section id="judge-guide" aria-label="Guided incident"></section>
     <div id="feedback">
       <p id="error" role="status"></p>
       <p id="reset-status" role="status" aria-live="polite"></p>

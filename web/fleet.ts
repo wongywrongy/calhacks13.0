@@ -1838,6 +1838,68 @@ function adoptEpoch(epoch: number) {
   userMoved = false;
   frame = EMPTY;
 }
+
+// Guided entry uses existing role-scoped chat and persisted evidence only.
+function renderJudgeGuide() {
+  const host = $("judge-guide");
+  if (!host.childElementCount) {
+    host.append(el("strong", "", "Start a challenge → respond → inspect evidence"));
+    for (const [side, label, objective] of [
+      ["attacker", "1. Prepare challenge", "Discover the simulated fleet and test whether its command controls reject unauthorized actions. Report observed results."],
+      ["defender", "2. Prepare defense", "Investigate the current fleet incident, contain affected drones, and verify recovery while preserving legitimate control."],
+    ] as const) {
+      const button = el("button", "", label) as HTMLButtonElement;
+      button.type = "button";
+      button.dataset.prepareRole = side;
+      button.onclick = async () => {
+        button.disabled = true;
+        try {
+          await workspace(side);
+          if (role !== side || !operationChat) return;
+          selected = selectedEvent = 0;
+          render(frame);
+          const input = $("say") as HTMLInputElement;
+          input.value = objective;
+          input.focus();
+        } catch (error) { $("error").textContent = String(error); }
+        finally { button.disabled = false; }
+      };
+      host.append(button);
+    }
+    const status = el("p"); status.id = "judge-readiness"; host.append(status);
+    const details = el("details");
+    details.append(el("summary", "", "3. Findings and affected drones"));
+    const findings = el("div"); findings.id = "judge-findings"; details.append(findings); host.append(details);
+  }
+  host.querySelectorAll<HTMLButtonElement>("[data-prepare-role]").forEach((button) => {
+    const permission = document.querySelector<HTMLButtonElement>(`nav [data-role="${button.dataset.prepareRole}"]`);
+    button.disabled = !live || !stateConnected || !!permission?.disabled;
+  });
+  $("judge-readiness").textContent = recording ? "Recorded run · guided objectives require a live session." :
+    !stateConnected ? "Live database unavailable or connecting. Results below are last known state; reconnect or reload to retry." :
+    !operationChat ? "Database connected · waiting for chat session." :
+    "Edit the suggested objective, then Send. Findings reflect only evidence visible to this role.";
+  const rows = [...frame.events].sort((a, b) => a.id - b.id);
+  const affected = new Set(rows.filter(e => e.kind === ACCEPTED).map(e => e.drone));
+  const recovered = frame.drones.filter(d => affected.has(d.id) && d.controller !== "attacker").length;
+  const box = $("judge-findings");
+  const content = el("div");
+  content.append(el("p", "", `${rows.length} evidence rows · ${affected.size} drones with accepted unauthorized commands · ${recovered} currently back under home control. Synthetic fleet findings; not a complete vulnerability scan.`));
+  content.append(el("p", "", "Agent susceptibility and causal spread are not established by these events. Multiple affected drones alone do not prove propagation."));
+  const list = el("ul");
+  for (const e of rows.slice(-30).reverse()) {
+    const item = el("li");
+    const button = el("button", "", `${tag(e.drone)} · ${e.kind.replaceAll("_", " ")} · evidence #${e.id} · policy v${e.policy_version}`);
+    button.dataset.evidenceId = String(e.id);
+    button.setAttribute("aria-pressed", String(selectedEvent === e.id));
+    button.onclick = () => { selectedEvent = e.id; pull(e.drone); };
+    item.append(button); list.append(item);
+  }
+  if (!rows.length) content.append(el("p", "", "No incident evidence visible to this role yet. Start with a challenge objective."));
+  content.append(list);
+  if (box.innerHTML !== content.outerHTML) box.replaceChildren(content);
+}
+
 function render(next: Frame) {
   if (resetting) return;
   const epoch = next.epoch ?? next.drones[0]?.epoch ?? next.agents[0]?.epoch;
@@ -1855,6 +1917,7 @@ function render(next: Frame) {
     );
   const d = derive(frame);
   header(d);
+  renderJudgeGuide();
   rails(d);
   mapScene(d);
   chat(d);
@@ -1870,6 +1933,7 @@ function setStatus(text: string, kind: "live" | "stale" | "replay") {
     : kind === "live" ? "Live" : kind === "stale" ? text.startsWith("Disconnected") ? "Disconnected" : "Stale" : "Replay";
   p.className = "pill " + (kind === "live" ? "" : kind);
   p.title = text;
+  renderJudgeGuide();
 }
 async function workspace(next: Role) {
   if (resetting) return;
@@ -1903,8 +1967,12 @@ async function workspace(next: Role) {
     setStatus("Recorded · fixture", "replay");
     return;
   }
-  const response = await fetch(`/fleet-config?role=${role}`);
+  const response = await fetch(`/fleet-config?role=${role}`, { signal: AbortSignal.timeout(8000) });
+  if (v !== version) return;
   if (!response.ok) {
+    setStatus("Disconnected · configuration unavailable", "stale");
+    if (response.status !== 401 && response.status !== 403)
+      throw Error(`Live configuration unavailable (${response.status}). Reload to retry.`);
     const link = el(
       "a",
       "",
@@ -1948,6 +2016,7 @@ async function workspace(next: Role) {
     );
   if (config.chat) {
     $("transcript").replaceChildren(typing);
+    let conversation = config.conversation;
     operationChat = new OperationChat(
       config.sandbox,
       role,
@@ -1965,6 +2034,8 @@ async function workspace(next: Role) {
       config.epoch,
       config.conversation,
     );
+    operationChat.conversation = config.conversation;
+    operationChat.fleet = { epoch: config.epoch, active: true };
     void operationChat.resume();
   }
   let attempt = 0;

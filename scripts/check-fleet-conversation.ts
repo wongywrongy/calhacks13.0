@@ -152,12 +152,37 @@ try {
   assert.equal((await service.store.query("SELECT * FROM fleet_discovery")).length, 0);
   await page.screenshot({ path: output + "/questions-zero-agents.png" });
   report.checks.push("ordinary and state questions do not deploy; no discovered targets initially");
+  await page.getByRole("button", { name: "1. Prepare challenge", exact: true }).click();
+  role = "attacker";
+  assert.equal(await page.locator("nav [data-role=attacker]").getAttribute("aria-pressed"), "true");
+  assert.match(await page.locator("#say").inputValue(), /Discover the simulated fleet/);
+  assert.ok(await page.locator("#say").isEditable());
   const attack = await send("Look for vulnerabilities and try taking over the swarm. Use two agents.");
   const attacked = await finish(attack.turn, attack.began, "unauthorized_command_accepted");
   assert.equal(attacked.tasks.length, 2);
   assert.equal(attacked.inferences.filter((i: any) => i.stage === "coordinator").length, 1);
   const epoch = attacked.epoch;
   await page.screenshot({ path: output + "/attacker-executed.png" });
+  await page.locator("#judge-guide summary").click();
+  const receipt = page.locator("#judge-findings button").filter({ hasText: "unauthorized command accepted" }).first();
+  await receipt.waitFor();
+  const drone = (await receipt.innerText()).match(/DR-\d+/)![0];
+  await receipt.click();
+  assert.equal(await receipt.getAttribute("aria-pressed"), "true");
+  assert.match(await page.locator("#context-slot").innerText(), new RegExp(drone));
+  assert.match(await page.locator("#judge-findings").innerText(), /Agent susceptibility and causal spread are not established/);
+  for (const width of [1280, 1366, 1440]) {
+    await page.setViewportSize({ width, height: 768 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    for (const selector of ["#compose", "#viewport", "#judge-guide"]) {
+      const bounds = await page.locator(selector).boundingBox();
+      assert.ok(bounds && bounds.y >= 0 && bounds.y + bounds.height <= 768, `${selector} must fit laptop height at ${width}`);
+    }
+  }
+  await page.screenshot({ path: output + "/judge-findings-laptop.png" });
+  await page.locator("#judge-guide summary").click();
+  await page.getByRole("button", { name: "1. Prepare challenge", exact: true }).click();
+  report.checks.push("Prepare challenge switches role and supplies editable objective; real database findings select their drone; uncertainty disclaimer; laptop layouts at 1280, 1366 and 1440 pixels");
   const count = (await service.store.query("SELECT * FROM fleet_agent")).length;
   await send("Why did that fail?");
   assert.equal((await service.store.query("SELECT * FROM fleet_agent")).length, count);
@@ -168,6 +193,11 @@ try {
   } else assert.equal(follow.turn.intent, "clarify");
   await switchTo("defender");
   assert.ok(!(await page.locator("#transcript").textContent())?.includes("Look for vulnerabilities"));
+  await page.getByRole("button", { name: "2. Prepare defense", exact: true }).click();
+  role = "defender";
+  assert.equal(await page.locator("nav [data-role=defender]").getAttribute("aria-pressed"), "true");
+  assert.match(await page.locator("#say").inputValue(), /Investigate the current fleet incident/);
+  assert.ok(await page.locator("#say").isEditable());
   const defense = await send("Protect the compromised drones: isolate then verify recovery without blocking legitimate commands. Use two agents.");
   const defended = await finish(defense.turn, defense.began, "recovery_verified");
   assert.equal(defended.epoch, epoch);
@@ -368,6 +398,8 @@ try {
     await page.waitForFunction(() => document.querySelector("#context")?.textContent?.includes("4 drones"));
     await page.context().setOffline(true);
     await page.waitForFunction(() => document.querySelector("#live")?.textContent === "Disconnected");
+    assert.match(await page.locator("#judge-readiness").innerText(), /last known state.*reload to retry/);
+    assert.ok(await page.getByRole("button", { name: "1. Prepare challenge", exact: true }).isDisabled());
     await page.context().setOffline(false);
     await page.waitForFunction(() => document.querySelector("#live")?.textContent === "Live · Awaiting objective");
     await page.unroute("**/fleet-config?role=*");

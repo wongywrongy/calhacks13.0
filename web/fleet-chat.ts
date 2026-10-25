@@ -67,6 +67,7 @@ export class OperationChat {
   operations: Operation[] = [];
   turns: ConversationTurn[] = [];
   get pendingTurn() { return this.turns.find((t) => ["queued", "running"].includes(t.state) && Date.now() - t.createdAt < 31000); }
+  conversation?: number;
   sending = false;
   lastUpdated = 0;
   fleet: { active: boolean; epoch: number } | null = null;

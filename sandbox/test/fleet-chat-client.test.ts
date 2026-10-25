@@ -45,6 +45,7 @@ test("conversation reconnect reuses a lost submission key and target; messages a
   });
   const keys: string[] = [];
   let role = "attacker";
+  let generation: number | undefined;
   const message = {
     id: 1,
     operation: "op-1",
@@ -115,6 +116,18 @@ test("conversation reconnect reuses a lost submission key and target; messages a
   other.close();
   assert.deepEqual(other.messages, []);
   assert.equal(keys.length, 2);
+  role = "attacker";
+  generation = 3;
+  const modern = new OperationChat("owned", role, () => {}, () => {});
+  modern.conversation = generation;
+  modern.fleet = { active: true, epoch: 2 };
+  await modern.submit(message.text, 2);
+  assert.equal(modern.conversation, 3);
+  generation = 4;
+  await modern.resume();
+  modern.close();
+  assert.equal(modern.conversation, 4);
+  assert.deepEqual(modern.messages, [], "A changed conversation must remove old history");
   next.fleet = { active: true, epoch: 2 };
   next.operations = [{ id: "previous-demo", epoch: 1, state: "completed" }] as any;
   assert.equal(next.operation, undefined, "A reset fleet must await an objective instead of showing the previous completion");
