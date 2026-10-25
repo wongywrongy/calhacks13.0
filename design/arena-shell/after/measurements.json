@@ -1,5 +1,5 @@
 {
-  "attacker-1440": {
+  "attacker-1440x900": {
     "width": 1440,
     "scrollWidth": 1440,
     "topHeaderBottoms": [
@@ -26,50 +26,6 @@
     "possessionRightBorderX": 1088,
     "railBottom": 900,
     "rightBottom": 900,
-    "stepBand": false,
-    "overlays": 0,
-    "statusIndicators": 1,
-    "resetsOutsideMenu": 0,
-    "possession": {
-      "red": "3",
-      "right": "13",
-      "label": "Discovered"
-    },
-    "legend": [
-      "Seized3",
-      "Home0",
-      "Lost10",
-      "Blocked3"
-    ],
-    "errors": []
-  },
-  "attacker-390": {
-    "width": 390,
-    "scrollWidth": 390,
-    "topHeaderBottoms": [
-      258,
-      693.84375,
-      1461.84375
-    ],
-    "viewportBottom": 1053.84375,
-    "bodyBottoms": [
-      558,
-      1417.84375,
-      1761.84375
-    ],
-    "lowerHeaderTops": [
-      558,
-      1053.84375,
-      1761.84375
-    ],
-    "leftBorderX": 390,
-    "rightBorderX": 0,
-    "headerLeftBorderX": 390,
-    "headerRightBorderX": 250.15625,
-    "possessionLeftBorderX": 106.265625,
-    "possessionRightBorderX": 275.59375,
-    "railBottom": 649.84375,
-    "rightBottom": 2053.84375,
     "stepBand": false,
     "overlays": 0,
     "statusIndicators": 1,
@@ -81,13 +37,13 @@
     },
     "legend": [
       "Seized3",
-      "Home0",
-      "Lost13",
+      "Home1",
+      "Lost12",
       "Blocked0"
     ],
     "errors": []
   },
-  "defender-1440": {
+  "attacker-1440x760": {
     "width": 1440,
     "scrollWidth": 1440,
     "topHeaderBottoms": [
@@ -95,16 +51,16 @@
       152,
       152
     ],
-    "viewportBottom": 592,
+    "viewportBottom": 466,
     "bodyBottoms": [
-      592,
-      900,
-      592
+      466,
+      760,
+      466
     ],
     "lowerHeaderTops": [
-      592,
-      592,
-      592
+      466,
+      466,
+      466
     ],
     "leftBorderX": 272,
     "rightBorderX": 1088,
@@ -112,27 +68,26 @@
     "headerRightBorderX": 1088,
     "possessionLeftBorderX": 272,
     "possessionRightBorderX": 1088,
-    "railBottom": 900,
-    "rightBottom": 900,
+    "railBottom": 760,
+    "rightBottom": 760,
     "stepBand": false,
     "overlays": 0,
     "statusIndicators": 1,
     "resetsOutsideMenu": 0,
     "possession": {
-      "red": "5",
-      "right": "43",
-      "label": "Blue holds"
+      "red": "4",
+      "right": "19",
+      "label": "Discovered"
     },
     "legend": [
-      "Home27",
-      "Compromised5",
-      "Recovered16",
-      "Blocked0",
-      "Isolated16"
+      "Seized4",
+      "Home0",
+      "Lost15",
+      "Blocked0"
     ],
     "errors": []
   },
-  "defender-390": {
+  "attacker-390x844": {
     "width": 390,
     "scrollWidth": 390,
     "topHeaderBottoms": [
@@ -164,20 +119,19 @@
     "statusIndicators": 1,
     "resetsOutsideMenu": 0,
     "possession": {
-      "red": "5",
-      "right": "43",
-      "label": "Blue holds"
+      "red": "6",
+      "right": "24",
+      "label": "Discovered"
     },
     "legend": [
-      "Home22",
-      "Compromised5",
-      "Recovered21",
-      "Blocked0",
-      "Isolated21"
+      "Seized6",
+      "Home0",
+      "Lost18",
+      "Blocked0"
     ],
     "errors": []
   },
-  "observer-1440": {
+  "defender-1440x900": {
     "width": 1440,
     "scrollWidth": 1440,
     "topHeaderBottoms": [
@@ -214,15 +168,195 @@
       "label": "Blue holds"
     },
     "legend": [
-      "Home16",
-      "Unauthorized6",
-      "Recovered26",
-      "Blocked1",
-      "Isolated26"
+      "Home19",
+      "Compromised6",
+      "Recovered23",
+      "Blocked0",
+      "Isolated23"
     ],
     "errors": []
   },
-  "observer-390": {
+  "defender-1440x760": {
+    "width": 1440,
+    "scrollWidth": 1440,
+    "topHeaderBottoms": [
+      152,
+      152,
+      152
+    ],
+    "viewportBottom": 466,
+    "bodyBottoms": [
+      466,
+      760,
+      466
+    ],
+    "lowerHeaderTops": [
+      466,
+      466,
+      466
+    ],
+    "leftBorderX": 272,
+    "rightBorderX": 1088,
+    "headerLeftBorderX": 272,
+    "headerRightBorderX": 1088,
+    "possessionLeftBorderX": 272,
+    "possessionRightBorderX": 1088,
+    "railBottom": 760,
+    "rightBottom": 760,
+    "stepBand": false,
+    "overlays": 0,
+    "statusIndicators": 1,
+    "resetsOutsideMenu": 0,
+    "possession": {
+      "red": "6",
+      "right": "42",
+      "label": "Blue holds"
+    },
+    "legend": [
+      "Home14",
+      "Compromised6",
+      "Recovered28",
+      "Blocked3",
+      "Isolated28"
+    ],
+    "errors": []
+  },
+  "defender-390x844": {
+    "width": 390,
+    "scrollWidth": 390,
+    "topHeaderBottoms": [
+      258,
+      693.84375,
+      1461.84375
+    ],
+    "viewportBottom": 1053.84375,
+    "bodyBottoms": [
+      558,
+      1417.84375,
+      1761.84375
+    ],
+    "lowerHeaderTops": [
+      558,
+      1053.84375,
+      1761.84375
+    ],
+    "leftBorderX": 390,
+    "rightBorderX": 0,
+    "headerLeftBorderX": 390,
+    "headerRightBorderX": 250.15625,
+    "possessionLeftBorderX": 106.265625,
+    "possessionRightBorderX": 275.59375,
+    "railBottom": 649.84375,
+    "rightBottom": 2053.84375,
+    "stepBand": false,
+    "overlays": 0,
+    "statusIndicators": 1,
+    "resetsOutsideMenu": 0,
+    "possession": {
+      "red": "9",
+      "right": "39",
+      "label": "Blue holds"
+    },
+    "legend": [
+      "Home39",
+      "Compromised9",
+      "Recovered0",
+      "Blocked0",
+      "Isolated0"
+    ],
+    "errors": []
+  },
+  "observer-1440x900": {
+    "width": 1440,
+    "scrollWidth": 1440,
+    "topHeaderBottoms": [
+      152,
+      152,
+      152
+    ],
+    "viewportBottom": 592,
+    "bodyBottoms": [
+      592,
+      900,
+      592
+    ],
+    "lowerHeaderTops": [
+      592,
+      592,
+      592
+    ],
+    "leftBorderX": 272,
+    "rightBorderX": 1088,
+    "headerLeftBorderX": 272,
+    "headerRightBorderX": 1088,
+    "possessionLeftBorderX": 272,
+    "possessionRightBorderX": 1088,
+    "railBottom": 900,
+    "rightBottom": 900,
+    "stepBand": false,
+    "overlays": 0,
+    "statusIndicators": 1,
+    "resetsOutsideMenu": 0,
+    "possession": {
+      "red": "4",
+      "right": "44",
+      "label": "Blue holds"
+    },
+    "legend": [
+      "Home36",
+      "Unauthorized4",
+      "Recovered8",
+      "Blocked2",
+      "Isolated8"
+    ],
+    "errors": []
+  },
+  "observer-1440x760": {
+    "width": 1440,
+    "scrollWidth": 1440,
+    "topHeaderBottoms": [
+      152,
+      152,
+      152
+    ],
+    "viewportBottom": 466,
+    "bodyBottoms": [
+      466,
+      760,
+      466
+    ],
+    "lowerHeaderTops": [
+      466,
+      466,
+      466
+    ],
+    "leftBorderX": 272,
+    "rightBorderX": 1088,
+    "headerLeftBorderX": 272,
+    "headerRightBorderX": 1088,
+    "possessionLeftBorderX": 272,
+    "possessionRightBorderX": 1088,
+    "railBottom": 760,
+    "rightBottom": 760,
+    "stepBand": false,
+    "overlays": 0,
+    "statusIndicators": 1,
+    "resetsOutsideMenu": 0,
+    "possession": {
+      "red": "3",
+      "right": "45",
+      "label": "Blue holds"
+    },
+    "legend": [
+      "Home34",
+      "Unauthorized3",
+      "Recovered11",
+      "Blocked0",
+      "Isolated11"
+    ],
+    "errors": []
+  },
+  "observer-390x844": {
     "width": 390,
     "scrollWidth": 390,
     "topHeaderBottoms": [
@@ -254,16 +388,16 @@
     "statusIndicators": 1,
     "resetsOutsideMenu": 0,
     "possession": {
-      "red": "5",
-      "right": "43",
+      "red": "4",
+      "right": "44",
       "label": "Blue holds"
     },
     "legend": [
-      "Home11",
-      "Unauthorized5",
-      "Recovered32",
-      "Blocked5",
-      "Isolated32"
+      "Home30",
+      "Unauthorized4",
+      "Recovered14",
+      "Blocked0",
+      "Isolated14"
     ],
     "errors": []
   },

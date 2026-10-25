@@ -12,7 +12,7 @@ const report: Record<string, any> = {};
 const mismatches: string[] = [];
 try {
   for (const role of ["attacker", "defender", "observer"] as const) {
-    for (const [width, height] of [[1440, 900], [390, 844]] as const) {
+    for (const [width, height] of [[1440, 900], [1440, 760], [390, 844]] as const) {
       const page = await browser.newPage({ viewport: { width, height } });
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(e.message));
@@ -21,7 +21,7 @@ try {
       await page.waitForFunction((r) => document.body.dataset.role === r && document.querySelector("#live")?.textContent?.startsWith("Live"), role, { timeout: 30000 });
       await page.waitForFunction(() => document.querySelectorAll("#legend li").length > 0);
       await page.waitForTimeout(1500);
-      await page.screenshot({ path: `${output}/${role}-${width}.png` });
+      await page.screenshot({ path: `${output}/${role}-${width}${height === 900 || width === 390 ? "" : "x" + height}.png` });
       const m = await page.evaluate(() => {
         const r = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
         const bars = (col: string) => Array.from(document.querySelectorAll<HTMLElement>(`${col} > .bar`)).map((b) => b.getBoundingClientRect());
@@ -54,7 +54,7 @@ try {
           legend: Array.from(document.querySelectorAll("#legend li")).map((l) => l.textContent),
         };
       });
-      report[`${role}-${width}`] = { ...m, text: undefined, errors };
+      report[`${role}-${width}x${height}`] = { ...m, text: undefined, errors };
       const near = (a: number, b: number, what: string) => { if (Math.abs(a - b) > 0.5) mismatches.push(`${role}@${width}: ${what}: ${a} vs ${b}`); };
       if (width === 1440) {
         near(m.topHeaderBottoms[0], m.topHeaderBottoms[1], "top header bottoms L/M");
@@ -67,6 +67,12 @@ try {
         for (const [k, v] of [["rightBorderX", m.rightBorderX], ["headerRightBorderX", m.headerRightBorderX], ["possessionRightBorderX", m.possessionRightBorderX]]) near(v as number, width - 352, `${k}`);
         near(m.railBottom, height, "left column reaches the bottom");
         near(m.rightBottom, height, "right column reaches the bottom");
+        const sug = await page.evaluate(() => {
+          const col = document.querySelector("#chat")!.getBoundingClientRect();
+          return Array.from(document.querySelectorAll("#suggest button")).map((b) => b.getBoundingClientRect()).every((r) => r.top >= col.top && r.bottom <= col.bottom)
+            && document.querySelector("#compose")!.getBoundingClientRect().bottom <= col.bottom;
+        });
+        if (role !== "observer") assert.ok(sug, "suggestions and composer fully inside the chat column");
       } else near(m.scrollWidth, m.width, "no horizontal scroll");
       assert.equal(m.stepBand, false, "step band removed");
       assert.equal(m.overlays, 0, "no viewport overlays");

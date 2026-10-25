@@ -29,7 +29,9 @@ grid-template-rows:    56px  52px  minmax(0,1fr);   height: 100dvh
 ```
 
 Every main-row column is the same stack: 44px header, 440px body, 44px header, body that
-fills the rest. So three rules cross all three columns: the top headers, the bottom of the
+fills the rest. The 440px track is `--body`, which shrinks uniformly in every column on
+viewports shorter than ~920px (floor 220px) so the rules stay aligned and the chat column
+always keeps 250px for the suggestion chips and the composer. So three rules cross all three columns: the top headers, the bottom of the
 viewport, and the lower headers. `#head` and `#possession` are `display: contents` wrappers,
 so their cells are children of the page grid; below 1100px they become their own grids and
 the columns stack (rail, map, chat) with the possession bar still full width.
@@ -130,10 +132,11 @@ pending-message rules.
 ## Verification
 
 `scripts/check-arena-shell.ts` runs against a `demo:fleet` server (`FLEET_URL`, default
-`http://127.0.0.1:4174`): it loads each role at 1440×900 and 390×844, saves
+`http://127.0.0.1:4174`): it loads each role at 1440×900, 1440×760 and 390×844, saves
 `output/arena-shell/<role>-<width>.png`, and asserts with `getBoundingClientRect` that the
 three top headers share a bottom, the viewport bottom equals the left and right 440px bodies,
-the three lower headers share a top, the column borders sit at x=272 and x=width−352 in the
+the three lower headers share a top, the suggestion chips and composer fit inside the chat
+column, the column borders sit at x=272 and x=width−352 in the
 header, possession and main rows, and that there is no horizontal scroll at 390px. It also
 checks: no step band, no viewport overlays, one status indicator, resets only inside the
 menu, and role scoping (the attacker page never shows a fleet total, isolation, recovery or
