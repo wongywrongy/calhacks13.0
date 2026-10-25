@@ -324,30 +324,18 @@ function agentLine(a: Agent, d: Derived): [string, string] {
   }
 }
 
-/* ---------- header ---------- */
+/* ---------- header and possession row ---------- */
 function header(d: Derived) {
-  const total = frame.drones.length,
-    comp = d.compromised.length;
+  const total = frame.drones.length;
   $("match").textContent =
-    role === "attacker"
-      ? "Red team · FC-01"
-      : role === "defender"
-        ? "Blue team · FC-01"
-        : "Observer · FC-01";
-  const [text, hot] =
-    role === "attacker"
-      ? [d.accepted.length ? "ENGAGED" : "RECON", d.accepted.length > 0]
-      : role === "defender"
-        ? [comp ? "CRITICAL" : "NOMINAL", comp > 0]
-        : [comp ? "CONTESTED" : "HELD", false];
-  $("badge").textContent = text;
-  $("badge").className = "badge" + (hot ? " red" : "");
+    role === "attacker" ? "Red team" : role === "defender" ? "Blue team" : "Observer";
+  // Attackers never learn the fleet size; observers see both teams.
   $("context").textContent =
     role === "attacker"
-      ? "Fleet size unknown · red credential"
+      ? "Fleet size unknown, red credential"
       : role === "defender"
-        ? `${total} drones · blue credential`
-        : `${total} drones · ${frame.agents.length} agents · full state`;
+        ? `${total} drones, blue credential`
+        : `${total} drones, both teams`;
   $("clock").firstChild!.textContent = modelDriven
     ? "Sandbox"
     : clock(d.elapsed);
@@ -362,84 +350,52 @@ function header(d: Derived) {
   if (resilienceMode) {
     $("match").textContent = role === "attacker" ? "Challenge team" : role === "defender" ? "Defense team" : "Observer";
     $("context").textContent = "Synthetic resilience simulation · 6 drones";
-    $("badge").textContent = frame.mission?.state.toUpperCase() ?? "READY";
-    $("reset-swarm").textContent = "Reset Arena";
+    $("reset-swarm").textContent = "Reset arena";
     $("reset-swarm").title = "Stop both teams and clear chats, policies, budgets and mission state";
     $("reset-sandbox").hidden = true;
   }
+  // Possession: red share from the left. The attacker only sees discovered drones, so its
+  // right-hand number is the discovered count, never a fleet total.
+  const red = d.compromised.length;
+  $("red-held").textContent = String(red);
+  $("blue-held").textContent = String(role === "attacker" ? total : total - red);
+  $("blue-label").textContent = role === "attacker" ? "Discovered" : "Blue holds";
+  $("poss-red").style.width = `${total ? (red / total) * 100 : 0}%`;
+  $("poss-bar").parentElement!.setAttribute("aria-label",
+    role === "attacker" ? `Red holds ${red} of ${total} discovered drones` : `Red holds ${red} of ${total} drones`);
 }
 
-/* ---------- agent rails: label bar, ring gauge, chips, label bar, cards ---------- */
-function ring(pct: number, color: string) {
-  const r = el("div", "ring");
-  const C = 2 * Math.PI * 28;
-  r.innerHTML =
-    `<svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">` +
-    `<circle cx="32" cy="32" r="28" fill="none" stroke="#182227" stroke-width="6"/>` +
-    `<circle cx="32" cy="32" r="28" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(C * pct).toFixed(1)} ${C.toFixed(1)}"/></svg>`;
-  r.append(el("span", "pct", `${Math.round(pct * 100)}%`));
-  return r;
+/* ---------- rails: agent cards, selected drone, observer evidence ---------- */
+// Replace children only when their markup changed so live updates never flicker.
+function patchList(host: HTMLElement, nodes: HTMLElement[]) {
+  if (host.children.length !== nodes.length) host.replaceChildren(...nodes);
+  else
+    nodes.forEach((node, i) => {
+      if (host.children[i].outerHTML !== node.outerHTML)
+        host.children[i].replaceWith(node);
+    });
 }
-type RailSpec = {
-  title: string;
-  dot: string;
-  count: number;
-  line: string;
-  sub: string;
-  color: string;
-  chips: number[];
-  chipsLabel: string;
-  agentsLabel: string;
-  agents: Agent[];
-};
-function rail(host: HTMLElement, s: RailSpec, d: Derived) {
-  const total = frame.drones.length;
-  const head = el("div", "bar");
-  if (s.dot) {
-    const dd = el("span", "dot");
-    dd.style.background = s.dot;
-    head.append(dd);
+function missionStats() {
+  const m = frame.mission!;
+  const stats = el("li", "mission");
+  stats.setAttribute("aria-label", `Mission ${Math.floor(100 * m.delivered_ms / m.goal_ms)} percent complete`);
+  stats.append(el("b", "", `Survey mission · ${Math.floor(100 * m.delivered_ms / m.goal_ms)}%`), el("span", "", `${(m.delivered_ms / 1000).toFixed(1)} / ${m.goal_ms / 1000} packets · ${m.state}`));
+  stats.append(el("span", "", `Lost work: ${(m.lost_ms / 1000).toFixed(1)} drone-seconds`));
+  if (role !== "attacker") {
+    stats.append(el("span", "", `Detection: ${m.detections ? (m.detection_us / m.detections / 1e6).toFixed(2) + "s" : "unmeasured"}`),
+      el("span", "", `Recovery (incl. expiry): ${m.recoveries ? (m.recovery_us / m.recoveries / 1e6).toFixed(2) + "s" : "unmeasured"}`),
+      el("span", "", `Unnecessary isolation: ${(m.unnecessary_isolation_ms / 1000).toFixed(1)}s`));
   }
-  head.append(el("h2", "", s.title));
-  const g = el("div", "gauge");
-  g.setAttribute("role", "img");
-  g.setAttribute("aria-label", `${s.count} of ${total} drones ${s.line}`);
-  const text = el("div", "gauge-text");
-  text.append(el("b", "ellipsis", s.line), el("span", "ellipsis", s.sub));
-  g.append(ring(total ? s.count / total : 0, s.color), text);
-  if (frame.mission) {
-    const m = frame.mission;
-    g.setAttribute("aria-label", `Mission ${Math.floor(100 * m.delivered_ms / m.goal_ms)} percent complete`);
-    const stats = el("div", "gauge-text resilience-metrics");
-    stats.append(el("b", "", `Survey mission · ${Math.floor(100 * m.delivered_ms / m.goal_ms)}%`), el("span", "", `${(m.delivered_ms / 1000).toFixed(1)} / ${m.goal_ms / 1000} packets · ${m.state}`));
-    stats.append(el("span", "", `Lost work: ${(m.lost_ms / 1000).toFixed(1)} drone-seconds`));
-    if (role !== "attacker") {
-      stats.append(el("span", "", `Detection: ${m.detections ? (m.detection_us / m.detections / 1e6).toFixed(2) + "s" : "unmeasured"}`),
-        el("span", "", `Recovery (incl. expiry): ${m.recoveries ? (m.recovery_us / m.recoveries / 1e6).toFixed(2) + "s" : "unmeasured"}`),
-        el("span", "", `Unnecessary isolation: ${(m.unnecessary_isolation_ms / 1000).toFixed(1)}s`));
-    }
-    const budget = frame.budgets?.find((b) => b.role === role);
-    if (budget) stats.append(el("span", "", `Action budget: ${budget.remaining} / 40`));
-    g.replaceChildren(stats);
-  }
-  const chips = el("div", "chipgrid");
-  chips.setAttribute("role", "group");
-  chips.setAttribute("aria-label", s.chipsLabel);
-  if (!s.chips.length) chips.append(el("span", "none", resilienceMode ? "No anomalies observed" : "No drones held"));
-  for (const id of s.chips) {
-    const b = el("button", "chip", tag(id));
-    b.append(el("span", "", heldFor(d, id)));
-    b.setAttribute("aria-pressed", String(id === selected));
-    b.onclick = () => pull(id);
-    chips.append(b);
-  }
-  const ul = el("ul", "cards");
-  if (!s.agents.length) {
-    const empty = el("li", "empty-agents");
-    empty.append(el("b", "", "No agents deployed"), el("span", "", "Send an objective through chat to deploy specialists."));
-    ul.append(empty);
-  }
-  for (const a of [...s.agents].sort((x, y) => x.id - y.id)) {
+  const budget = frame.budgets?.find((b) => b.role === role);
+  if (budget) stats.append(el("span", "", `Action budget: ${budget.remaining} / 40`));
+  return stats;
+}
+function agentCards(host: HTMLElement, agents: Agent[], d: Derived, mission = false) {
+  const nodes: HTMLElement[] = [];
+  if (mission && frame.mission) nodes.push(missionStats());
+  if (!agents.length)
+    nodes.push(el("li", "note", role === "observer" ? "None deployed." : `None deployed. ${agentOf()} deploys specialists when you send an objective.`));
+  for (const a of [...agents].sort((x, y) => x.id - y.id)) {
     const [state, doing] = agentLine(a, d);
     const b = el("button", "agent");
     b.setAttribute("aria-haspopup", "dialog");
@@ -456,73 +412,35 @@ function rail(host: HTMLElement, s: RailSpec, d: Derived) {
     b.onclick = () => openModal(a.id);
     const li = el("li");
     li.append(b);
-    ul.append(li);
+    nodes.push(li);
   }
-  const head2 = el("div", "bar");
-  head2.append(el("h2", "", s.agentsLabel));
-  const nodes = [head, g, chips, head2, ul];
-  if (host.children.length !== nodes.length) host.replaceChildren(...nodes);
-  else
-    nodes.forEach((node, i) => {
-      if (host.children[i].outerHTML !== node.outerHTML)
-        host.children[i].replaceWith(node);
-    });
+  patchList(host, nodes);
 }
 function rails(d: Derived) {
-  const comp = d.compromised.map((x) => x.id),
-    total = frame.drones.length;
   const red = frame.agents.filter((a) => a.role === "attacker"),
     blue = frame.agents.filter((a) => a.role === "defender");
-  const held: Omit<RailSpec, "title" | "dot" | "agentsLabel" | "agents"> = {
-    count: comp.length,
-    line:
-      role === "defender" ? "of the fleet compromised" : "of the fleet held",
-    sub: `${comp.length} of ${total} ${role === "attacker" ? "discovered" : "drones"}`,
-    color: "#f02d38",
-    chips: comp,
-    chipsLabel: role === "defender" ? "Unrecovered drones" : "Held drones",
-  };
-  if (role !== "observer") {
-    rail(
-      $("rail-left"),
-      {
-        ...held,
-        title: "Fleet status",
-        dot: "",
-        agentsLabel: `My agents · ${frame.agents.length}`,
-        agents: frame.agents,
-      },
-      d,
-    );
-    return;
+  const mine = role === "observer" ? red : frame.agents;
+  $("agents-title").textContent = role === "observer" ? "Red agents" : "Agents";
+  $("agents-count").textContent = String(mine.length);
+  agentCards($("agents"), mine, d, true);
+  if (role === "observer") {
+    $("blue-count").textContent = String(blue.length);
+    agentCards($("blue-agents"), blue, d);
   }
-  rail(
-    $("rail-left"),
-    {
-      ...held,
-      title: "Red · attack",
-      dot: "#f02d38",
-      agentsLabel: `Red agents · ${red.length}`,
-      agents: red,
-    },
-    d,
-  );
-  rail(
-    $("rail-right"),
-    {
-      title: "Blue · defense",
-      dot: "#277dfd",
-      count: d.lostBack.length,
-      line: "of the fleet recovered",
-      sub: `${d.lostBack.length} of ${total} drones · ${comp.length} unrecovered`,
-      color: "#2bd47f",
-      chips: comp,
-      chipsLabel: "Unrecovered drones",
-      agentsLabel: `Blue agents · ${blue.length}`,
-      agents: blue,
-    },
-    d,
-  );
+  const sel = frame.drones.find((x) => x.id === selected);
+  $("clear-sel").hidden = !sel;
+  const body: HTMLElement[] = [];
+  if (sel) {
+    const [label, cls] = stateLabel(d.state(sel));
+    const id = el("div", "id", tag(sel.id));
+    id.append(el("span", "tag " + cls, label));
+    body.push(id, el("p", "", oneLine(sel, d)));
+  } else body.push(el("p", "muted", "Click a drone, an activity row or a chip to select it."));
+  patchList($("selected"), body);
+  if (role === "observer") {
+    const rows = entries(d).filter((e) => sel && e.drone === sel.id).slice(-60).reverse();
+    patchList($("evidence"), rows.length ? rows.map((e) => rowEl(e, d)) : [el("li", "note", sel ? "No evidence rows for this drone." : "Select a drone to see its evidence.")]);
+  }
 }
 
 /* ---------- agent detail modal ---------- */
@@ -583,6 +501,7 @@ function fillModal(d: Derived) {
   const target = w?.target ?? assignedTarget(a);
   const drone = frame.drones.find((x) => x.id === target);
   const targetButton = el("button", "chip", tag(target));
+  targetButton.setAttribute("type", "button");
   targetButton.onclick = () => { pull(target); closeModal(); };
   patchContent($("modal-target"), [targetButton]);
   let result = w?.error ? explainFleetError(w.error) : last?.outcome === RECOVERED
@@ -612,6 +531,8 @@ type Entry = {
   actor: string;
   cls: string;
   text: string;
+  /** State column: label and dot colour class. */
+  state: [string, string];
   problem: boolean;
   you: boolean;
   operationId?: string;
@@ -633,10 +554,12 @@ function entries(d: Derived): Entry[] {
       pv = ` under policy v${e.policy_version}`;
     let actor = ag,
       cls = own(e),
-      text: string;
+      text: string,
+      state: [string, string] = [e.kind.replaceAll("_", " "), "c-grey"];
     switch (e.kind) {
       case "discovered":
         text = ` discovered ${dr}.`;
+        state = ["Discovered", "c-grey"];
         break;
       case ACCEPTED:
         if (role === "defender") [actor, cls] = ["Unknown origin", "c-red"];
@@ -644,6 +567,7 @@ function entries(d: Derived): Entry[] {
           role === "defender"
             ? ` took control of ${dr} (200).`
             : ` took ${dr} (200).`;
+        state = [role === "attacker" ? "Seized" : role === "defender" ? "Compromised" : "Unauthorized", "c-red"];
         break;
       case BLOCKED:
         if (role === "attacker")
@@ -659,12 +583,15 @@ function entries(d: Derived): Entry[] {
             ` was blocked on ${dr} (403)${pv}.`,
           ];
         else text = ` was blocked on ${dr} (403)${pv}.`;
+        state = ["Blocked", "c-amber"];
         break;
       case POLICY:
         text = ` applied policy v${e.policy_version} to ${dr}.`;
+        state = ["Policy", "c-blue"];
         break;
       case RECOVERED:
         text = ` verified recovery on ${dr}: 403 then 200${pv}.`;
+        state = ["Recovered", "c-green"];
         break;
       default:
         text = ` ${e.kind.replaceAll("_", " ")} on ${dr}.`;
@@ -677,6 +604,7 @@ function entries(d: Derived): Entry[] {
       actor,
       cls,
       text,
+      state,
       problem:
         e.kind === BLOCKED || (e.kind === ACCEPTED && role !== "attacker"),
       you: false,
@@ -684,14 +612,14 @@ function entries(d: Derived): Entry[] {
   });
   for (const t of operationChat?.turns ?? []) if (t.state === "failed" && t.error && (!t.metric?.epoch || t.metric.epoch === fleetEpoch)) out.push({
     at: t.updatedAt * 1000, id: 0, drone: 0, actorId: 0, actor: agentOf(), cls: "c-team",
-    text: ` request failed · ${t.error}`, problem: true, you: false, status: "failed",
+    text: ` request failed · ${t.error}`, state: ["Failed", "c-amber"], problem: true, you: false, status: "failed",
   });
   for (const o of (operationChat?.operations ?? []).filter((o) => o.epoch === fleetEpoch))
     for (const w of o.workers) out.push({
       at: (w.deployedAt ?? o.createdAt) * 1000, id: 0, drone: w.target, actorId: w.agentId,
       actor: agentLabel(w.agentId), cls: "c-team",
       text: ` deployed · ${w.specialty || "specialist"} · ${tag(w.target)}`,
-      problem: false, you: true, operationId: o.id, status: "deployed",
+      state: ["Deployed", "c-team"], problem: false, you: true, operationId: o.id, status: "deployed",
     });
   for (const o of (operationChat?.operations ?? []).filter(
     (o) => o.epoch === fleetEpoch,
@@ -728,6 +656,7 @@ function entries(d: Derived): Entry[] {
         actor: r.agentId ? agentLabel(r.agentId) : agentOf(),
         cls: "c-team",
         text: ` · ${status}: ${r.error ? explainFleetError(r.error) : r.outcome ?? r.kind ?? "decision"}${r.evidenceId ? ` · evidence #${r.evidenceId}` : ""}`,
+        state: [status[0].toUpperCase() + status.slice(1), status === "failed" || status === "blocked" ? "c-amber" : status === "verified" ? "c-green" : "c-team"],
         problem: status === "failed" || status === "blocked",
         you: false,
         operationId: o.id,
@@ -749,7 +678,11 @@ function rowEl(e: Entry, d: Derived, clickable = true) {
   const s = el("span", "s");
   s.append(el("b", e.cls, e.actor), e.text);
   s.title = e.actor + e.text;
-  li.append(el("span", "t", eventTime(e.at)), s);
+  const t = el("span", "t", clickable ? eventTime(e.at).replace(" UTC", "") : eventTime(e.at));
+  t.title = eventTime(e.at);
+  const st = el("span", "st", e.state[0]);
+  st.prepend(el("i", "dot " + e.state[1]));
+  li.append(t, el("span", "d", e.drone ? tag(e.drone) : "—"), st, s);
   li.dataset.timestamp = String(e.at);
   if (clickable && e.drone) {
     li.tabIndex = 0;
@@ -775,11 +708,11 @@ function log(d: Derived) {
   document
     .querySelectorAll<HTMLButtonElement>("#filter button")
     .forEach((b) =>
-      b.setAttribute("aria-pressed", String(b.dataset.filter === filter)),
+      b.setAttribute("aria-selected", String(b.dataset.filter === filter)),
     );
   const only = $("only-sel");
   only.style.visibility = selected ? "visible" : "hidden";
-  only.textContent = `Only ${tag(selected)}`;
+  only.firstChild!.textContent = `${tag(selected)} only`;
   only.setAttribute("aria-pressed", String(onlySel && !!selected));
   const rows = all
     .filter((e) =>
@@ -834,14 +767,55 @@ function bubble(m: Msg) {
   b.dataset.messageId = String(m.id);
   return b;
 }
+/** Chat state for the single header status cell. */
+function chatState() {
+  const op = operationChat?.operation;
+  const turn = operationChat?.pendingTurn;
+  const latestTurn = operationChat?.turns.at(-1);
+  return chatError || (turn ? "Planning" : latestTurn?.state === "failed" && (!op || latestTurn.createdAt > op.createdAt) ? "Failed" : op ? (op.outcome ?? fleetOutcome(op)).status : "Awaiting objective");
+}
+/** Suggestion chips: a static template map keyed on fleet phase and the selected drone. */
+const SUGGESTIONS = {
+  defender: {
+    idle: ["Probe the fleet controller", "What is exposed right now?", "Trace DR-xxx's last 3 commands"],
+    contested: ["Why did these drones flip?", "Isolate the compromised cluster", "Write a guard rule for this exploit"],
+    recovered: ["Summarize what was blocked", "Show the guard rule that held", "Replay the takeover on DR-xxx"],
+  },
+  attacker: {
+    idle: ["Discover drones on FC-01", "What is the fleet controller exposing?", "Command DR-xxx"],
+    engaged: ["Hold what we have", "Why was DR-xxx blocked?", "Try another drone"],
+    repelled: ["Summarize what got blocked", "Find a new entry point"],
+  },
+};
+function suggestions(d: Derived) {
+  const held = d.compromised.length;
+  const phase = role === "attacker"
+    ? held ? "engaged" : d.accepted.length || d.blocked.length ? "repelled" : "idle"
+    : held ? "contested" : d.recovered.length ? "recovered" : "idle";
+  const texts = role === "attacker" ? SUGGESTIONS.attacker[phase as keyof typeof SUGGESTIONS.attacker] : SUGGESTIONS.defender[phase as keyof typeof SUGGESTIONS.defender];
+  // Name the selected drone; otherwise the first drone with a problem, else the first visible one.
+  const drone = selected || (role === "attacker" ? d.blocked.at(-1)?.drone : d.compromised[0]?.id ?? d.recovered.at(-1)?.drone) || frame.drones[0]?.id;
+  const nodes = texts
+    .filter((t) => drone || !t.includes("DR-xxx"))
+    .map((t) => {
+      const text = t.replaceAll("DR-xxx", tag(drone!));
+      const b = el("button", "", "");
+      b.setAttribute("type", "button");
+      b.append(el("span", "", text));
+      b.innerHTML += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>';
+      b.onclick = () => void say(text);
+      return b;
+    });
+  patchList($("suggest"), nodes);
+  // patchList compares markup, so handlers on kept nodes stay; re-bind in case a node was reused.
+  $("suggest").querySelectorAll<HTMLButtonElement>("button").forEach((b) => (b.onclick = () => void say(b.textContent!)));
+}
 function chat(d: Derived) {
   if (role === "observer") return;
   $("chat-name").textContent = agentOf();
   const op = operationChat?.operation;
-  const turn = operationChat?.pendingTurn;
-  const latestTurn = operationChat?.turns.at(-1);
-  $("chat-sub").textContent = chatError || (turn ? "Planning" : latestTurn?.state === "failed" && (!op || latestTurn.createdAt > op.createdAt) ? "Failed" : op ? (op.outcome ?? fleetOutcome(op)).status : "Awaiting objective");
   $("provider").textContent = modelDriven ? `${inferenceLabel} · ${op?.models?.coordinator || coordinatorModel}` : "Fixture decisions";
+  suggestions(d);
   ($("say") as HTMLInputElement).disabled = (modelDriven && !operationChat) || !!operationChat?.sending;
   ($("say") as HTMLInputElement).placeholder = `Message ${agentOf()}`;
   const t = $("transcript");
@@ -923,20 +897,20 @@ function chat(d: Derived) {
   else if (
     slotEl.querySelector(".chip")?.firstChild?.textContent !== tag(s.id)
   ) {
-    const chip = el("div", "chip", tag(s.id));
-    chip.append(
-      el("span", "tag " + stateLabel(d.state(s))[1], stateLabel(d.state(s))[0]),
-    );
-    const x = el("button", "", "×");
-    x.setAttribute("aria-label", `Detach ${tag(s.id)}`);
-    x.onclick = () => {
-      selected = 0;
-      selectedEvent = 0;
-      render(frame);
-    };
+    const chip = el("span", "chip", tag(s.id));
+    const x = el("button", "", "");
+    x.setAttribute("type", "button");
+    x.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
+    x.setAttribute("aria-label", `Remove ${tag(s.id)} context`);
+    x.onclick = clearSelection;
     chip.append(x);
     slotEl.replaceChildren(el("span", "", "About"), chip);
   }
+}
+function clearSelection() {
+  selected = 0;
+  selectedEvent = 0;
+  render(frame);
 }
 
 /* ---------- Three.js scene + Canvas fallback ---------- */
@@ -1766,61 +1740,23 @@ function mapScene(d: Derived) {
   }
   fit();
   redraw();
-  const legend = (items: [string, string][]) =>
-    $("legend").replaceChildren(
-      ...items.map(([cls, label]) => {
-        const s = el("span", "", label);
-        const i = el("i", cls.startsWith("#") ? "" : cls);
-        if (cls.startsWith("#")) i.style.background = cls;
-        s.prepend(i);
-        return s;
-      }),
-    );
-  const n = frame.drones.length;
-  if (role === "attacker") {
-    $("map-title").textContent = `Discovered swarm · ${n}`;
-    legend([
-      ["#F02D38", "Seized"],
-      ["#A9B4C1", "Home control"],
-      ["ring-key", "Blocked · last 3s"],
-      ["ghost", "Formation slot"],
-    ]);
-  } else {
-    $("map-title").textContent =
-      role === "defender" ? `Managed swarm · ${n}` : `Full state · ${n}`;
-    legend([
-      ["#5B9DFF", "Home"],
-      ["#F02D38", role === "defender" ? "Compromised" : "Unauthorized"],
-      ["#2BD47F", "Recovered"],
-      ["ring-key", "Blocked · last 3s"],
-      ["iso", "Isolated"],
-      ["ghost", "Formation slot"],
-    ]);
-  }
-  if (resilienceMode) {
-    $("map-title").textContent = `Synthetic survey fleet · ${n}`;
-    legend([["#5B9DFF", "Participating"], ["#F02D38", "Anomaly observed"], ["iso", "Quarantined"], ["ghost", "Formation slot"]]);
-  }
-  // Selected-drone card: an absolute overlay, so selecting never moves the map.
-  const ov = $("ov-sel"),
-    sel = frame.drones.find((x) => x.id === selected);
-  ov.hidden = !sel;
-  if (sel) {
-    const [label, cls] = stateLabel(d.state(sel));
-    const head = el("div", "head");
-    head.append(el("b", "mono", tag(sel.id)), el("span", "tag " + cls, label));
-    const x = el("button", "", "×");
-    x.setAttribute("aria-label", "Clear selection");
-    x.onclick = () => {
-      selected = 0;
-      selectedEvent = 0;
-      render(frame);
-    };
-    head.append(x);
-    const line = el("div", "line", oneLine(sel, d));
-    line.title = line.textContent!;
-    ov.replaceChildren(head, line);
-  }
+  // Legend with live counts, limited to the states this role can see. Counts come from the
+  // same per-drone state, ripple and isolation flags that drive the scene.
+  const count = (st: string) => frame.drones.filter((x) => d.state(x) === st).length;
+  const blocked = [...drones.values()].filter((g) => g.visible && g.userData.ripple.visible).length;
+  const items: [string, string, number, string][] = resilienceMode
+    ? [["var(--blue)", "Participating", count("home"), ""], ["var(--red)", "Anomaly", count("comp"), "red"], ["iso", "Quarantined", frame.drones.filter((x) => x.isolated).length, ""]]
+    : role === "attacker"
+      ? [["var(--red)", "Seized", count("comp"), "red"], ["var(--text-2)", "Home", count("home"), ""], ["var(--faint)", "Lost", count("rec"), ""], ["ring-key", "Blocked", blocked, ""]]
+      : [["var(--blue)", "Home", count("home"), ""], ["var(--red)", role === "defender" ? "Compromised" : "Unauthorized", count("comp"), "red"],
+        ["var(--green)", "Recovered", count("rec"), "green"], ["ring-key", "Blocked", blocked, ""], ["iso", "Isolated", frame.drones.filter((x) => x.isolated).length, ""]];
+  patchList($("legend"), items.map(([swatch, label, n, cls]) => {
+    const li = el("li");
+    const i = el("i", swatch.startsWith("var") ? "" : swatch);
+    if (swatch.startsWith("var")) i.style.background = swatch;
+    li.append(i, el("span", "", label), el("b", cls, n));
+    return li;
+  }));
 }
 
 /* ---------- render ---------- */
@@ -1842,67 +1778,6 @@ function adoptEpoch(epoch: number) {
   frame = EMPTY;
 }
 
-// Guided entry uses existing role-scoped chat and persisted evidence only.
-function renderJudgeGuide() {
-  const host = $("judge-guide");
-  if (!host.childElementCount) {
-    host.append(el("strong", "", "Start a challenge → respond → inspect evidence"));
-    for (const [side, label, objective] of [
-      ["attacker", "1. Prepare challenge", "Discover the simulated fleet and test whether its command controls reject unauthorized actions. Report observed results."],
-      ["defender", "2. Prepare defense", "Investigate the current fleet incident, contain affected drones, and verify recovery while preserving legitimate control."],
-    ] as const) {
-      const button = el("button", "", label) as HTMLButtonElement;
-      button.type = "button";
-      button.dataset.prepareRole = side;
-      button.onclick = async () => {
-        button.disabled = true;
-        try {
-          await workspace(side);
-          if (role !== side || !operationChat) return;
-          selected = selectedEvent = 0;
-          render(frame);
-          const input = $("say") as HTMLInputElement;
-          input.value = objective;
-          input.focus();
-        } catch (error) { $("error").textContent = String(error); }
-        finally { button.disabled = false; }
-      };
-      host.append(button);
-    }
-    const status = el("p"); status.id = "judge-readiness"; host.append(status);
-    const details = el("details");
-    details.append(el("summary", "", "3. Findings and affected drones"));
-    const findings = el("div"); findings.id = "judge-findings"; details.append(findings); host.append(details);
-  }
-  host.querySelectorAll<HTMLButtonElement>("[data-prepare-role]").forEach((button) => {
-    const permission = document.querySelector<HTMLButtonElement>(`nav [data-role="${button.dataset.prepareRole}"]`);
-    button.disabled = !live || !stateConnected || !!permission?.disabled;
-  });
-  $("judge-readiness").textContent = recording ? "Recorded run · guided objectives require a live session." :
-    !stateConnected ? "Live database unavailable or connecting. Results below are last known state; reconnect or reload to retry." :
-    !operationChat ? "Database connected · waiting for chat session." :
-    "Edit the suggested objective, then Send. Findings reflect only evidence visible to this role.";
-  const rows = [...frame.events].sort((a, b) => a.id - b.id);
-  const affected = new Set(rows.filter(e => e.kind === ACCEPTED).map(e => e.drone));
-  const recovered = frame.drones.filter(d => affected.has(d.id) && d.controller !== "attacker").length;
-  const box = $("judge-findings");
-  const content = el("div");
-  content.append(el("p", "", `${rows.length} evidence rows · ${affected.size} drones with accepted unauthorized commands · ${recovered} currently back under home control. Synthetic fleet findings; not a complete vulnerability scan.`));
-  content.append(el("p", "", "Agent susceptibility and causal spread are not established by these events. Multiple affected drones alone do not prove propagation."));
-  const list = el("ul");
-  for (const e of rows.slice(-30).reverse()) {
-    const item = el("li");
-    const button = el("button", "", `${tag(e.drone)} · ${e.kind.replaceAll("_", " ")} · evidence #${e.id} · policy v${e.policy_version}`);
-    button.dataset.evidenceId = String(e.id);
-    button.setAttribute("aria-pressed", String(selectedEvent === e.id));
-    button.onclick = () => { selectedEvent = e.id; pull(e.drone); };
-    item.append(button); list.append(item);
-  }
-  if (!rows.length) content.append(el("p", "", "No incident evidence visible to this role yet. Start with a challenge objective."));
-  content.append(list);
-  if (box.innerHTML !== content.outerHTML) box.replaceChildren(content);
-}
-
 function render(next: Frame) {
   if (resetting) return;
   const epoch = next.epoch ?? next.drones[0]?.epoch ?? next.agents[0]?.epoch;
@@ -1920,23 +1795,28 @@ function render(next: Frame) {
     );
   const d = derive(frame);
   header(d);
-  renderJudgeGuide();
   rails(d);
   mapScene(d);
   chat(d);
   log(d);
   if (modalAgent) fillModal(d);
+  setStatus(statusTitle, statusKind);
   redraw();
 }
+let statusTitle = "Loading…", statusKind: "live" | "stale" | "replay" = "stale";
+/** The one status indicator: connection word, then the chat state for attacker and defender. */
 function setStatus(text: string, kind: "live" | "stale" | "replay") {
+  statusTitle = text;
+  statusKind = kind;
+  const word = kind === "live" && modelDriven && operationChat?.fleet?.active === false ? "Fleet ended"
+    : kind === "live" ? "Live" : kind === "stale" ? text.startsWith("Disconnected") ? "Disconnected" : text.startsWith("Connecting") ? "Connecting" : "Stale" : "Replay";
+  const state = kind === "live" && modelDriven && role !== "observer" ? chatState() : "";
   const p = $("live");
-  p.textContent = kind === "live" && modelDriven
-    ? operationChat?.fleet?.active === false ? "Fleet ended"
-      : `Live · ${operationChat?.operation ? (operationChat.operation.outcome ?? fleetOutcome(operationChat.operation)).status : "Awaiting objective"}`
-    : kind === "live" ? "Live" : kind === "stale" ? text.startsWith("Disconnected") ? "Disconnected" : "Stale" : "Replay";
-  p.className = "pill " + (kind === "live" ? "" : kind);
+  const sub = el("span", "", state);
+  sub.id = "chat-sub";
+  p.replaceChildren(el("b", "", word), ...(state ? [" · ", sub] : []));
   p.title = text;
-  renderJudgeGuide();
+  $("status-dot").className = "dot " + (kind === "live" ? "" : kind);
 }
 async function workspace(next: Role, reconnect = false) {
   if (resetting) return;
@@ -2250,12 +2130,23 @@ function fit(force = false) {
   // The first frame can arrive before the ResizeObserver corrects the default aspect of 1.
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  const box = n ? new THREE.Box3() : sceneryBox.clone();
-  for (const d of frame.drones) box.expandByPoint(shown(d));
+  const { dist, target, box } = solve(frame.drones);
+  buildTerrain(n ? box : sceneryBox);
+  controls.maxDistance = Math.max(900, dist * 2);
+  controls.target.copy(target);
+  controls.update();
+  const fog = scene.fog as THREE.Fog;
+  fog.near = dist * 1.1;
+  fog.far = dist * 4.4;
+  redraw();
+}
+/** Solve the camera distance and target that frame `list`; leaves the camera placed there. */
+function solve(list: Drone[]) {
+  const box = list.length ? new THREE.Box3() : sceneryBox.clone();
+  for (const d of list) box.expandByPoint(shown(d));
   box.min.y = 0;
   // Margin covers the flow waves (±3.5 m lateral, ±4.5 m altitude) on top of the static shape.
   box.expandByVector(new THREE.Vector3(10, 8, 12));
-  buildTerrain(n ? box : sceneryBox);
   const corners = Array.from(
     { length: 8 },
     (_, i) =>
@@ -2318,13 +2209,7 @@ function fit(force = false) {
       );
   }
   place(dist);
-  controls.maxDistance = Math.max(900, dist * 2);
-  controls.target.copy(target);
-  controls.update();
-  const fog = scene.fog as THREE.Fog;
-  fog.near = dist * 1.1;
-  fog.far = dist * 4.4;
-  redraw();
+  return { dist, target, box };
 }
 function reframe() {
   userMoved = false;
@@ -2380,7 +2265,6 @@ $("new-chat").onclick = async () => {
   if (!client || resetting) return;
   const button = $("new-chat") as HTMLButtonElement;
   button.disabled = true;
-  button.textContent = "Starting…";
   try {
     await client.newChat();
     if (client !== operationChat) return;
@@ -2390,9 +2274,27 @@ $("new-chat").onclick = async () => {
     $("reset-status").textContent = error instanceof Error ? error.message : "New Chat failed";
   } finally {
     button.disabled = false;
-    button.textContent = "New Chat";
   }
 };
+/* ---------- demo menu and presenter mode ---------- */
+const menu = $("menu"), menuBtn = $("menu-btn");
+function showMenu(open: boolean) {
+  menu.hidden = !open;
+  menuBtn.setAttribute("aria-expanded", String(open));
+}
+menuBtn.onclick = () => showMenu(menu.hidden);
+document.addEventListener("pointerdown", (e) => {
+  if (!menu.hidden && !$("menu-cell").contains(e.target as Node)) showMenu(false);
+});
+menu.addEventListener("click", (e) => {
+  if ((e.target as HTMLElement).closest("button")) showMenu(false);
+});
+function togglePresenter() {
+  document.body.dataset.presenter = String(document.body.dataset.presenter !== "true");
+  showMenu(false);
+}
+$("presenter").onclick = togglePresenter;
+$("clear-sel").onclick = clearSelection;
 host.ondblclick = reframe;
 document.querySelectorAll<HTMLButtonElement>("nav button").forEach(
   (b) =>
@@ -2423,6 +2325,8 @@ $("modal").onclick = (e) => {
   if (e.target === $("modal")) closeModal();
 };
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !menu.hidden) showMenu(false);
+  if ((e.key === "p" || e.key === "P") && !(e.target instanceof HTMLInputElement) && !e.metaKey && !e.ctrlKey && !e.altKey) togglePresenter();
   if (e.key === "Escape" && modalAgent) closeModal();
   if (e.key === "Tab" && modalAgent) {
     const controls = Array.from($("modal").querySelectorAll<HTMLElement>("button, summary, [tabindex='0']")).filter((n) => n.getClientRects().length);
