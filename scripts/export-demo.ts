@@ -17,3 +17,4 @@ await writeFile(join(destination, 'recordings/index.json'), JSON.stringify(index
 const html = (await readFile('web/live.html','utf8')).replace('<body>', '<body data-mode="recorded">');
 await writeFile(join(destination, 'index.html'), html);
 await copyFile('web/dist/app.js', join(destination, 'app.js'));
+await copyFile('web/theme.css', join(destination, 'theme.css'));

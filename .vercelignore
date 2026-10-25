@@ -9,6 +9,7 @@ scripts/*
 !web/
 web/*
 !web/fleet.html
+!web/theme.css
 !web/fleet.ts
 !web/fleet-chat.ts
 !web/fleet-activity.ts

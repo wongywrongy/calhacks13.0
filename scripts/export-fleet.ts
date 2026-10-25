@@ -9,6 +9,7 @@ if (!recording.frames?.length)
 await mkdir(join(destination, "assets/environments"), { recursive: true });
 await copyFile("web/fleet.html", join(destination, "index.html"));
 await copyFile("web/dist/fleet.js", join(destination, "fleet.js"));
+await copyFile("web/theme.css", join(destination, "theme.css"));
 await copyFile(
   "web/assets/swarm-blockout.glb",
   join(destination, "assets/swarm-blockout.glb"),

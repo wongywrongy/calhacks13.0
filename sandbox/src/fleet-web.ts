@@ -119,6 +119,7 @@ export function fleetWeb(options: {
     const assets: Record<string, [string, string]> = {
       "/": ["web/fleet.html", "text/html"],
       "/fleet.js": ["web/dist/fleet.js", "text/javascript"],
+      "/theme.css": ["web/theme.css", "text/css"],
       "/assets/environments/sudoko-dusk-basin.webp": ["web/assets/environments/sudoko-dusk-basin.webp", "image/webp"],
       "/assets/swarm-blockout.glb": [
         "web/assets/swarm-blockout.glb",

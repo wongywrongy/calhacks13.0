@@ -27,9 +27,9 @@ export async function startBoard(options: { port?: number; spacetime?: { uri: st
       req.on('close', () => { clearInterval(heartbeat); viewers.delete(res); });
       return;
     }
-    const file = url.pathname === '/' ? '../../web/live.html' : url.pathname === '/app.js' ? '../../web/dist/app.js' : null;
+    const file = url.pathname === '/' ? '../../web/live.html' : url.pathname === '/app.js' ? '../../web/dist/app.js' : url.pathname === '/theme.css' ? '../../web/theme.css' : null;
     if (!file) return json({ error: 'Not found' }, 404);
-    try { const body = await readFile(new URL(file, import.meta.url)); res.writeHead(200, { 'content-type': file.endsWith('html') ? 'text/html' : 'text/javascript' }); res.end(body); }
+    try { const body = await readFile(new URL(file, import.meta.url)); res.writeHead(200, { 'content-type': file.endsWith('html') ? 'text/html' : file.endsWith('css') ? 'text/css' : 'text/javascript' }); res.end(body); }
     catch { json({ error: 'Run npm run build:board first' }, 503); }
   });
   await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(options.port ?? 4173, '127.0.0.1', resolve); });

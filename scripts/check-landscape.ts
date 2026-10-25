@@ -30,7 +30,7 @@ Object.assign(globalThis,{landscapeCheck:{
 const bundle=await build({stdin:{contents:source+hooks,resolveDir:process.cwd()+"/web",loader:"ts"},bundle:true,format:"esm",write:false});
 const server=createServer(async(req,res)=>{try{
  const path=new URL(req.url??"/","http://localhost").pathname;
- const files:Record<string,[string,string]>={"/":["web/fleet.html","text/html"],"/assets/swarm-blockout.glb":["web/assets/swarm-blockout.glb","model/gltf-binary"],"/assets/environments/sudoko-dusk-basin.webp":["web/assets/environments/sudoko-dusk-basin.webp","image/webp"]};
+ const files:Record<string,[string,string]>={"/":["web/fleet.html","text/html"],"/theme.css":["web/theme.css","text/css"],"/assets/swarm-blockout.glb":["web/assets/swarm-blockout.glb","model/gltf-binary"],"/assets/environments/sudoko-dusk-basin.webp":["web/assets/environments/sudoko-dusk-basin.webp","image/webp"]};
  if(path==="/fleet-config"){res.setHeader("content-type","application/json");res.end('{"recorded":true}');}
  else if(path==="/fleet-recording.json"){res.setHeader("content-type","application/json");res.end(JSON.stringify(recording));}
  else if(path==="/fleet.js"){res.setHeader("content-type","text/javascript");res.end(bundle.outputFiles[0].text);}

@@ -354,6 +354,8 @@ try {
             ? "web/fleet.html"
             : url.pathname === "/fleet.js"
               ? "web/dist/fleet.js"
+              : url.pathname === "/theme.css"
+                ? "web/theme.css"
               : url.pathname === "/assets/swarm-blockout.glb"
                 ? "web/assets/swarm-blockout.glb"
                 : url.pathname === "/assets/environments/sudoko-dusk-basin.webp"
@@ -367,6 +369,8 @@ try {
           "content-type",
           path.endsWith(".html")
             ? "text/html"
+            : path.endsWith(".css")
+              ? "text/css"
             : path.endsWith(".glb")
               ? "model/gltf-binary"
               : path.endsWith(".webp") ? "image/webp" : "text/javascript",
