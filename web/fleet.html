@@ -585,8 +585,8 @@
         min-height: 0;
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        padding: 14px 20px;
+        gap: 6px;
+        padding: 10px 12px;
         overflow: auto;
       }
       #transcript > :first-child {
@@ -594,7 +594,7 @@
       }
       .bubble {
         max-width: 92%;
-        padding: 8px 12px;
+        padding: 6px 9px;
         border: 1px solid var(--line);
         border-radius: 7px;
         background: var(--raised);
@@ -689,7 +689,7 @@
       #compose {
         flex: none;
         margin: 0;
-        padding: 0 20px 16px;
+        padding: 0 12px 10px;
       }
       #compose .box {
         display: flex;
@@ -701,7 +701,7 @@
       }
       #suggest {
         margin: 0;
-        padding: 4px 0;
+        padding: 2px 0;
         list-style: none;
         border-bottom: 1px solid var(--line);
       }
@@ -714,27 +714,30 @@
       #suggest button {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 6px;
         width: 100%;
-        height: 36px;
-        padding: 0 12px;
+        min-height: 28px;
+        padding: 4px 8px;
+        font-size: 12px;
+        line-height: 1.3;
         text-align: left;
       }
       #suggest li[aria-selected="true"] button,
       #suggest button:hover {
         background: var(--raised);
       }
-      #suggest button span {
+      #suggest button > span:not(.key) {
         flex: 1 1 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        min-width: 0;
+        white-space: normal;
+        overflow-wrap: anywhere;
       }
       #suggest svg {
         flex: none;
         color: var(--muted);
       }
       #suggest .key {
+        flex: none;
         font: 500 12px var(--mono);
         color: var(--faint);
       }

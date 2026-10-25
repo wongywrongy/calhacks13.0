@@ -89,6 +89,7 @@ let role: Role = "defender",
 let operationChat: OperationChat | undefined;
 let maincloudReset: ((epoch: number, demo: boolean) => Promise<void>) | undefined;
 let maincloudMode = false;
+let maincloudCanReset = false;
 let renderedMessages: ChatMessage[] | undefined;
 let resilienceMode = false;
 let modelDriven = false,
@@ -344,7 +345,7 @@ function header(d: Derived) {
     : clock(d.elapsed);
   $("clock").querySelector("span")!.textContent = modelDriven ? "" : " / 1:00";
   $("clock").parentElement!.hidden = demoMode;
-  $("reset-sandbox").hidden = $("reset-swarm").hidden = !demoMode || role === "observer" || maincloudMode && role !== "defender";
+  $("reset-sandbox").hidden = $("reset-swarm").hidden = !demoMode || role === "observer" || maincloudMode && !maincloudCanReset;
   $("new-chat").hidden = !operationChat;
   $("progress").parentElement!.style.visibility = modelDriven
     ? "hidden"
@@ -1985,7 +1986,16 @@ async function workspace(next: Role, reconnect = false) {
           !!config.authenticated &&
           !(config.switchableRoles ?? [role]).includes(b.dataset.role)),
     );
-  maincloudReset = hosted ? (epoch, demo) => hosted!.reset(epoch, demo) : undefined;
+  const resetWorkspace = config.role === "attacker" && config.switchableRoles?.includes("defender")
+    ? config.workspaces?.defender : undefined;
+  maincloudCanReset = config.role === "defender" || !!resetWorkspace;
+  maincloudReset = hosted ? async (epoch, demo) => {
+    if (!resetWorkspace) return hosted!.reset(epoch, demo);
+    // Demo operators use their granted defender credential; the backend still checks the role.
+    const defender = await MaincloudChat.connect({ ...config, ...resetWorkspace });
+    try { await defender.reset(epoch, demo); }
+    finally { defender.close(); }
+  } : undefined;
   if (config.chat) {
     $("transcript").replaceChildren(typing);
     operationChat = new OperationChat(
