@@ -87,4 +87,4 @@ try {
   }
   report.passed=true;
 } catch(e:any){report.error=e.stack;process.exitCode=1;}
-finally {for(const c of clients)c.close();await mkdir("output/maincloud",{recursive:true});await writeFile("output/maincloud/verification.json",JSON.stringify(report,null,2));console.log(JSON.stringify({passed:report.passed,checks:report.checks,error:report.error,maxConcurrent:report.maxConcurrent}));}
+finally {for(const c of clients)c.close();await mkdir("output/maincloud",{recursive:true});await writeFile(`output/maincloud/${live ? "live-verification" : "connection"}.json`,JSON.stringify(report,null,2));console.log(JSON.stringify({passed:report.passed,checks:report.checks,error:report.error,maxConcurrent:report.maxConcurrent}));}

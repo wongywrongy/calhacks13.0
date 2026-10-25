@@ -68,7 +68,7 @@ The publisher identity and Bitdeer key remain server-side.
 
 ## Verification evidence
 
-`output/maincloud/verification.json` records the real backend check; `browser/report.json`
+`output/maincloud/live-verification.json` (and `connection.json` for read-only checks) records the real backend check; `browser/report.json`
 records the browser check. Private artifacts stay outside git. The initial hosted check
 observed two concurrent model calls, two accepted unauthorized commands, two versioned
 policies and two verified recoveries; reset rejected stale work and discarded a real

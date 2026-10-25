@@ -16,7 +16,7 @@ page.on("request",r=>report.requests.push(r.url().split("?")[0]));
 const wait=async(fn:()=>Promise<any>,ms=85000)=>{const until=Date.now()+ms;while(Date.now()<until){const v=await fn();if(v)return v;await new Promise(r=>setTimeout(r,350))}throw Error("Browser check timed out")};
 try{
   await page.addInitScript(()=>sessionStorage.setItem("sudoko.role","defender"));
-  await page.goto(origin);
+  await page.goto(origin + (process.env.VERCEL_PREVIEW_SHARE ? `?_vercel_share=${process.env.VERCEL_PREVIEW_SHARE}` : ""));
   await page.waitForFunction(()=>document.querySelector("#live")?.textContent?.startsWith("Live"),{timeout:30000});
   const config:any=await context.request.get(origin+"/fleet-config").then(r=>r.json());
   assert.equal(config.maincloud,true);assert.equal(config.uri,"https://maincloud.spacetimedb.com");
